@@ -6,13 +6,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="QQQ Control">
-    <title>QQQ 戰略儀表板 v4.5</title>
+    <title>QQQ 戰略儀表板 v6.4</title>
     
-    <!-- 專屬 QQQ App 圖示設計 (Base64 SVG) -->
+    <!-- 專屬 QQQ App 圖示 -->
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
-    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
 
-    <!-- 1. 核心資源載入 -->
+    <!-- 核心資源載入 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
@@ -20,7 +19,7 @@
     <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
     <script src="https://unpkg.com/recharts@2.12.0/umd/Recharts.js"></script>
 
-    <!-- 2. Firebase SDK -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -28,84 +27,59 @@
     <script>
         tailwind.config = {
             darkMode: 'class',
-            theme: {
-                extend: { colors: { indigo: { 950: '#1e1b4b' } } }
-            }
+            theme: { extend: { colors: { indigo: { 950: '#1e1b4b' } } } }
         }
     </script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { 
-            font-family: 'Inter', -apple-system, system-ui, sans-serif;
-            -webkit-tap-highlight-color: transparent;
-            transition: background-color 0.3s ease;
-        }
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         .dark body { background-color: #0f172a; }
         .light body { background-color: #f1f5f9; }
         
-        /* 徹底修復文字截斷：移除高度限制，改用垂直間距 */
         input, select, textarea { 
             font-size: 14px !important; 
             line-height: 1.4 !important;
-            padding: 8px 4px !important;
+            padding: 10px 4px !important;
             width: 100%;
             background-color: transparent;
             border: none;
             outline: none;
             text-align: center;
         }
+        textarea { text-align: left !important; }
+
         .whitepaper-scroll { max-height: 70vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .safe-pb { padding-bottom: env(safe-area-inset-bottom, 24px); }
         .tab-active { color: #4f46e5; border-top: 3px solid #4f46e5; }
         .btn-active:active { transform: scale(0.95); opacity: 0.8; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
-        @keyframes pulse-red {
+        @keyframes pulse-dot {
+            0% { transform: scale(0.9); opacity: 0.7; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.7; }
+        }
+        .sync-loading { animation: pulse-dot 1.2s infinite ease-in-out; }
+        
+        @keyframes pulse-red-alert {
             0%, 100% { background-color: #991b1b; }
             50% { background-color: #ef4444; }
         }
-        .repay-alert { animation: pulse-red 2s infinite; }
+        .repay-alert { animation: pulse-red-alert 2s infinite; }
     </style>
 </head>
-<body class="light text-left font-black">
+<body class="light text-left font-black text-slate-900 dark:text-slate-100">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef, useCallback } = React;
         const { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } = Recharts;
 
-        // --- 內嵌 SVG 圖示系統 ---
-        const Icon = ({ name, size = 20, className = "" }) => {
-            const icons = {
-                TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>,
-                Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>,
-                RefreshCcw: <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 4a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16m-18-8h5V3m13 18h-5v5"/>,
-                LayoutDashboard: <><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></>,
-                History: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 0V3m0 5h5M12 7v5l4 2"/>,
-                Landmark: <><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 11 4 11 12 2"/></>,
-                Save: <><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></>,
-                Quote: <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5zM16 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-2c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5z"/>,
-                ShieldAlert: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></>,
-                BookOpen: <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>,
-                PieChartIcon: <><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></>,
-                Sun: <><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></>,
-                Moon: <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>,
-                ChevronUp: <path d="m18 15-6-6-6 6"/>,
-                ChevronDown: <path d="m6 9 6 6 6-6"/>,
-                Edit2: <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>,
-                Trash2: <><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></>,
-                CheckCircle: <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>,
-                MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            };
-            return (
-                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                    {icons[name] || <circle cx="12" cy="12" r="10" />}
-                </svg>
-            );
-        };
+        // --- 1. 初始化與全域資料設定 ---
+        const appId = "qqq-strategic-production-v1"; 
+        const FINNHUB_API_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
 
-        // --- Firebase 永久鎖定 ---
         const firebaseConfig = {
             apiKey: "AIzaSyBpax3wlTwHTe6G3niZajtTxpoUWbgvX80",
             authDomain: "qldmax.firebaseapp.com",
@@ -117,133 +91,68 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
-        const appId = "qqq-strategic-production-v1"; 
-        const FINNHUB_API_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
 
-        const Card = ({ children, className = "" }) => (
-            <div className={`rounded-[2rem] shadow-xl border p-5 transition-all duration-300 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 ${className}`}>{children}</div>
-        );
+        // --- 2. 基礎 UI 組件 ---
+        const Icon = ({ name, size = 20, className = "" }) => {
+            const icons = {
+                TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>,
+                Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>,
+                RefreshCcw: <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 4a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16m-18-8h5V3m13 18h-5v5"/>,
+                LayoutDashboard: <><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></>,
+                History: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 0V3m0 5h5M12 7v5l4 2"/>,
+                Landmark: <><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 11 4 11 12 2"/></>,
+                Save: <><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></>,
+                Quote: <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5zM16 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-2c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5z"/>,
+                ShieldAlert: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></>,
+                CheckCircle: <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>,
+                Edit2: <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>,
+                Trash2: <><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></>,
+                X: <><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></>,
+                Fingerprint: <><path d="M2 12a10 10 0 0 1 18 0"/><path d="M5 12a7 7 0 0 1 14 0"/><path d="M8 12a4 4 0 0 1 8 0"/><path d="M12 12v3"/></>,
+                BookOpen: <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>,
+                ChevronDown: <path d="m6 9 6 6 6-6"/>,
+                ChevronUp: <path d="m18 15-6-6-6 6"/>
+            };
+            return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name] || <circle cx="12" cy="12" r="10" />}</svg>;
+        };
 
-        const SectionTitle = ({ title, iconName }) => (
-            <h2 className="text-[11px] font-black mb-3 flex items-center gap-2 uppercase tracking-[0.2em] text-left text-slate-500 dark:text-slate-400">
-                <Icon name={iconName} size={14} /> {title}
-            </h2>
-        );
+        const Card = ({ children, className = "" }) => <div className={`rounded-[2rem] shadow-xl border p-5 transition-all bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 ${className}`}>{children}</div>;
+        const SectionTitle = ({ title, iconName }) => <h2 className="text-[11px] font-black mb-3 flex items-center gap-2 uppercase tracking-widest text-slate-500 dark:text-slate-400 font-black"><Icon name={iconName} size={14} /> {title}</h2>;
 
+        // --- 3. App 主程式 ---
         const App = () => {
-            // --- 1. 狀態宣告 ---
-            const [user, setUser] = useState(null);
+            // --- 狀態宣告 ---
             const [view, setView] = useState('dashboard');
             const [prices, setPrices] = useState({ QQQ: 0, QLD: 0, TQQQ: 0, IBIT: 0 });
             const [loadingPrices, setLoadingPrices] = useState(false);
             const [isSaving, setIsSaving] = useState(false);
-            const [isWhitepaperOpen, setWhitepaperOpen] = useState(false);
             const [darkMode, setDarkMode] = useState(() => localStorage.getItem('qqq_theme') === 'dark');
             const [message, setMessage] = useState(null);
-            const [visibleCount, setVisibleCount] = useState(20);
-            
+            const [records, setRecords] = useState([]);
             const [editingId, setEditingId] = useState(null);
             const [editForm, setEditForm] = useState(null);
             const [deletingId, setDeletingId] = useState(null);
             const [filterMode, setFilterMode] = useState('all');
+            const [visibleCount, setVisibleCount] = useState(20);
+            const [isWhitepaperOpen, setWhitepaperOpen] = useState(false);
 
             const [customSyncId, setCustomSyncId] = useState(() => localStorage.getItem('qqq_sync_id') || '');
             const [tempSyncId, setTempSyncId] = useState(customSyncId);
+            const [user, setUser] = useState(null);
             const effectiveUserId = customSyncId || (user ? user.uid : null);
 
             const [inputs, setInputs] = useState({
                 qqq_ema5: 0, qqq_ema12: 0, qqq_ema25: 0, qqq_ath: 0, ibit_ema50: 0,
                 current_positions: 'CASH', qty_qqq: 0, qty_qld: 0, qty_tqqq: 0, qty_ibit: 0,
-                custom_ticker_1: 'TSLA', qty_custom_1: 0,
-                custom_ticker_2: 'GOOGL', qty_custom_2: 0,
+                custom_ticker_1: 'TSLA', qty_custom_1: 0, custom_ticker_2: 'GOOGL', qty_custom_2: 0,
                 cash_balance: 0, record_date: new Date().toISOString().split('T')[0],
                 loan_amount: 0, loan_rate: 2.0, loan_years: 7, loan_repay_target: 20, 
                 loan_entry_valuation: 0, loan_monthly_repay: 0, motto: '', record_memo: ''
             });
 
-            const [records, setRecords] = useState([]);
-
-            // --- 2. 核心計算邏輯 ---
-            const totalCapital = useMemo(() => {
-                const p = prices;
-                const t1 = (inputs.custom_ticker_1 || "").toUpperCase();
-                const t2 = (inputs.custom_ticker_2 || "").toUpperCase();
-                return ( (p.QQQ || 0) * (parseFloat(inputs.qty_qqq) || 0) ) + 
-                       ( (p.QLD || 0) * (parseFloat(inputs.qty_qld) || 0) ) + 
-                       ( (p.TQQQ || 0) * (parseFloat(inputs.qty_tqqq) || 0) ) + 
-                       ( (p.IBIT || 0) * (parseFloat(inputs.qty_ibit) || 0) ) + 
-                       ( (p[t1] || 0) * (parseFloat(inputs.qty_custom_1) || 0) ) + 
-                       ( (p[t2] || 0) * (parseFloat(inputs.qty_custom_2) || 0) ) + 
-                       ( parseFloat(inputs.cash_balance) || 0 );
-            }, [prices, inputs]);
-
-            const loanSellThreshold = useMemo(() => {
-                const entry = parseFloat(inputs.loan_entry_valuation) || 0;
-                const targetPct = parseFloat(inputs.loan_repay_target) || 0;
-                return entry * (1 + targetPct / 100);
-            }, [inputs.loan_entry_valuation, inputs.loan_repay_target]);
-
-            const isTargetReached = totalCapital >= loanSellThreshold && inputs.loan_entry_valuation > 0;
-
-            const pieData = useMemo(() => {
-                const p = prices;
-                const t1 = (inputs.custom_ticker_1 || "").toUpperCase();
-                const t2 = (inputs.custom_ticker_2 || "").toUpperCase();
-                const data = [
-                    { name: 'QQQ', value: (p.QQQ || 0) * (parseFloat(inputs.qty_qqq) || 0), color: '#4f46e5' },
-                    { name: 'QLD', value: (p.QLD || 0) * (parseFloat(inputs.qty_qld) || 0), color: '#818cf8' },
-                    { name: 'TQQQ', value: (p.TQQQ || 0) * (parseFloat(inputs.qty_tqqq) || 0), color: '#c084fc' },
-                    { name: 'IBIT', value: (p.IBIT || 0) * (parseFloat(inputs.qty_ibit) || 0), color: '#f59e0b' },
-                    { name: t1, value: (p[t1] || 0) * (parseFloat(inputs.qty_custom_1) || 0), color: '#10b981' },
-                    { name: t2, value: (p[t2] || 0) * (parseFloat(inputs.qty_custom_2) || 0), color: '#06b6d4' },
-                    { name: '現金', value: parseFloat(inputs.cash_balance) || 0, color: '#94a3b8' }
-                ];
-                const filtered = data.filter(item => item.value > 0);
-                const sum = filtered.reduce((acc, curr) => acc + curr.value, 0);
-                return filtered.map(item => ({ ...item, percentage: sum > 0 ? ((item.value / sum) * 100).toFixed(1) : 0 }));
-            }, [prices, inputs]);
-
-            const analysis = useMemo(() => {
-                const q = prices.QQQ;
-                const { qqq_ema5: e5, qqq_ema12: e12, qqq_ema25: e25, qqq_ath: ath, current_positions: cur } = inputs;
-                if (!q || !e25) return { rec: "更新中...", msg: "載入市價資訊。", level: "info" };
-                const isDeath = q < (e25 * 0.97);
-                const isUp = e5 > e12;
-                const dd = ath > 0 ? (ath - q) / ath : 0;
-                const isSniper = dd > 0.08 && isUp;
-                const isBack = q >= (ath * 0.98);
-                let rec = "QLD (2x)";
-                let msg = "趨勢正常上升，維持 2 倍槓桿巡航模式。";
-                let level = "info";
-                if (isDeath) { rec = "CASH (全現金)"; msg = "⚠️ 跌破 25EMA 生死線 (-3%)！強制清倉避大崩盤。"; level = "error"; }
-                else if (isSniper) { rec = "TQQQ (3x)"; msg = "🔥 回調超過 8% 且趨勢向上，觸發深坑狙擊。"; level = "success"; }
-                else if (!isUp) { rec = "QQQ (1x)"; msg = "📉 斜率向下，主動降至 1x 減少損耗。"; level = "warning"; }
-                else if (cur === 'TQQQ' && (isBack || q < e5)) {
-                    rec = "QLD (2x)";
-                    msg = isBack ? "💰 修復達標 98%，獲利結清換回 QLD。" : "⚠️ 動能消失 (破 5EMA)，撤退。";
-                    level = "warning";
-                }
-                return { rec: `${cur === rec.split(' ')[0] ? "[續抱中]" : "[執行換倉]"} ${rec}`, msg, level };
-            }, [prices, inputs]);
-
-            const stats = useMemo(() => {
-                if (records.length < 1) return { growth: 0, end: 0, list: [] };
-                const filtered = records.filter(r => {
-                    const d = new Date(r.date);
-                    if (filterMode === 'year') return d.getFullYear() === new Date().getFullYear();
-                    if (filterMode === 'month') return d.getFullYear() === new Date().getFullYear() && d.getMonth() === new Date().getMonth();
-                    return true;
-                });
-                if (filtered.length < 1) return { growth: 0, end: 0, list: [] };
-                const s = [...filtered].sort((a,b) => new Date(a.date) - new Date(b.date));
-                const stV = s[0].total_equity;
-                const enV = s[s.length-1].total_equity;
-                return { start: stV, end: enV, growth: stV > 0 ? ((enV - stV) / stV) * 100 : 0, list: filtered };
-            }, [records, filterMode]);
-
-            // --- 3. 函式定義 ---
+            // --- 功能函式 ---
             const showToast = (txt) => { setMessage(txt); setTimeout(() => setMessage(null), 3000); };
-            const handleInputChange = (f, v) => setInputs(p => ({ ...p, [f]: (typeof p[f] === 'number') ? (v === '' ? 0 : Math.max(0, parseFloat(v))) : v }));
+            const handleInputChange = (f, v) => setInputs(p => ({ ...p, [f]: (typeof p[f] === 'number') ? (v === '' ? 0 : parseFloat(v)) : v }));
             const syncToCloud = async (f, v) => { if (!effectiveUserId) return; await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ [f]: v }, { merge: true }); };
 
             const fetchPrices = useCallback(async () => {
@@ -252,21 +161,63 @@
                 const t1 = (inputs.custom_ticker_1 || "").trim().toUpperCase();
                 const t2 = (inputs.custom_ticker_2 || "").trim().toUpperCase();
                 const syms = [...new Set(['QQQ', 'QLD', 'TQQQ', 'IBIT', t1, t2].filter(Boolean))];
+                
                 try {
-                    const results = await Promise.all(syms.map(async (s) => {
+                    const results = await Promise.allSettled(syms.map(async (s) => {
                         const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${s}&token=${FINNHUB_API_KEY}`);
                         const d = await res.json();
                         return { symbol: s, price: d.c || 0 };
                     }));
                     const newMap = {};
-                    results.forEach(r => { newMap[r.symbol] = r.price; });
+                    results.forEach(res => { if (res.status === 'fulfilled' && res.value.price > 0) newMap[res.value.symbol] = res.value.price; });
                     setPrices(prev => ({ ...prev, ...newMap }));
-                } catch (e) {} finally { setLoadingPrices(false); }
-            }, [inputs.custom_ticker_1, inputs.custom_ticker_2]);
+                } catch (e) { console.error(e); } 
+                finally { setLoadingPrices(false); }
+            }, [inputs.custom_ticker_1, inputs.custom_ticker_2, loadingPrices]);
+
+            // --- 計算屬性 (useMemo) ---
+            const totalCapital = useMemo(() => {
+                const p = prices; const t1 = (inputs.custom_ticker_1 || "").toUpperCase(); const t2 = (inputs.custom_ticker_2 || "").toUpperCase();
+                return ( (p.QQQ || 0) * (parseFloat(inputs.qty_qqq) || 0) ) + ( (p.QLD || 0) * (parseFloat(inputs.qty_qld) || 0) ) + ( (p.TQQQ || 0) * (parseFloat(inputs.qty_tqqq) || 0) ) + ( (p.IBIT || 0) * (parseFloat(inputs.qty_ibit) || 0) ) + ( (p[t1] || 0) * (parseFloat(inputs.qty_custom_1) || 0) ) + ( (p[t2] || 0) * (parseFloat(inputs.qty_custom_2) || 0) ) + ( parseFloat(inputs.cash_balance) || 0 );
+            }, [prices, inputs]);
+
+            const loanSellThreshold = useMemo(() => (parseFloat(inputs.loan_entry_valuation) || 0) * (1 + (parseFloat(inputs.loan_repay_target) || 0) / 100), [inputs.loan_entry_valuation, inputs.loan_repay_target]);
+            const isTargetReached = totalCapital >= loanSellThreshold && inputs.loan_entry_valuation > 0;
+
+            const pieData = useMemo(() => {
+                const p = prices; const t1 = (inputs.custom_ticker_1 || "").toUpperCase(); const t2 = (inputs.custom_ticker_2 || "").toUpperCase();
+                const d = [
+                    { name: 'QQQ', value: (p.QQQ || 0) * (parseFloat(inputs.qty_qqq) || 0), color: '#4f46e5' },
+                    { name: 'QLD', value: (p.QLD || 0) * (parseFloat(inputs.qty_qld) || 0), color: '#818cf8' },
+                    { name: 'TQQQ', value: (p.TQQQ || 0) * (parseFloat(inputs.qty_tqqq) || 0), color: '#c084fc' },
+                    { name: 'IBIT', value: (p.IBIT || 0) * (parseFloat(inputs.qty_ibit) || 0), color: '#f59e0b' },
+                    { name: t1, value: (p[t1] || 0) * (parseFloat(inputs.qty_custom_1) || 0), color: '#10b981' },
+                    { name: t2, value: (p[t2] || 0) * (parseFloat(inputs.qty_custom_2) || 0), color: '#06b6d4' },
+                    { name: '現金', value: parseFloat(inputs.cash_balance) || 0, color: '#94a3b8' }
+                ];
+                const filtered = d.filter(x => x.value > 0); const sum = filtered.reduce((a, b) => a + b.value, 0);
+                return filtered.map(x => ({ ...x, percentage: sum > 0 ? ((x.value / sum) * 100).toFixed(1) : 0 }));
+            }, [prices, inputs]);
+
+            const analysis = useMemo(() => {
+                const q = prices.QQQ; const { qqq_ema5: e5, qqq_ema12: e12, qqq_ema25: e25 } = inputs;
+                if (!q || !e25) return { rec: "更新中...", level: "info" };
+                const isDeath = q < (e25 * 0.97); const isUp = e5 > e12;
+                if (isDeath) return { rec: "CASH (全現金)", level: "error" };
+                if (!isUp) return { rec: "QQQ (1x)", level: "warning" };
+                return { rec: "QLD (2x)", level: "info" };
+            }, [prices, inputs]);
+
+            const stats = useMemo(() => {
+                if (records.length < 1) return { growth: 0, end: 0, list: [] };
+                const filtered = records.filter(r => { const d = new Date(r.date); if (filterMode === 'year') return d.getFullYear() === new Date().getFullYear(); if (filterMode === 'month') return d.getFullYear() === new Date().getFullYear() && d.getMonth() === new Date().getMonth(); return true; });
+                if (filtered.length < 1) return { growth: 0, end: 0, list: [] };
+                const sorted = [...filtered].sort((a,b) => new Date(a.date) - new Date(b.date));
+                const stV = sorted[0].total_equity; const enV = sorted[sorted.length-1].total_equity;
+                return { start: stV, end: enV, growth: stV > 0 ? ((enV - stV) / stV) * 100 : 0, list: filtered };
+            }, [records, filterMode]);
 
             // --- 4. 副作用 ---
-            useEffect(() => { fetchPrices(); const i = setInterval(fetchPrices, 60000); return () => clearInterval(i); }, [fetchPrices]);
-
             useEffect(() => {
                 const root = window.document.documentElement;
                 if (darkMode) { root.classList.add('dark'); root.classList.remove('light'); localStorage.setItem('qqq_theme', 'dark'); }
@@ -286,24 +237,26 @@
                     const r = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                     r.sort((a,b) => new Date(b.date) - new Date(a.date));
                     setRecords(r);
-                }, err => console.error(err));
-                const unsubConf = userPath.collection('config').doc('current').onSnapshot(snap => {
-                    if (snap.exists) { setInputs(prev => ({ ...prev, ...snap.data(), record_date: new Date().toISOString().split('T')[0] })); }
                 });
+                const unsubConf = userPath.collection('config').doc('current').onSnapshot(snap => {
+                    if (snap.exists) setInputs(prev => ({ ...prev, ...snap.data(), record_date: new Date().toISOString().split('T')[0] }));
+                });
+                fetchPrices(); 
                 return () => { unsubRecs(); unsubConf(); };
             }, [effectiveUserId]);
 
+            // 操作
             const save = async () => {
                 if (!effectiveUserId || isSaving) return;
                 setIsSaving(true);
                 const d = new Date(inputs.record_date); d.setHours(12, 0, 0, 0);
-                const record = { date: d.toISOString(), total_equity: totalCapital, core_pos: analysis.rec, sat_pos: prices.IBIT > inputs.ibit_ema50 ? 'IBIT' : 'CASH', prices: { ...prices }, inputs: { ...inputs }, memo: inputs.record_memo || '' };
                 try {
-                    await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('trading_records').add(record);
+                    await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('trading_records').add({ 
+                        date: d.toISOString(), total_equity: totalCapital, core_pos: analysis.rec, prices: { ...prices }, inputs: { ...inputs }, memo: inputs.record_memo || '' 
+                    });
                     await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('config').doc('current').set(inputs, { merge: true });
-                    showToast("同步存檔成功！");
-                    setInputs(p => ({ ...p, record_memo: '' }));
-                } catch (e) { showToast("儲存失敗"); }
+                    showToast("同步存檔成功！"); setInputs(p => ({ ...p, record_memo: '' }));
+                } catch (e) { showToast("儲存失敗"); } 
                 finally { setIsSaving(false); }
             };
 
@@ -312,260 +265,192 @@
                 const hP = editForm.prices || prices;
                 const t1 = (editForm.inputs.custom_ticker_1 || "").toUpperCase();
                 const t2 = (editForm.inputs.custom_ticker_2 || "").toUpperCase();
-                const nT = ((hP.QQQ || 0) * (parseFloat(editForm.inputs.qty_qqq) || 0)) + ((hP.QLD || 0) * (parseFloat(editForm.inputs.qty_qld) || 0)) + ((hP.TQQQ || 0) * (parseFloat(editForm.inputs.qty_tqqq) || 0)) + ((hP.IBIT || 0) * (parseFloat(editForm.inputs.qty_ibit) || 0)) + ((hP[t1] || 0) * (parseFloat(editForm.inputs.qty_custom_1) || 0)) + ((hP[t2] || 0) * (parseFloat(editForm.inputs.qty_custom_2) || 0)) + (parseFloat(editForm.inputs.cash_balance) || 0);
+                const nT = ( (hP.QQQ || 0) * (parseFloat(editForm.inputs.qty_qqq) || 0) ) +
+                           ( (hP.QLD || 0) * (parseFloat(editForm.inputs.qty_qld) || 0) ) +
+                           ( (hP.TQQQ || 0) * (parseFloat(editForm.inputs.qty_tqqq) || 0) ) +
+                           ( (hP.IBIT || 0) * (parseFloat(editForm.inputs.qty_ibit) || 0) ) +
+                           ( (hP[t1] || 0) * (parseFloat(editForm.inputs.qty_custom_1) || 0) ) +
+                           ( (hP[t2] || 0) * (parseFloat(editForm.inputs.qty_custom_2) || 0) ) +
+                           ( parseFloat(editForm.inputs.cash_balance) || 0 );
+
                 await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('trading_records').doc(id).update({ date: d.toISOString(), inputs: editForm.inputs, total_equity: nT, memo: editForm.memo || '' });
-                setEditingId(null); showToast("修改成功");
+                setEditingId(null); showToast("已修改數據");
             };
 
             return (
-                <div className="pb-32 overflow-x-hidden min-h-screen transition-colors duration-300 select-none text-left font-black">
-                    {message && (
-                        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-top-4">
-                            <div className="bg-indigo-600 text-white px-6 py-3 rounded-full shadow-2xl font-black text-sm flex items-center gap-2"><Icon name="CheckCircle" size={16} /> {message}</div>
-                        </div>
-                    )}
+                <div className="pb-32 min-h-screen transition-colors duration-300 font-black text-left select-none">
+                    {message && <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-top-4"><div className="bg-indigo-600 text-white px-6 py-3 rounded-full shadow-2xl font-black text-sm flex items-center gap-2 font-black"><Icon name="CheckCircle" size={16} /> {message}</div></div>}
 
                     <header className="fixed top-0 left-0 right-0 bg-indigo-900 dark:bg-slate-950 z-50 px-5 py-4 flex justify-between items-center shadow-lg">
-                        <div className="flex items-center gap-2 text-left">
-                            <div className="bg-white p-2 rounded-2xl shadow-sm"><Icon name="TrendingUp" className="text-indigo-900" size={18} /></div>
-                            <h1 className="font-black text-lg tracking-tighter uppercase text-white">QQQ Control</h1>
-                        </div>
+                        <div className="flex items-center gap-2"><div className="bg-white p-2 rounded-2xl shadow-sm"><Icon name="TrendingUp" className="text-indigo-900" size={18} /></div><h1 className="font-black text-lg text-white uppercase tracking-tighter">QQQ Control</h1></div>
                         <div className="flex items-center gap-2">
-                            <button onClick={() => setDarkMode(!darkMode)} className="p-2.5 rounded-xl bg-white/10 text-white/80 border border-white/20 active:scale-90"><Icon name={darkMode ? "Sun" : "Moon"} size={20} /></button>
-                            <button onClick={() => setView('sync_settings')} className="p-2.5 rounded-xl shadow-md bg-white border-2 border-slate-100 text-slate-700 active:scale-90"><Icon name="Settings" size={20} /></button>
-                            <button onClick={fetchPrices} className="p-2 text-white/80 active:rotate-180 transition-transform"><Icon name="RefreshCcw" size={22} className={loadingPrices ? 'animate-spin' : ''} /></button>
+                            <button onClick={() => setDarkMode(!darkMode)} className="p-2.5 rounded-xl bg-white/10 text-white/80 active:scale-90"><Icon name={darkMode ? "Sun" : "Moon"} size={20} /></button>
+                            <button onClick={() => setView('sync_settings')} className="p-2.5 rounded-xl bg-white border-2 border-slate-100 text-slate-700 active:scale-90 shadow-sm"><Icon name="Settings" size={20} /></button>
+                            <div className="flex items-center gap-1.5 ml-1">
+                                <button onClick={fetchPrices} className="p-2 text-white/80 active:rotate-180 transition-transform"><Icon name="RefreshCcw" size={22} className={loadingPrices ? 'animate-spin' : ''} /></button>
+                                <div className={`w-3.5 h-3.5 rounded-full border-2 ${loadingPrices ? 'bg-red-500 border-red-300 sync-loading' : 'bg-emerald-500 border-emerald-300 shadow-emerald-500/50'}`}></div>
+                            </div>
                         </div>
                     </header>
 
-                    <main className="max-w-md mx-auto p-4 pt-24 space-y-6 text-left font-black">
-                        {view === 'sync_settings' && (
-                            <div className="space-y-6 animate-in fade-in">
-                                <Card className="bg-slate-800 dark:bg-indigo-950 text-white border-none p-6 shadow-2xl relative overflow-hidden">
-                                    <div className="absolute right-0 top-0 p-4 opacity-10"><Icon name="Fingerprint" size={100} /></div>
-                                    <SectionTitle title="目前同步金鑰 ID" iconName="Fingerprint" />
-                                    <span className="text-lg font-black break-all tracking-tight relative z-10 font-mono uppercase">{effectiveUserId || '載入中...'}</span>
-                                </Card>
-                                <Card className="space-y-4">
-                                    <SectionTitle title="切換同步 ID" iconName="CheckCircle" />
-                                    <input type="text" value={tempSyncId} onChange={e => setTempSyncId(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 dark:text-white border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-5 font-black text-lg focus:border-indigo-500 outline-none" placeholder="輸入 ID" />
-                                    <button onClick={() => { setCustomSyncId(tempSyncId.trim()); localStorage.setItem('qqq_sync_id', tempSyncId.trim()); setView('dashboard'); }} className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl active:scale-95 font-bold uppercase tracking-widest">套用同步</button>
-                                </Card>
-                            </div>
-                        )}
-
+                    <main className="max-w-md mx-auto p-4 pt-24 space-y-6">
                         {view === 'dashboard' && (
-                            <div className="space-y-6 animate-in fade-in text-left">
-                                <Card className="bg-indigo-50/50 dark:bg-indigo-950/20 border-dashed border-2 border-indigo-100 dark:border-indigo-900/50 p-4 shadow-inner">
-                                    <div className="flex gap-3">
-                                        <Icon name="Quote" size={22} className="text-indigo-300 dark:text-indigo-700 rotate-180 flex-shrink-0" />
-                                        <textarea rows="2" placeholder="在此輸入座右銘..." value={inputs.motto} onChange={e => handleInputChange('motto', e.target.value)} onBlur={(e) => syncToCloud('motto', e.target.value)} className="w-full bg-transparent border-none focus:ring-0 p-0 text-[15px] font-black text-slate-700 dark:text-slate-300 italic outline-none resize-none leading-relaxed text-left" />
-                                    </div>
+                            <div className="space-y-6 animate-in fade-in">
+                                <Card className="bg-indigo-50/50 dark:bg-indigo-950/20 border-dashed border-2 border-indigo-100 dark:border-indigo-900/50 p-4 shadow-inner text-left">
+                                    <div className="flex gap-3 text-left font-black"><Icon name="Quote" size={22} className="text-indigo-300 rotate-180 flex-shrink-0" /><textarea rows="2" placeholder="在此輸入座右銘..." value={inputs.motto} onChange={e => handleInputChange('motto', e.target.value)} onBlur={(e) => syncToCloud('motto', e.target.value)} className="w-full bg-transparent border-none p-0 text-[15px] font-black text-slate-700 dark:text-slate-300 italic resize-none leading-relaxed text-left font-black" /></div>
                                 </Card>
 
-                                {/* 修正後的頂部選單佈局：上下排列防止截斷 */}
                                 <div className="grid grid-cols-2 gap-3 text-center">
                                     <Card className="py-4 px-2 bg-white dark:bg-slate-900 shadow-md border-slate-300 dark:border-slate-700 border-2 flex flex-col items-center justify-center min-h-[85px]">
-                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">手持部位模式</span>
-                                        <select value={inputs.current_positions} onChange={e => { handleInputChange('current_positions', e.target.value); syncToCloud('current_positions', e.target.value); }} className="font-black text-[12px] dark:text-white cursor-pointer py-1">
-                                            <option value="CASH">💰 手持：現金</option>
-                                            <option value="QQQ">📈 手持：1x QQQ</option>
-                                            <option value="QLD">🚀 手持：2x QLD</option>
-                                            <option value="TQQQ">🔥 手持：3x TQQQ</option>
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 font-black">手持部位模式</span>
+                                        <select value={inputs.current_positions} onChange={e => { handleInputChange('current_positions', e.target.value); syncToCloud('current_positions', e.target.value); }} className="font-black text-center dark:text-white cursor-pointer py-1 text-[13px] h-auto font-black">
+                                            <option value="CASH">💰 現金</option><option value="QQQ">📈 1x QQQ</option><option value="QLD">🚀 2x QLD</option><option value="TQQQ">🔥 3x TQQQ</option>
                                         </select>
                                     </Card>
                                     <Card className="py-4 px-2 bg-white dark:bg-slate-900 shadow-md border-slate-300 dark:border-slate-700 border-2 flex flex-col items-center justify-center min-h-[85px]">
-                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">數據紀錄日期</span>
-                                        <input type="date" value={inputs.record_date} onChange={e => handleInputChange('record_date', e.target.value)} className="font-black text-[12px] dark:text-white py-1" />
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 font-black font-black">數據紀錄日期</span>
+                                        <input type="date" value={inputs.record_date} onChange={e => handleInputChange('record_date', e.target.value)} className="font-black dark:text-white py-1 text-[13px] h-auto font-black" />
                                     </Card>
                                 </div>
-                                
+
                                 <Card className="bg-gradient-to-br from-slate-900 via-indigo-950 to-indigo-900 text-white border-none shadow-2xl p-7 relative overflow-hidden text-left font-black">
                                     <div className="absolute -right-4 -bottom-4 opacity-10 rotate-12"><Icon name="TrendingUp" size={160} /></div>
                                     <label className="text-[10px] font-black opacity-50 uppercase tracking-widest block mb-1">Portfolio Valuation</label>
-                                    <div className="flex items-baseline gap-3 flex-wrap">
-                                        <div className="text-4xl font-black tracking-tighter">${totalCapital.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                                        {inputs.loan_amount > 0 && <div className="text-xs font-black text-amber-400 bg-amber-400/20 px-3 py-1 rounded-full border border-amber-400/30">L: ${inputs.loan_amount.toLocaleString()}</div>}
-                                    </div>
-                                    <div className="text-[12px] opacity-30 font-bold mt-5 uppercase flex items-center gap-2 text-left font-black"><Icon name="CheckCircle" size={14} /> 淨資產: ${(totalCapital - inputs.loan_amount).toLocaleString()}</div>
+                                    <div className="flex items-baseline gap-3 flex-wrap"><div className="text-4xl font-black font-black">${totalCapital.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>{inputs.loan_amount > 0 && <div className="text-xs font-black text-amber-400 bg-amber-400/20 px-3 py-1 rounded-full border border-amber-400/30">L: ${inputs.loan_amount.toLocaleString()}</div>}</div>
+                                    <div className="text-[12px] opacity-30 mt-5 uppercase flex items-center gap-2 font-black font-black"><Icon name="CheckCircle" size={14} /> 淨資產: ${(totalCapital - inputs.loan_amount).toLocaleString()}</div>
                                 </Card>
 
-                                <Card className="p-4 overflow-hidden text-center relative font-black">
-                                    <SectionTitle title="資產佔比比例" iconName="PieChartIcon" />
-                                    <div className="h-72 w-full mt-2">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={5} dataKey="value" label={({ percentage }) => `${percentage}%`}>
-                                                    {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />)}
-                                                </Pie>
-                                                <Tooltip formatter={(v, n, props) => [`$${v.toLocaleString()} (${props.payload.percentage}%)`, '價值']} contentStyle={{ borderRadius: '15px', border: 'none' }} />
-                                                <Legend verticalAlign="bottom" align="center" formatter={(v, e) => <span className="text-[10px] font-black uppercase dark:text-slate-400">{v} {e.payload.percentage}%</span>} />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </Card>
-
-                                <Card className="grid grid-cols-2 gap-4 text-left font-black">
+                                <Card className="grid grid-cols-2 gap-4 text-left font-black font-black">
                                     {[{ l: "QQQ", f: "qty_qqq", s: "QQQ" }, { l: "QLD", f: "qty_qld", s: "QLD" }, { l: "TQQQ", f: "qty_tqqq", s: "TQQQ" }, { l: "IBIT", f: "qty_ibit", s: "IBIT" }].map(it => (
-                                        <div key={it.f} className="space-y-1 text-left font-black">
-                                            <div className="flex justify-between items-center px-1 font-black text-left font-black"><label className="text-[11px] text-slate-400 uppercase">{it.l}</label><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded shadow-sm font-mono tracking-tighter">${prices[it.s]?.toFixed(2) || '0.00'}</span></div>
-                                            <input type="number" inputMode="decimal" value={inputs[it.f]} onChange={e => handleInputChange(it.f, e.target.value)} onBlur={(e) => syncToCloud(it.f, e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 dark:text-white border-2 border-slate-50 dark:border-slate-700 rounded-2xl p-4 font-black text-lg focus:border-indigo-500 outline-none text-center" />
-                                        </div>
+                                        <div key={it.f} className="space-y-1"><div className="flex justify-between items-center px-1 font-black font-black"><label className="text-[11px] text-slate-400 uppercase">{it.l}</label><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded font-mono tracking-tighter font-black">${prices[it.s]?.toFixed(2) || '0.00'}</span></div><input type="number" inputMode="decimal" value={inputs[it.f]} onChange={e => handleInputChange(it.f, e.target.value)} onBlur={(e) => syncToCloud(it.f, e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 dark:text-white border-2 border-slate-50 dark:border-slate-700 rounded-2xl p-4 font-black text-lg text-center" /></div>
                                     ))}
-                                    <div className="space-y-1 text-left font-black">
-                                        <div className="flex justify-between items-center px-1 font-black text-left font-black">
-                                            <input type="text" value={inputs.custom_ticker_1} onChange={e => handleInputChange('custom_ticker_1', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_1', e.target.value.toUpperCase())} className="text-[11px] font-black text-slate-400 bg-transparent border-none p-0 w-16 uppercase outline-none text-left" />
-                                            <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded shadow-sm font-mono tracking-tighter">${prices[(inputs.custom_ticker_1 || "").trim().toUpperCase()]?.toFixed(2) || '0.00'}</span>
-                                        </div>
-                                        <input type="number" inputMode="decimal" value={inputs.qty_custom_1} onChange={e => handleInputChange('qty_custom_1', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_1', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 dark:text-white border-2 border-slate-50 dark:border-slate-700 rounded-2xl p-4 font-black text-lg focus:border-indigo-500 outline-none text-center" />
-                                    </div>
-                                    <div className="space-y-1 text-left font-black">
-                                        <div className="flex justify-between items-center px-1 font-black text-left font-black">
-                                            <input type="text" value={inputs.custom_ticker_2} onChange={e => handleInputChange('custom_ticker_2', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_2', e.target.value.toUpperCase())} className="text-[11px] font-black text-slate-400 bg-transparent border-none p-0 w-16 uppercase outline-none text-left" />
-                                            <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded shadow-sm font-mono tracking-tighter">${prices[(inputs.custom_ticker_2 || "").trim().toUpperCase()]?.toFixed(2) || '0.00'}</span>
-                                        </div>
-                                        <input type="number" inputMode="decimal" value={inputs.qty_custom_2} onChange={e => handleInputChange('qty_custom_2', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_2', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 dark:text-white border-2 border-slate-50 dark:border-slate-700 rounded-2xl p-4 font-black text-lg focus:border-indigo-500 outline-none text-center" />
-                                    </div>
-                                    <div className="col-span-2 space-y-1 text-center font-black"><label className="text-[11px] font-black text-slate-500 px-1 uppercase block text-center w-full">現金餘額 (USD)</label><input type="number" inputMode="decimal" value={inputs.cash_balance} onChange={e => handleInputChange('cash_balance', e.target.value)} onBlur={(e) => syncToCloud('cash_balance', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 dark:text-white border-2 border-indigo-100/50 dark:border-indigo-900/50 rounded-2xl p-4 font-black text-xl text-indigo-600 dark:text-indigo-400 outline-none text-center shadow-inner" /></div>
+                                    <div className="space-y-1 text-left"><div className="flex justify-between items-center px-1 font-black font-black"><input type="text" value={inputs.custom_ticker_1} onChange={e => handleInputChange('custom_ticker_1', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_1', e.target.value.toUpperCase())} className="text-[11px] text-slate-400 bg-transparent p-0 w-16 outline-none text-left" /><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded font-mono tracking-tighter">${prices[(inputs.custom_ticker_1 || "").trim().toUpperCase()]?.toFixed(2) || '0.00'}</span></div><input type="number" inputMode="decimal" value={inputs.qty_custom_1} onChange={e => handleInputChange('qty_custom_1', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_1', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 dark:text-white border-2 border-slate-50 dark:border-slate-700 rounded-2xl p-4 font-black text-lg text-center font-black" /></div>
+                                    <div className="space-y-1 text-left"><div className="flex justify-between items-center px-1 font-black font-black"><input type="text" value={inputs.custom_ticker_2} onChange={e => handleInputChange('custom_ticker_2', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_2', e.target.value.toUpperCase())} className="text-[11px] text-slate-400 bg-transparent p-0 w-16 outline-none text-left" /><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded font-mono tracking-tighter">${prices[(inputs.custom_ticker_2 || "").trim().toUpperCase()]?.toFixed(2) || '0.00'}</span></div><input type="number" inputMode="decimal" value={inputs.qty_custom_2} onChange={e => handleInputChange('qty_custom_2', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_2', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 dark:text-white border-2 border-slate-50 dark:border-slate-700 rounded-2xl p-4 font-black text-lg text-center font-black" /></div>
+                                    <div className="col-span-2 space-y-1 text-center font-black"><label className="text-[11px] font-black text-slate-500 px-1 uppercase block text-center w-full font-black">現金餘額 (USD)</label><input type="number" inputMode="decimal" value={inputs.cash_balance} onChange={e => handleInputChange('cash_balance', e.target.value)} onBlur={(e) => syncToCloud('cash_balance', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 dark:text-white border-2 border-indigo-100/50 dark:border-indigo-900/50 rounded-2xl p-4 font-black text-xl text-indigo-600" /></div>
                                 </Card>
 
-                                <Card className="grid grid-cols-2 gap-4 text-left font-black">
-                                    {[{ l: "EMA 5", f: "qqq_ema5" }, { l: "EMA 12", f: "qqq_ema12" }, { l: "EMA 25", f: "qqq_ema25" }, { l: "歷史高點", f: "qqq_ath" }].map(it => (
-                                        <div key={it.f} className="space-y-1 text-left font-black font-black"><label className="text-[11px] text-slate-400 uppercase px-1">{it.l}</label><input type="number" inputMode="decimal" value={inputs[it.f]} onChange={e => handleInputChange(it.f, e.target.value)} onBlur={(e) => syncToCloud(it.f, e.target.value)} className="w-full bg-slate-50 border-2 border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-2xl p-4 font-black text-lg outline-none text-center" /></div>
-                                    ))}
-                                </Card>
+                                <Card className="p-4 space-y-2 border-dashed border-2 border-slate-300 text-left font-black"><SectionTitle title="紀錄本次決策備註" iconName="MessageSquare" /><textarea rows="3" placeholder="例如：回調買入 5%..." value={inputs.record_memo} onChange={e => setInputs(p => ({ ...p, record_memo: e.target.value }))} className="bg-slate-50 dark:bg-slate-800 dark:text-white rounded-2xl p-4 text-[14px] font-medium resize-none text-left font-black" /></Card>
 
-                                <Card className={`border-l-[12px] shadow-xl text-left font-black ${analysis.level === 'error' ? 'border-l-red-500 bg-red-50 dark:bg-red-950/20' : analysis.level === 'success' ? 'border-l-green-500 bg-green-50 dark:bg-emerald-950/20' : 'border-l-indigo-500 bg-indigo-50 dark:bg-indigo-950/20'}`}>
-                                    <div className="flex items-start gap-4">
-                                        <div className="p-4 rounded-3xl bg-white dark:bg-slate-800 shadow-sm text-left font-black"><Icon name="ShieldAlert" size={36} className={analysis.level === 'error' ? 'text-red-500' : 'text-indigo-600 dark:text-indigo-400'} /></div>
-                                        <div className="space-y-2 text-left font-black"><p className="text-2xl font-black tracking-tight leading-tight dark:text-slate-100">{analysis.rec}</p><p className="text-[14px] font-bold opacity-80 leading-relaxed dark:text-slate-400">{analysis.msg}</p></div>
-                                    </div>
-                                </Card>
-
-                                <Card className="p-4 space-y-2 border-dashed border-2 border-slate-300 dark:border-slate-700 text-left font-black">
-                                    <SectionTitle title="決策紀錄備註" iconName="MessageSquare" />
-                                    <textarea rows="3" placeholder="在此輸入本次決策理由..." value={inputs.record_memo} onChange={e => setInputs(p => ({ ...p, record_memo: e.target.value }))} className="bg-slate-50 dark:bg-slate-800 dark:text-white rounded-2xl p-4 text-[14px] font-medium resize-none text-left" />
-                                </Card>
-
-                                <button onClick={save} disabled={isSaving} className={`w-full ${isSaving ? 'bg-slate-400' : 'bg-slate-900 dark:bg-indigo-600'} text-white py-6 rounded-[2.5rem] font-black text-xl shadow-2xl active:scale-95 transition-all mb-12 flex items-center justify-center gap-3 tracking-[0.1em] uppercase text-left font-black`}>
-                                    <Icon name={isSaving ? "RefreshCcw" : "Save"} size={24} className={isSaving ? "animate-spin" : ""} /> {isSaving ? "同步中..." : "儲存目前紀錄"}
-                                </button>
+                                <button onClick={save} disabled={isSaving} className={`w-full ${isSaving ? 'bg-slate-400' : 'bg-slate-900 dark:bg-indigo-600'} text-white py-6 rounded-[2rem] font-black text-xl shadow-2xl active:scale-95 mb-12 flex items-center justify-center gap-3`}><Icon name={isSaving ? "RefreshCcw" : "Save"} size={24} className={isSaving ? "animate-spin" : ""} /> {isSaving ? "同步中..." : "儲存目前紀錄"}</button>
                             </div>
                         )}
 
                         {view === 'loan' && (
                             <div className="space-y-6 animate-in fade-in text-left">
-                                <Card className="space-y-6 border-2 border-amber-100 dark:border-amber-900 shadow-xl p-6 text-left">
-                                    <div className="p-5 bg-amber-50 dark:bg-amber-950/50 rounded-3xl flex items-start gap-4 border border-amber-100 dark:border-amber-900 font-medium">
-                                        <Icon name="Landmark" size={28} className="text-amber-600 flex-shrink-0 mt-1" />
-                                        <p className="text-[14px] text-amber-800 dark:text-amber-300 leading-relaxed font-black text-left">還款邏輯：以「貸款買入時市值」為固定參考點，達成 獲利目標% 時建議結清撤退。</p>
-                                    </div>
-                                    <div className="grid grid-cols-1 gap-6">
-                                        {[
-                                            { l: "貸款買入時市值 (USD基準點)", f: "loan_entry_valuation" },
-                                            { l: "貸款總額 (USD)", f: "loan_amount" },
-                                            { l: "每月還款金額 (USD)", f: "loan_monthly_repay" },
-                                            { l: "年化利率 (%)", f: "loan_rate" },
-                                            { l: "還款獲利目標 (%)", f: "loan_repay_target" }
-                                        ].map(it => (
-                                            <div key={it.f} className="space-y-2 text-left text-amber-900 font-black"><label className="text-[11px] uppercase tracking-widest px-1 text-amber-600 font-black">{it.l}</label><input type="number" inputMode="decimal" value={inputs[it.f]} onChange={e => handleInputChange(it.f, e.target.value)} onBlur={(e) => syncToCloud(it.f, e.target.value)} className="w-full bg-amber-50 dark:bg-slate-800 dark:text-white border-2 border-amber-100 dark:border-amber-900 rounded-[1.5rem] p-5 font-black text-xl outline-none text-center" /></div>
-                                        ))}
-                                    </div>
-                                    <Card className={`${isTargetReached ? 'repay-alert' : 'bg-amber-900 dark:bg-amber-950'} text-white border-none p-6 text-center shadow-lg transition-colors duration-500 font-black`}>
-                                        <h4 className="text-xs opacity-60 uppercase mb-1 tracking-widest text-center font-black">
-                                            {isTargetReached ? "⚠️ 買入時市值已達獲利目標：應結清" : "賣出還款門檻 (依買入市值)"}
-                                        </h4>
-                                        <p className="text-xl font-mono tracking-tight font-black text-center font-black">${ loanSellThreshold.toLocaleString(undefined, { maximumFractionDigits: 0 }) }</p>
+                                <Card className="space-y-6 border-2 border-amber-100 dark:border-amber-900 shadow-xl p-6 text-left font-black">
+                                    <div className="p-5 bg-amber-50 dark:bg-amber-900/20 rounded-3xl flex items-start gap-4 border border-amber-100 font-medium font-black"><Icon name="Landmark" size={28} className="text-amber-600 flex-shrink-0" /><p className="text-[14px] text-amber-800 dark:text-amber-300 leading-relaxed font-black">還款邏輯：以「買入市值」為固定基準點，達標獲利目標建議撤退。</p></div>
+                                    <div className="grid grid-cols-1 gap-6 font-black">{[{ l: "貸款買入時市值 (USD基準)", f: "loan_entry_valuation" }, { l: "貸款總額 (USD)", f: "loan_amount" }, { l: "每月還款金額 (USD)", f: "loan_monthly_repay" }, { l: "年化利率 (%)", f: "loan_rate" }, { l: "還款獲利目標 (%)", f: "loan_repay_target" }].map(it => (
+                                        <div key={it.f} className="space-y-2 text-left text-amber-900 dark:text-amber-500 font-black"><label className="text-[11px] uppercase tracking-widest px-1 text-amber-600 font-black">{it.l}</label><input type="number" inputMode="decimal" value={inputs[it.f]} onChange={e => handleInputChange(it.f, e.target.value)} onBlur={(e) => syncToCloud(it.f, e.target.value)} className="w-full bg-amber-50 dark:bg-slate-800 dark:text-white border-2 border-amber-100 dark:border-amber-900 rounded-[1.5rem] p-5 font-black text-xl text-center" /></div>
+                                    ))}</div>
+                                    <Card className={`${isTargetReached ? 'repay-alert' : 'bg-amber-900 dark:bg-amber-950'} text-white border-none p-6 text-center shadow-lg transition-colors duration-500`}>
+                                        <h4 className="text-xs opacity-60 uppercase mb-1 tracking-widest text-center font-black">賣出還款門檻 (依基準市值)</h4>
+                                        <p className="text-xl font-mono tracking-tight font-black text-center">${ loanSellThreshold.toLocaleString(undefined, { maximumFractionDigits: 0 }) }</p>
                                     </Card>
                                 </Card>
                             </div>
                         )}
 
                         {view === 'history' && (
-                            <div className="space-y-6 animate-in fade-in text-left font-black">
+                            <div className="space-y-6 animate-in fade-in text-left">
                                 <div className="flex gap-2 p-1.5 bg-slate-200 dark:bg-slate-800 rounded-3xl shadow-inner text-left font-black">
                                     {['all', 'year', 'month'].map(m => (
-                                        <button key={m} onClick={() => setFilterMode(m)} className={`flex-1 py-4 rounded-2xl text-xs font-black uppercase transition-all ${filterMode === m ? 'bg-white dark:bg-slate-700 shadow text-indigo-600 scale-[1.02]' : 'text-slate-500'}`}>{m === 'all' ? '全部' : m === 'year' ? '年度' : '本月'}</button>
+                                        <button key={m} onClick={() => setFilterMode(m)} className={`flex-1 py-4 rounded-2xl text-xs font-black uppercase transition-all ${filterMode === m ? 'bg-white shadow text-indigo-600 scale-[1.02]' : 'text-slate-500 font-black'}`}>{m === 'all' ? '全部' : m === 'year' ? '年度' : '本月'}</button>
                                     ))}
                                 </div>
-                                <Card className="grid grid-cols-2 gap-4 py-8 text-center bg-slate-900 text-white border-none font-black text-center">
-                                    <div className="border-r border-white/10 text-center font-black"><span className="text-[10px] opacity-40 block mb-2 uppercase tracking-widest text-center font-black">區間報酬</span><span className={`text-3xl ${stats.growth >= 0 ? 'text-emerald-400' : 'text-red-400'} font-black text-center font-black`}>{stats.growth >= 0 ? '+' : ''}{stats.growth.toFixed(2)}%</span></div>
-                                    <div className="text-center font-black"><span className="text-[10px] opacity-40 block mb-2 uppercase tracking-widest text-center font-black">目前終值</span><span className="text-2xl tracking-tighter font-black font-black text-center font-black">${stats.end.toLocaleString()}</span></div>
-                                </Card>
-
-                                <Card className="h-80 p-2 shadow-xl border-none overflow-hidden bg-white dark:bg-slate-900 font-black text-left font-black">
+                                
+                                {/* 績效成長圖表 */}
+                                <Card className="h-72 p-2 shadow-xl border-none overflow-hidden bg-white dark:bg-slate-900 font-black">
+                                    <SectionTitle title="資產成長趨勢圖" iconName="TrendingUp" />
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={[...stats.list].reverse()} margin={{ top: 15, right: 10, left: 0, bottom: 25 }}>
-                                            <defs><linearGradient id="colorEquity" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs>
+                                        <AreaChart data={[...stats.list].reverse()} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                                            <defs><linearGradient id="colorEq" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={darkMode ? "#1e293b" : "#e2e8f0"} />
-                                            <XAxis dataKey="date" tickFormatter={v => new Date(v).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })} tick={{ fontSize: 10, fontWeight: '900', fill: darkMode ? '#94a3b8' : '#64748b' }} minTickGap={45} dy={15} />
-                                            <YAxis tickFormatter={v => `$${(v/1000).toFixed(0)}k`} tick={{ fontSize: 10, fontWeight: '900', fill: darkMode ? '#94a3b8' : '#64748b' }} width={50} />
-                                            <Tooltip labelFormatter={v => new Date(v).toLocaleDateString()} />
-                                            <Area type="monotone" dataKey="total_equity" stroke="#6366f1" strokeWidth={5} fillOpacity={1} fill="url(#colorEquity)" dot={{ r: 4, fill: '#6366f1', strokeWidth: 2, stroke: '#fff' }} />
+                                            <XAxis dataKey="date" tickFormatter={v => new Date(v).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })} tick={{ fontSize: 10, fontWeight: '900', fill: darkMode ? '#64748b' : '#94a3b8' }} />
+                                            <YAxis tickFormatter={v => `$${(v/1000).toFixed(0)}k`} tick={{ fontSize: 10, fontWeight: '900', fill: darkMode ? '#64748b' : '#94a3b8' }} />
+                                            <Tooltip labelFormatter={v => new Date(v).toLocaleDateString()} contentStyle={{ borderRadius: '15px' }} />
+                                            <Area type="monotone" dataKey="total_equity" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorEq)" dot={{ r: 3, fill: '#6366f1' }} />
                                         </AreaChart>
                                     </ResponsiveContainer>
                                 </Card>
 
                                 <div className="space-y-4 pb-12 font-black text-left">
                                     {stats.list.slice(0, visibleCount).map(rec => (
-                                        <Card key={rec.id} className="border-none shadow-md overflow-hidden p-5 bg-white dark:bg-slate-800/50 text-left font-black">
+                                        <Card key={rec.id} className="border-none shadow-md p-5 bg-white dark:bg-slate-800/50 text-left font-black">
                                             {editingId === rec.id ? (
-                                                <div className="space-y-5 animate-in slide-in-from-top-1 text-left font-black">
-                                                    <div className="flex justify-between items-center border-b dark:border-slate-700 pb-3 text-indigo-600 font-black text-left"><span className="text-sm uppercase tracking-widest text-left font-black">修改歷史紀錄</span><button onClick={() => setEditingId(null)} className="p-1 text-left"><Icon name="X" size={24} /></button></div>
-                                                    <div className="grid grid-cols-2 gap-4 text-left font-black text-slate-800">
-                                                        <div className="col-span-2 space-y-1 text-left font-black"><label className="text-[11px] font-black text-slate-400 tracking-widest uppercase">日期</label><input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 dark:text-white border-2 border-slate-100 dark:border-slate-700 rounded-2xl p-4 font-black outline-none" /></div>
+                                                <div className="space-y-5 animate-in slide-in-from-top-1 text-left">
+                                                    <div className="flex justify-between items-center border-b dark:border-slate-700 pb-3 text-indigo-600 font-black"><span className="text-sm uppercase tracking-widest text-left font-black">修改紀錄數據</span><button onClick={() => setEditingId(null)} className="p-1"><Icon name="X" size={24} /></button></div>
+                                                    <div className="grid grid-cols-2 gap-4 text-left font-black">
+                                                        <div className="col-span-2 space-y-1"><label className="text-[11px] font-black text-slate-400 tracking-widest uppercase">日期</label><input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-2xl p-4 font-black outline-none" /></div>
                                                         {['qty_qqq', 'qty_qld', 'qty_tqqq', 'qty_ibit', 'qty_custom_1', 'qty_custom_2', 'cash_balance'].map(f => (
-                                                            <div key={f} className="space-y-1 text-left font-black font-black text-slate-800"><label className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1 text-left">{f.replace('qty_', '')}</label><input type="number" inputMode="decimal" value={editForm.inputs[f]} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, [f]: e.target.value}})} className="w-full bg-slate-50 dark:bg-slate-800 dark:text-white border-2 border-slate-100 dark:border-slate-700 rounded-2xl p-4 font-black outline-none" /></div>
+                                                            <div key={f} className="space-y-1"><label className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1 text-left">{f.replace('qty_', '')}</label><input type="number" inputMode="decimal" value={editForm.inputs[f]} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, [f]: e.target.value}})} className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-2xl p-4 font-black outline-none" /></div>
                                                         ))}
-                                                        <div className="col-span-2 space-y-1 text-left font-black"><label className="text-[11px] font-black text-slate-400 tracking-widest uppercase">修改備註內容</label><textarea value={editForm.memo} onChange={e => setEditForm({...editForm, memo: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 dark:text-white border-2 rounded-2xl p-4 font-black outline-none text-left" rows="2" /></div>
+                                                        <div className="col-span-2 space-y-1 text-left font-black"><label className="text-[11px] font-black text-slate-400 tracking-widest uppercase">修改備註</label><textarea value={editForm.memo} onChange={e => setEditForm({...editForm, memo: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 font-black outline-none text-left" rows="2" /></div>
                                                     </div>
-                                                    <button onClick={() => updateRecord(rec.id)} className="w-full bg-indigo-600 text-white py-5 rounded-3xl font-black text-lg shadow-xl btn-active font-bold text-center">儲存修改並重算總額</button>
+                                                    <button onClick={() => updateRecord(rec.id)} className="w-full bg-indigo-600 text-white py-5 rounded-3xl font-black text-lg shadow-xl btn-active font-bold text-center">儲存修改重算</button>
                                                 </div>
                                             ) : (
-                                                <div className="text-left font-black text-left font-black">
-                                                    <div className="flex justify-between items-start text-left font-black">
-                                                        <div className="space-y-1 text-left font-black">
-                                                            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{new Date(rec.date).toLocaleDateString()}</p>
-                                                            <p className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">${rec.total_equity?.toLocaleString()}</p>
-                                                        </div>
-                                                        <div className="flex gap-2 flex-wrap justify-end max-w-[130px] font-black">
-                                                            <div className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 rounded-full text-[10px] font-black border border-indigo-100 dark:border-indigo-900 font-black">{rec.core_pos?.includes("TQQQ") ? "TQQQ" : rec.core_pos?.includes("QLD") ? "QLD" : "QQQ"}</div>
-                                                        </div>
+                                                <div className="text-left font-black">
+                                                    <div className="flex justify-between items-start font-black text-left">
+                                                        <div className="space-y-1 font-black"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest font-black">{new Date(rec.date).toLocaleDateString()}</p><p className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">${rec.total_equity?.toLocaleString()}</p></div>
+                                                        <div className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 rounded-full text-[10px] border border-indigo-100 dark:border-indigo-800 font-black">{rec.core_pos || "CASH"}</div>
                                                     </div>
-                                                    {rec.memo && (
-                                                        <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border-l-4 border-indigo-200 dark:border-indigo-900 text-left">
-                                                            <p className="text-[12px] text-slate-600 dark:text-slate-400 font-medium leading-relaxed italic text-left">「 {rec.memo} 」</p>
-                                                        </div>
-                                                    )}
+                                                    {rec.memo && <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border-l-4 border-indigo-200 dark:border-indigo-900 text-left font-black"><p className="text-[12px] italic text-slate-600 dark:text-slate-400 font-black">「 {rec.memo} 」</p></div>}
                                                     <div className="mt-6 flex justify-end gap-3 items-center">
                                                         {deletingId === rec.id ? (
-                                                            <div className="flex gap-2 animate-in slide-in-from-right-2 text-left font-black">
-                                                                <span className="text-sm font-black text-red-500 pr-3">確定？</span>
-                                                                <button onClick={() => { db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('trading_records').doc(rec.id).delete(); setDeletingId(null); }} className="bg-red-500 text-white px-6 py-2.5 rounded-2xl text-sm font-black shadow-lg">是</button>
-                                                                <button onClick={() => setDeletingId(null)} className="bg-slate-200 dark:bg-slate-700 dark:text-white px-6 py-2.5 rounded-2xl text-sm font-black">否</button>
-                                                            </div>
+                                                            <div className="flex gap-2 animate-in slide-in-from-right-2 text-left font-black"><button onClick={() => confirmDelete(rec.id)} className="bg-red-500 text-white px-6 py-2 rounded-xl text-xs font-black">是</button><button onClick={() => setDeletingId(null)} className="bg-slate-200 dark:bg-slate-700 px-6 py-2 rounded-xl text-xs font-black">否</button></div>
                                                         ) : (
-                                                            <div className="flex gap-3">
-                                                                <button onClick={() => { setEditingId(rec.id); setEditForm({ ...rec, date: rec.date.split('T')[0], inputs: rec.inputs || { ...inputs } }); }} className="text-slate-300 hover:text-indigo-600 p-3 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm"><Icon name="Edit2" size={20} /></button>
-                                                                <button onClick={() => setDeletingId(rec.id)} className="text-slate-300 hover:text-red-600 p-3 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm"><Icon name="Trash2" size={20} /></button>
-                                                            </div>
+                                                            <div className="flex gap-3 font-black"><button onClick={() => { setEditingId(rec.id); setEditForm({ ...rec, date: rec.date.split('T')[0], inputs: rec.inputs || { ...inputs } }); }} className="text-slate-300 hover:text-indigo-600 p-3 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm"><Icon name="Edit2" size={20} /></button><button onClick={() => setDeletingId(rec.id)} className="text-slate-300 hover:text-red-600 p-3 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm"><Icon name="Trash2" size={20} /></button></div>
                                                         )}
                                                     </div>
                                                 </div>
                                             )}
                                         </Card>
                                     ))}
-                                    {stats.list.length > visibleCount && (
-                                        <button onClick={() => setVisibleCount(v => v + 20)} className="w-full py-4 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 font-black text-sm uppercase tracking-widest active:bg-slate-100 transition-colors text-center font-black">載入更多紀錄 ({visibleCount} / {stats.list.length})</button>
-                                    )}
+                                    {stats.list.length > visibleCount && <button onClick={() => setVisibleCount(v => v + 20)} className="w-full py-4 text-slate-400 font-black text-sm uppercase font-black">載入更多紀錄</button>}
                                 </div>
+                            </div>
+                        )}
+
+                        {view === 'sync_settings' && (
+                            <div className="space-y-6 animate-in fade-in text-left">
+                                <Card className="bg-slate-800 text-white p-6 shadow-2xl relative overflow-hidden font-black"><div className="absolute right-0 top-0 p-4 opacity-10 font-black"><Icon name="Fingerprint" size={100} /></div><SectionTitle title="目前同步金鑰 ID" iconName="Fingerprint" /><span className="text-lg font-black font-mono uppercase">{effectiveUserId || '正在連結...'}</span></Card>
+                                <Card className="space-y-4 font-black"><SectionTitle title="切換同步 ID" iconName="CheckCircle" /><input type="text" value={tempSyncId} onChange={e => setTempSyncId(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 dark:text-white border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-5 font-black text-lg focus:border-indigo-500 font-black" placeholder="輸入 ID" /><button onClick={() => { setCustomSyncId(tempSyncId.trim()); localStorage.setItem('qqq_sync_id', tempSyncId.trim()); setView('dashboard'); }} className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl active:scale-95 font-bold uppercase tracking-widest">套用同步</button></Card>
+                                
+                                {/* 策略白皮書 (黑暗模式修復版) */}
+                                <Card className="p-0 overflow-hidden border-2 shadow-sm text-left">
+                                    <button onClick={() => setWhitepaperOpen(!isWhitepaperOpen)} className="w-full flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-800 font-black">
+                                        <div className="flex items-center gap-2 dark:text-slate-200"><Icon name="BookOpen" size={18} /><span>策略執行協議 (全)</span></div>
+                                        <Icon name={isWhitepaperOpen ? "ChevronUp" : "ChevronDown"} size={20} />
+                                    </button>
+                                    {isWhitepaperOpen && (
+                                        <div className="whitepaper-scroll p-6 text-[13px] space-y-6 leading-relaxed border-t dark:border-slate-800 bg-white dark:bg-slate-900 font-medium font-black">
+                                            <p className="text-emerald-600 font-black mb-1">● 核心進場條件：</p>
+                                            <ul className="pl-4 space-y-1 mb-3 text-slate-600 dark:text-slate-300">
+                                                <li>1. 收盤價站回週線 25EMA 且高於 3%。</li>
+                                                <li>2. EMA 5 向上穿過 EMA 12 確立短期強勢。</li>
+                                                <li>3. 同時滿足時，從現金切換至 1x QQQ。</li>
+                                            </ul>
+                                            <p className="text-indigo-600 dark:text-indigo-400 font-black mb-1">● 巡航與狙擊規則：</p>
+                                            <ul className="pl-4 space-y-2 mb-3 text-slate-600 dark:text-slate-300">
+                                                <li>• 當 5週線大於 12週線，持有 2x QLD。</li>
+                                                <li>• 股價回測高點超過 8%，全倉切換至 3x TQQQ 狙擊。</li>
+                                                <li>• 當 TQQQ 達標高點 98% 或跌破 5週線，立即退回 QLD。</li>
+                                            </ul>
+                                            <p className="text-amber-600 font-black mb-1">● 貸款加碼進場：</p>
+                                            <p className="pl-4 mb-3 text-slate-600 dark:text-slate-300">股價必須先跌破週 25EMA，隨後再次漲回站穩 25EMA 且 5週大於 12週時啟動資金。</p>
+                                            <p className="text-red-600 font-black mb-1">● 生死存亡避險：</p>
+                                            <p className="pl-4 text-slate-600 dark:text-slate-300">每日收盤跌破週線 25EMA 之 97% (-3%)，立即清倉轉為 100% 現金避險。</p>
+                                        </div>
+                                    )}
+                                </Card>
                             </div>
                         )}
                     </main>
 
                     <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 z-50 px-2 py-4 pb-10 flex justify-around items-center shadow-[0_-10px_30px_rgba(0,0,0,0.08)] safe-pb font-black text-left">
-                        <button onClick={() => { setView('dashboard'); setVisibleCount(20); }} className={`flex flex-col items-center gap-1.5 flex-1 relative transition-all active:scale-90 ${view === 'dashboard' ? 'tab-active' : 'text-slate-400'}`}><Icon name="LayoutDashboard" size={28} /><span className="text-[10px] font-black uppercase tracking-widest text-center text-left">儀表板</span></button>
-                        <button onClick={() => setView('history')} className={`flex flex-col items-center gap-1.5 flex-1 relative transition-all active:scale-90 ${view === 'history' ? 'tab-active' : 'text-slate-400'}`}><Icon name="History" size={28} /><span className="text-[10px] font-black uppercase tracking-widest text-center text-left">績效</span></button>
-                        <button onClick={() => setView('loan')} className={`flex flex-col items-center gap-1.5 flex-1 relative transition-all active:scale-90 ${view === 'loan' ? 'tab-active' : 'text-slate-400'}`}><Icon name="Landmark" size={28} /><span className="text-[10px] font-black uppercase tracking-widest text-amber-600 font-black text-center font-black text-left">貸款</span></button>
+                        <button onClick={() => setView('dashboard')} className={`flex flex-col items-center gap-2 flex-1 transition-all active:scale-90 ${view === 'dashboard' ? 'tab-active' : 'text-slate-400'}`}><Icon name="LayoutDashboard" size={28} /><span className="text-[10px] font-black uppercase tracking-widest text-center">儀表板</span></button>
+                        <button onClick={() => setView('history')} className={`flex flex-col items-center gap-2 flex-1 transition-all active:scale-90 ${view === 'history' ? 'tab-active' : 'text-slate-400'}`}><Icon name="History" size={28} /><span className="text-[10px] font-black uppercase tracking-widest text-center">績效</span></button>
+                        <button onClick={() => setView('loan')} className={`flex flex-col items-center gap-2 flex-1 transition-all active:scale-90 ${view === 'loan' ? 'tab-active' : 'text-slate-400 font-black'}`}><Icon name="Landmark" size={28} /><span className="text-[10px] font-black uppercase tracking-widest text-amber-600 text-center">貸款</span></button>
                     </nav>
                 </div>
             );
@@ -575,6 +460,6 @@
         root.render(<App />);
     </script>
 </body>
-</html>>
->
+</html>
+
 
