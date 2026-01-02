@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="QQQ Control">
-    <title>QQQ 戰略儀表板 v8.0</title>
+    <title>QQQ 戰略儀表板 v8.2</title>
     
     <!-- 專屬 QQQ App 圖示 -->
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
@@ -64,8 +64,6 @@
         .strategy-read-only {
             border: 1px solid transparent !important;
             background-color: transparent !important;
-            /* padding: 0 !important; 保留 padding 讓閱讀更舒適 */
-            /* pointer-events: none;  <-- 移除這行，解決無法滑動的問題 */
             cursor: default; /* 鼠標顯示為預設，提示不可編輯 */
         }
         .title-input {
@@ -94,7 +92,8 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef, useCallback } = React;
+        // 移除未使用的 useRef
+        const { useState, useEffect, useMemo, useCallback } = React;
         const { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } = Recharts;
 
         // --- Firebase 全域初始化 ---
@@ -116,7 +115,7 @@
         const Icon = ({ name, size = 20, className = "" }) => {
             const icons = {
                 TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>,
-                Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1 2-2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>,
+                Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>,
                 RefreshCcw: <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 4a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16m-18-8h5V3m13 18h-5v5"/>,
                 LayoutDashboard: <><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></>,
                 History: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 0V3m0 5h5M12 7v5l4 2"/>,
@@ -135,13 +134,9 @@
                 MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>,
                 Fingerprint: <><path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10"/><path d="M12 12v3"/><path d="M16 17.5c-2.5 1.5-5.5 1.5-8 0"/></>, 
                 BarChart2: <path d="M18 20V10M12 20V4M6 20v-6"/>,
-                Lock: <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />,
-                Unlock: <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /> // 使用簡化圖標
+                Lock: <><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></>,
+                Unlock: <><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" /></>
             };
-            // 補充鎖頭圖標 path
-            if(name === 'Lock') return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>;
-            if(name === 'Unlock') return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" /></svg>;
-
             return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name] || <circle cx="12" cy="12" r="10" />}</svg>;
         };
 
@@ -166,7 +161,7 @@
             const [visibleCount, setVisibleCount] = useState(20);
             const [isWhitepaperOpen, setWhitepaperOpen] = useState(false);
             const [isStatsOpen, setStatsOpen] = useState(false);
-            const [isStrategyEditing, setIsStrategyEditing] = useState(false); // 新增策略編輯狀態
+            const [isStrategyEditing, setIsStrategyEditing] = useState(false); 
 
             const [customSyncId, setCustomSyncId] = useState(() => localStorage.getItem('qqq_sync_id') || '');
             const [tempSyncId, setTempSyncId] = useState(customSyncId);
@@ -174,7 +169,7 @@
 
             const [inputs, setInputs] = useState({
                 qqq_ema5: 0, qqq_ema12: 0, qqq_ema25: 0, qqq_ath: 0, ibit_ema50: 0,
-                custom_1_ema60: 0, custom_2_ema60: 0, // 新增自選股 EMA 60
+                custom_1_ema60: 0, custom_2_ema60: 0, 
                 current_positions: 'CASH', qty_qqq: 0, qty_qld: 0, qty_tqqq: 0, qty_ibit: 0,
                 custom_ticker_1: 'TSLA', qty_custom_1: 0, custom_ticker_2: 'GOOGL', qty_custom_2: 0,
                 cash_balance: 0, record_date: new Date().toISOString().split('T')[0],
@@ -366,6 +361,22 @@
                     <main className="max-w-md mx-auto p-4 pt-24 space-y-6">
                         {view === 'dashboard' && (
                             <div className="space-y-6 animate-in fade-in font-black">
+                                {/* 新增：座右銘卡片 */}
+                                <Card className="p-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg border-none">
+                                    <div className="flex items-center gap-2 mb-1 opacity-80">
+                                        <Icon name="Quote" size={16} className="text-white" />
+                                        <span className="text-[10px] uppercase tracking-widest font-bold">投資座右銘</span>
+                                    </div>
+                                    <textarea
+                                        value={inputs.motto}
+                                        onChange={e => handleInputChange('motto', e.target.value)}
+                                        onBlur={e => syncToCloud('motto', e.target.value)}
+                                        className="w-full bg-transparent text-lg font-black text-center placeholder-white/50 outline-none resize-none"
+                                        rows="2"
+                                        placeholder="在此輸入您的投資心法..."
+                                    />
+                                </Card>
+
                                 <div className="grid grid-cols-2 gap-3 text-center">
                                     <Card className="py-4 px-1 flex flex-col items-center justify-center min-h-[85px] font-black">
                                         <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">手持部位</span>
