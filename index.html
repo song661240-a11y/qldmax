@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="QQQ Control">
-    <title>QQQ 戰略儀表板 v7.9</title>
+    <title>QQQ 戰略儀表板 v8.2</title>
     
     <!-- 專屬 QQQ App 圖示 -->
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
@@ -116,7 +116,7 @@
         const Icon = ({ name, size = 20, className = "" }) => {
             const icons = {
                 TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>,
-                Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>,
+                Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>,
                 RefreshCcw: <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 4a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16m-18-8h5V3m13 18h-5v5"/>,
                 LayoutDashboard: <><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></>,
                 History: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 0V3m0 5h5M12 7v5l4 2"/>,
@@ -136,7 +136,8 @@
                 Fingerprint: <><path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10"/><path d="M12 12v3"/><path d="M16 17.5c-2.5 1.5-5.5 1.5-8 0"/></>, 
                 BarChart2: <path d="M18 20V10M12 20V4M6 20v-6"/>,
                 Lock: <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />,
-                Unlock: <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /> // 使用簡化圖標
+                Unlock: <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />,
+                Calculator: <><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></>
             };
             // 補充鎖頭圖標 path
             if(name === 'Lock') return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>;
@@ -166,11 +167,14 @@
             const [visibleCount, setVisibleCount] = useState(20);
             const [isWhitepaperOpen, setWhitepaperOpen] = useState(false);
             const [isStatsOpen, setStatsOpen] = useState(false);
-            const [isStrategyEditing, setIsStrategyEditing] = useState(false); // 新增策略編輯狀態
+            const [isStrategyEditing, setIsStrategyEditing] = useState(false); 
 
             const [customSyncId, setCustomSyncId] = useState(() => localStorage.getItem('qqq_sync_id') || '');
             const [tempSyncId, setTempSyncId] = useState(customSyncId);
             const effectiveUserId = customSyncId || (user ? user.uid : null);
+
+            // 部位試算相關狀態
+            const [plannedTotal, setPlannedTotal] = useState(0);
 
             const [inputs, setInputs] = useState({
                 qqq_ema5: 0, qqq_ema12: 0, qqq_ema25: 0, qqq_ath: 0, ibit_ema50: 0,
@@ -179,23 +183,23 @@
                 cash_balance: 0, record_date: new Date().toISOString().split('T')[0],
                 loan_amount: 0, loan_rate: 2.0, loan_years: 7, loan_repay_target: 20, 
                 loan_entry_valuation: 0, loan_monthly_repay: 0, motto: '', record_memo: '',
-                // 策略白皮書文字欄位 (預設值)
+                // 策略白皮書
                 title_core: "核心策略 (70%)",
                 strat_core: "● 70% 核心配置 (QLD / QQQ)：\n1. QQQ收盤價站回週線 25EMA 且高於 3% (安全區)。\n2. EMA 5 向上穿過 EMA 12 確立短期強勢。\n3. 同時滿足時，從現金切換至 1x QQQ 建立底倉。\n4. 每日收盤若跌破週線 25EMA 之 97% (-3%)，立即清倉轉為 100% 現金避險。",
-                
                 title_qld: "槓桿動態 (QLD/TQQQ)",
                 strat_qld: "● QLD/TQQQ 槓桿動態調節：\n1. 巡航模式：當 5週線 > 12週線 且趨勢向上，持有 2x QLD。\n2. 狙擊模式：股價回測高點超過 8%，全倉切換至 3x TQQQ。\n3. 退場機制：當 TQQQ 達標高點 98% 或跌破 5週線，立即退回 QLD 或 QQQ。",
-                
                 title_faith: "信仰持倉 (20%) - 自選組合", 
                 strat_faith: "● 20% 信仰持倉 (長期持有)：\n1. 配置目標：TSLA (10%) + GOOG (10%)。\n2. 此部位為高確信長期投資，不受大盤短期波動影響。\n3. 建議停損：個股跌破季線(60MA) 且三天未站回。",
-                
                 title_ibit: "衛星配置 (10%) - IBIT",
-                strat_ibit: "● 10% 衛星配置 (IBIT)：\n1. 趨勢追蹤：比特幣波動劇烈，僅在日線 MA50 之上持有。\n2. 嚴格執行移動停利，不戀戰。\n3. 佔比嚴控在 10% 以下，避免風險擴散。"
+                strat_ibit: "● 10% 衛星配置 (IBIT)：\n1. 趨勢追蹤：比特幣波動劇烈，僅在日線 MA50 之上持有。\n2. 嚴格執行移動停利，不戀戰。\n3. 佔比嚴控在 10% 以下，避免風險擴散。",
+                // 部位目標佔比 (預設 0)
+                target_pct_qqq: 0, target_pct_qld: 0, target_pct_tqqq: 0, target_pct_ibit: 0,
+                target_pct_custom_1: 0, target_pct_custom_2: 0, target_pct_cash: 0
             });
 
-            // 功能函式
+            // 功能函式 (修正：允許字串輸入以便支援小數點，但在運算時強制轉型)
             const showToast = (txt) => { setMessage(txt); setTimeout(() => setMessage(null), 3000); };
-            const handleInputChange = (f, v) => setInputs(p => ({ ...p, [f]: (typeof p[f] === 'number') ? (v === '' ? 0 : parseFloat(v)) : v }));
+            const handleInputChange = (f, v) => setInputs(p => ({ ...p, [f]: v })); // 移除強制 parseFloat 以修復小數點輸入體驗
             const syncToCloud = async (f, v) => { if (!effectiveUserId) return; await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ [f]: v }, { merge: true }); };
 
             const fetchPrices = useCallback(async () => {
@@ -264,6 +268,11 @@
                 const p = prices; const t1 = (inputs.custom_ticker_1 || "").toUpperCase(); const t2 = (inputs.custom_ticker_2 || "").toUpperCase();
                 return ( (p.QQQ || 0) * (parseFloat(inputs.qty_qqq) || 0) ) + ( (p.QLD || 0) * (parseFloat(inputs.qty_qld) || 0) ) + ( (p.TQQQ || 0) * (parseFloat(inputs.qty_tqqq) || 0) ) + ( (p.IBIT || 0) * (parseFloat(inputs.qty_ibit) || 0) ) + ( (p[t1] || 0) * (parseFloat(inputs.qty_custom_1) || 0) ) + ( (p[t2] || 0) * (parseFloat(inputs.qty_custom_2) || 0) ) + ( parseFloat(inputs.cash_balance) || 0 );
             }, [prices, inputs]);
+
+            // 當 totalCapital 改變且 plannedTotal 為 0 時，初始化 plannedTotal
+            useEffect(() => {
+                if (totalCapital > 0 && plannedTotal === 0) setPlannedTotal(totalCapital);
+            }, [totalCapital]);
 
             const loanSellThreshold = useMemo(() => (parseFloat(inputs.loan_entry_valuation) || 0) * (1 + (parseFloat(inputs.loan_repay_target) || 0) / 100), [inputs.loan_entry_valuation, inputs.loan_repay_target]);
             const isTargetReached = totalCapital >= loanSellThreshold && inputs.loan_entry_valuation > 0;
@@ -354,6 +363,8 @@
                         <div className="flex items-center gap-2 font-black"><div className="bg-white p-2 rounded-2xl shadow-sm"><Icon name="TrendingUp" className="text-indigo-900" size={18} /></div><h1 className="font-black text-lg">QQQ Control</h1></div>
                         <div className="flex items-center gap-2">
                             <button onClick={() => setDarkMode(!darkMode)} className="p-2.5 rounded-xl bg-white/10 active:scale-90 font-black font-black"><Icon name={darkMode ? "Sun" : "Moon"} size={20} /></button>
+                            {/* 新增計算機按鈕 */}
+                            <button onClick={() => setView('calculator')} className={`p-2.5 rounded-xl border-2 ${view === 'calculator' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white border-slate-100 text-slate-700'} active:scale-90 shadow-sm transition-colors`}><Icon name="Calculator" size={20} /></button>
                             <button onClick={() => setView('sync_settings')} className="p-2.5 rounded-xl bg-white border-2 border-slate-100 text-slate-700 active:scale-90 shadow-sm"><Icon name="Settings" size={20} /></button>
                             <div className="flex items-center gap-1.5 ml-1">
                                 <button onClick={fetchPrices} className="p-2 text-white/80 active:rotate-180 transition-transform font-black font-black"><Icon name="RefreshCcw" size={22} className={loadingPrices ? 'animate-spin' : ''} /></button>
@@ -402,11 +413,11 @@
 
                                 <Card className="grid grid-cols-2 gap-4 text-left font-black font-black">
                                     {[{ l: "QQQ", f: "qty_qqq", s: "QQQ" }, { l: "QLD", f: "qty_qld", s: "QLD" }, { l: "TQQQ", f: "qty_tqqq", s: "TQQQ" }, { l: "IBIT", f: "qty_ibit", s: "IBIT" }].map(it => (
-                                        <div key={it.f} className="space-y-1"><div className="flex justify-between items-center px-1 font-black"><label className="text-[11px] text-slate-400 uppercase font-black">{it.l}</label><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded font-mono tracking-tighter">${prices[it.s]?.toFixed(2) || '0.00'}</span></div><input type="number" value={inputs[it.f]} onChange={e => handleInputChange(it.f, e.target.value)} onBlur={(e) => syncToCloud(it.f, e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-50 dark:border-slate-700 rounded-2xl p-4 font-black text-lg text-center" /></div>
+                                        <div key={it.f} className="space-y-1"><div className="flex justify-between items-center px-1 font-black"><label className="text-[11px] text-slate-400 uppercase font-black">{it.l}</label><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded font-mono tracking-tighter">${prices[it.s]?.toFixed(2) || '0.00'}</span></div><input type="number" value={inputs[it.f]} onChange={e => handleInputChange(it.f, e.target.value)} onBlur={(e) => syncToCloud(it.f, parseFloat(e.target.value) || 0)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-50 dark:border-slate-700 rounded-2xl p-4 font-black text-lg text-center" /></div>
                                     ))}
-                                    <div className="space-y-1 text-left"><div className="flex justify-between items-center px-1 font-black"><input type="text" value={inputs.custom_ticker_1} onChange={e => handleInputChange('custom_ticker_1', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_1', e.target.value.toUpperCase())} className="text-[11px] text-slate-400 bg-transparent p-0 w-16 outline-none text-left" /><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded font-mono tracking-tighter">${prices[(inputs.custom_ticker_1 || "").trim().toUpperCase()]?.toFixed(2) || '0.00'}</span></div><input type="number" value={inputs.qty_custom_1} onChange={e => handleInputChange('qty_custom_1', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_1', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 font-black text-lg text-center font-black" /></div>
-                                    <div className="space-y-1 text-left"><div className="flex justify-between items-center px-1 font-black"><input type="text" value={inputs.custom_ticker_2} onChange={e => handleInputChange('custom_ticker_2', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_2', e.target.value.toUpperCase())} className="text-[11px] text-slate-400 bg-transparent p-0 w-16 outline-none text-left" /><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded font-mono tracking-tighter">${prices[(inputs.custom_ticker_2 || "").trim().toUpperCase()]?.toFixed(2) || '0.00'}</span></div><input type="number" value={inputs.qty_custom_2} onChange={e => handleInputChange('qty_custom_2', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_2', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 font-black text-lg text-center font-black" /></div>
-                                    <div className="col-span-2 space-y-1 text-center font-black font-black"><label className="text-[11px] font-black text-slate-500 px-1 uppercase block text-center w-full font-black">現金餘額 (USD)</label><input type="number" value={inputs.cash_balance} onChange={e => handleInputChange('cash_balance', e.target.value)} onBlur={(e) => syncToCloud('cash_balance', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-indigo-100/50 dark:border-indigo-900/50 rounded-2xl p-4 font-black text-xl text-indigo-600" /></div>
+                                    <div className="space-y-1 text-left"><div className="flex justify-between items-center px-1 font-black"><input type="text" value={inputs.custom_ticker_1} onChange={e => handleInputChange('custom_ticker_1', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_1', e.target.value.toUpperCase())} className="text-[11px] text-slate-400 bg-transparent p-0 w-16 outline-none text-left" /><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded font-mono tracking-tighter">${prices[(inputs.custom_ticker_1 || "").trim().toUpperCase()]?.toFixed(2) || '0.00'}</span></div><input type="number" value={inputs.qty_custom_1} onChange={e => handleInputChange('qty_custom_1', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_1', parseFloat(e.target.value) || 0)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 font-black text-lg text-center font-black" /></div>
+                                    <div className="space-y-1 text-left"><div className="flex justify-between items-center px-1 font-black"><input type="text" value={inputs.custom_ticker_2} onChange={e => handleInputChange('custom_ticker_2', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_2', e.target.value.toUpperCase())} className="text-[11px] text-slate-400 bg-transparent p-0 w-16 outline-none text-left" /><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded font-mono tracking-tighter">${prices[(inputs.custom_ticker_2 || "").trim().toUpperCase()]?.toFixed(2) || '0.00'}</span></div><input type="number" value={inputs.qty_custom_2} onChange={e => handleInputChange('qty_custom_2', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_2', parseFloat(e.target.value) || 0)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 font-black text-lg text-center font-black" /></div>
+                                    <div className="col-span-2 space-y-1 text-center font-black font-black"><label className="text-[11px] font-black text-slate-500 px-1 uppercase block text-center w-full font-black">現金餘額 (USD)</label><input type="number" value={inputs.cash_balance} onChange={e => handleInputChange('cash_balance', e.target.value)} onBlur={(e) => syncToCloud('cash_balance', parseFloat(e.target.value) || 0)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-indigo-100/50 dark:border-indigo-900/50 rounded-2xl p-4 font-black text-xl text-indigo-600" /></div>
                                 </Card>
 
                                 <Card className={`border-l-[12px] shadow-xl text-left font-black font-black ${analysis.level === 'error' ? 'border-l-red-500 bg-red-50 dark:bg-red-950/20' : 'border-l-indigo-500 bg-indigo-50'}`}><div className="flex items-start gap-4"><div className="p-4 rounded-3xl bg-white dark:bg-slate-800 shadow-sm"><Icon name="ShieldAlert" size={36} className={analysis.level === 'error' ? 'text-red-500' : 'text-indigo-600'} /></div><div className="space-y-1 font-black"><p className="text-2xl font-black dark:text-slate-100 font-black">{analysis.rec}</p><p className="text-[13px] opacity-70 font-black font-black">{analysis.msg}</p></div></div></Card>
@@ -414,6 +425,126 @@
                                 <Card className="p-4 space-y-2 border-dashed border-2 border-slate-300 text-left font-black"><SectionTitle title="決策紀錄備註" iconName="MessageSquare" /><textarea rows="3" placeholder="在此輸入本次決策心得..." value={inputs.record_memo} onChange={e => setInputs(p => ({ ...p, record_memo: e.target.value }))} className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 text-[14px] font-medium resize-none text-left" /></Card>
 
                                 <button onClick={save} disabled={isSaving} className={`w-full ${isSaving ? 'bg-slate-400' : 'bg-slate-900 dark:bg-indigo-600'} text-white py-6 rounded-[2rem] font-black text-xl shadow-2xl active:scale-95 mb-12 flex items-center justify-center gap-3 font-black font-black`}><Icon name={isSaving ? "RefreshCcw" : "Save"} size={24} className={isSaving ? "animate-spin" : ""} /> {isSaving ? "正在同步..." : "儲存目前紀錄"}</button>
+                            </div>
+                        )}
+
+                        {view === 'calculator' && (
+                            <div className="space-y-6 animate-in fade-in">
+                                <Card className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white border-none shadow-2xl p-6 text-left relative overflow-hidden">
+                                    <div className="absolute right-0 top-0 p-4 opacity-10"><Icon name="Calculator" size={100} /></div>
+                                    <label className="text-[10px] opacity-60 uppercase tracking-widest block mb-2">預計總資產 (Planned Total)</label>
+                                    <input 
+                                        type="number" 
+                                        value={plannedTotal} 
+                                        onChange={e => setPlannedTotal(parseFloat(e.target.value) || 0)} 
+                                        className="w-full bg-white/10 rounded-2xl p-4 text-3xl font-black text-white text-left outline-none border border-white/20 focus:border-white/50 transition-colors"
+                                    />
+                                    <div className="mt-4 flex gap-2">
+                                        <button onClick={() => setPlannedTotal(totalCapital)} className="text-[10px] bg-white/20 px-3 py-1.5 rounded-lg hover:bg-white/30 transition-colors">使用目前淨值</button>
+                                        <button onClick={() => setPlannedTotal(100000)} className="text-[10px] bg-white/20 px-3 py-1.5 rounded-lg hover:bg-white/30 transition-colors">$100k</button>
+                                    </div>
+                                </Card>
+
+                                <div className="space-y-4">
+                                    {/* 欄位說明 */}
+                                    <div className="grid grid-cols-12 gap-2 px-2 text-[10px] text-slate-400 uppercase tracking-widest font-black">
+                                        <div className="col-span-3">標的/價格</div>
+                                        <div className="col-span-3 text-center">目標佔比 %</div>
+                                        <div className="col-span-3 text-right">目標股數</div>
+                                        <div className="col-span-3 text-right">調整建議</div>
+                                    </div>
+
+                                    {[
+                                        { label: 'QQQ', key: 'qqq', price: prices.QQQ, current: inputs.qty_qqq },
+                                        { label: 'QLD', key: 'qld', price: prices.QLD, current: inputs.qty_qld },
+                                        { label: 'TQQQ', key: 'tqqq', price: prices.TQQQ, current: inputs.qty_tqqq },
+                                        { label: 'IBIT', key: 'ibit', price: prices.IBIT, current: inputs.qty_ibit },
+                                        { label: inputs.custom_ticker_1 || '自選1', key: 'custom_1', price: prices[(inputs.custom_ticker_1 || '').toUpperCase()], current: inputs.qty_custom_1 },
+                                        { label: inputs.custom_ticker_2 || '自選2', key: 'custom_2', price: prices[(inputs.custom_ticker_2 || '').toUpperCase()], current: inputs.qty_custom_2 },
+                                    ].map(item => {
+                                        const pctKey = `target_pct_${item.key}`;
+                                        const pct = inputs[pctKey] || 0;
+                                        const targetVal = plannedTotal * (pct / 100);
+                                        const targetShares = item.price > 0 ? Math.floor(targetVal / item.price) : 0;
+                                        const diff = targetShares - (parseFloat(item.current) || 0);
+                                        
+                                        return (
+                                            <Card key={item.key} className="p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+                                                <div className="grid grid-cols-12 gap-2 items-center">
+                                                    {/* 標的資訊 */}
+                                                    <div className="col-span-3">
+                                                        <div className="font-black text-lg text-indigo-600 dark:text-indigo-400">{item.label}</div>
+                                                        <div className="text-[10px] text-slate-400">${item.price?.toFixed(2) || '0.00'}</div>
+                                                    </div>
+
+                                                    {/* 目標佔比輸入 */}
+                                                    <div className="col-span-3">
+                                                        <div className="relative">
+                                                            <input 
+                                                                type="number" 
+                                                                value={inputs[pctKey]} 
+                                                                onChange={e => handleInputChange(pctKey, e.target.value)} 
+                                                                onBlur={e => syncToCloud(pctKey, parseFloat(e.target.value) || 0)}
+                                                                className="w-full bg-slate-50 dark:bg-slate-900 rounded-xl p-2 text-center font-bold text-lg border border-slate-200 dark:border-slate-700 focus:border-indigo-500 outline-none"
+                                                            />
+                                                            <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">%</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* 目標股數 */}
+                                                    <div className="col-span-3 text-right">
+                                                        <div className="text-lg font-black text-slate-800 dark:text-slate-200">{targetShares}</div>
+                                                        <div className="text-[9px] text-slate-400">股</div>
+                                                    </div>
+
+                                                    {/* 差異/建議 */}
+                                                    <div className="col-span-3 text-right">
+                                                        <div className={`text-sm font-black px-2 py-1 rounded-lg inline-block ${diff > 0 ? 'bg-emerald-100 text-emerald-700' : diff < 0 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-500'}`}>
+                                                            {diff > 0 ? `+${diff}` : diff}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {/* 進度條 */}
+                                                <div className="mt-3 w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-indigo-500" style={{ width: `${Math.min(pct, 100)}%` }}></div>
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
+
+                                    {/* 現金部分 */}
+                                    <Card className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 border-dashed">
+                                        <div className="grid grid-cols-12 gap-2 items-center">
+                                            <div className="col-span-3 font-black text-slate-500">CASH</div>
+                                            <div className="col-span-3">
+                                                <div className="relative">
+                                                    <input 
+                                                        type="number" 
+                                                        value={inputs.target_pct_cash} 
+                                                        onChange={e => handleInputChange('target_pct_cash', e.target.value)} 
+                                                        onBlur={e => syncToCloud('target_pct_cash', parseFloat(e.target.value) || 0)}
+                                                        className="w-full bg-transparent border-b border-slate-300 dark:border-slate-600 p-1 text-center font-bold text-slate-500"
+                                                    />
+                                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">%</span>
+                                                </div>
+                                            </div>
+                                            <div className="col-span-6 text-right text-xs text-slate-400">
+                                                目標現金: ${(plannedTotal * (inputs.target_pct_cash / 100)).toLocaleString()}
+                                            </div>
+                                        </div>
+                                    </Card>
+
+                                    {/* 總計檢查 */}
+                                    <div className="text-center p-4">
+                                        <div className="text-[10px] uppercase tracking-widest text-slate-400">總配置佔比 (Total Allocation)</div>
+                                        <div className={`text-2xl font-black mt-1 ${
+                                            (parseFloat(inputs.target_pct_qqq || 0) + parseFloat(inputs.target_pct_qld || 0) + parseFloat(inputs.target_pct_tqqq || 0) + parseFloat(inputs.target_pct_ibit || 0) + parseFloat(inputs.target_pct_custom_1 || 0) + parseFloat(inputs.target_pct_custom_2 || 0) + parseFloat(inputs.target_pct_cash || 0)) === 100 
+                                            ? 'text-emerald-500' : 'text-amber-500'
+                                        }`}>
+                                            {(parseFloat(inputs.target_pct_qqq || 0) + parseFloat(inputs.target_pct_qld || 0) + parseFloat(inputs.target_pct_tqqq || 0) + parseFloat(inputs.target_pct_ibit || 0) + parseFloat(inputs.target_pct_custom_1 || 0) + parseFloat(inputs.target_pct_custom_2 || 0) + parseFloat(inputs.target_pct_cash || 0)).toFixed(1)}%
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )}
 
