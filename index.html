@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="QQQ Control">
-    <title>QQQ 戰略儀表板 v7.4</title>
+    <title>QQQ 戰略儀表板 v7.9</title>
     
     <!-- 專屬 QQQ App 圖示 -->
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
@@ -44,7 +44,44 @@
             outline: none;
             text-align: center;
         }
-        .whitepaper-scroll { max-height: 70vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        /* 策略文字區域專用樣式 */
+        .strategy-textarea {
+            text-align: left !important;
+            padding: 12px !important;
+            min-height: 100px;
+            font-size: 13px !important;
+            border-radius: 12px;
+            background-color: rgba(255,255,255,0.5);
+            border: 1px dashed #cbd5e1;
+            transition: all 0.3s ease;
+        }
+        .dark .strategy-textarea {
+            background-color: rgba(30, 41, 59, 0.5);
+            border-color: #334155;
+            color: #e2e8f0;
+        }
+        /* 鎖定模式下的樣式：無邊框，純閱讀感 */
+        .strategy-read-only {
+            border: 1px solid transparent !important;
+            background-color: transparent !important;
+            padding: 0 !important;
+            min-height: auto;
+            pointer-events: none; /* 防止誤觸 */
+        }
+        .title-input {
+            width: 100%;
+            font-weight: 900;
+            background: transparent;
+            outline: none;
+            text-align: left;
+            padding: 0;
+            transition: all 0.2s;
+        }
+        .title-input-edit {
+            border-bottom: 2px solid #6366f1;
+            padding-bottom: 4px;
+        }
+        .whitepaper-scroll { max-height: 75vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .tab-active { color: #4f46e5; border-top: 3px solid #4f46e5; }
         @keyframes pulse-dot { 0%, 100% { opacity: 0.6; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1.1); } }
         .sync-loading { animation: pulse-dot 1.2s infinite ease-in-out; }
@@ -79,7 +116,7 @@
         const Icon = ({ name, size = 20, className = "" }) => {
             const icons = {
                 TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>,
-                Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>,
+                Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>,
                 RefreshCcw: <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 4a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16m-18-8h5V3m13 18h-5v5"/>,
                 LayoutDashboard: <><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></>,
                 History: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 0V3m0 5h5M12 7v5l4 2"/>,
@@ -95,10 +132,16 @@
                 ChevronDown: <path d="m6 9 6 6 6-6"/>,
                 ChevronUp: <path d="m18 15-6-6-6 6"/>,
                 PieChartIcon: <><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></>,
-                MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>,
-                Fingerprint: <><circle cx="12" cy="12" r="9" stroke="currentColor"/><path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M12 12v3"/></>, // 已修正 JSX 報錯
-                BarChart2: <path d="M18 20V10M12 20V4M6 20v-6"/>
+                MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>,
+                Fingerprint: <><path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10"/><path d="M12 12v3"/><path d="M16 17.5c-2.5 1.5-5.5 1.5-8 0"/></>, 
+                BarChart2: <path d="M18 20V10M12 20V4M6 20v-6"/>,
+                Lock: <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />,
+                Unlock: <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /> // 使用簡化圖標
             };
+            // 補充鎖頭圖標 path
+            if(name === 'Lock') return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>;
+            if(name === 'Unlock') return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" /></svg>;
+
             return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name] || <circle cx="12" cy="12" r="10" />}</svg>;
         };
 
@@ -123,6 +166,7 @@
             const [visibleCount, setVisibleCount] = useState(20);
             const [isWhitepaperOpen, setWhitepaperOpen] = useState(false);
             const [isStatsOpen, setStatsOpen] = useState(false);
+            const [isStrategyEditing, setIsStrategyEditing] = useState(false); // 新增策略編輯狀態
 
             const [customSyncId, setCustomSyncId] = useState(() => localStorage.getItem('qqq_sync_id') || '');
             const [tempSyncId, setTempSyncId] = useState(customSyncId);
@@ -134,7 +178,19 @@
                 custom_ticker_1: 'TSLA', qty_custom_1: 0, custom_ticker_2: 'GOOGL', qty_custom_2: 0,
                 cash_balance: 0, record_date: new Date().toISOString().split('T')[0],
                 loan_amount: 0, loan_rate: 2.0, loan_years: 7, loan_repay_target: 20, 
-                loan_entry_valuation: 0, loan_monthly_repay: 0, motto: '', record_memo: ''
+                loan_entry_valuation: 0, loan_monthly_repay: 0, motto: '', record_memo: '',
+                // 策略白皮書文字欄位 (預設值)
+                title_core: "核心策略 (70%)",
+                strat_core: "● 70% 核心配置 (QLD / QQQ)：\n1. QQQ收盤價站回週線 25EMA 且高於 3% (安全區)。\n2. EMA 5 向上穿過 EMA 12 確立短期強勢。\n3. 同時滿足時，從現金切換至 1x QQQ 建立底倉。\n4. 每日收盤若跌破週線 25EMA 之 97% (-3%)，立即清倉轉為 100% 現金避險。",
+                
+                title_qld: "槓桿動態 (QLD/TQQQ)",
+                strat_qld: "● QLD/TQQQ 槓桿動態調節：\n1. 巡航模式：當 5週線 > 12週線 且趨勢向上，持有 2x QLD。\n2. 狙擊模式：股價回測高點超過 8%，全倉切換至 3x TQQQ。\n3. 退場機制：當 TQQQ 達標高點 98% 或跌破 5週線，立即退回 QLD 或 QQQ。",
+                
+                title_faith: "信仰持倉 (20%) - 自選組合", 
+                strat_faith: "● 20% 信仰持倉 (長期持有)：\n1. 配置目標：TSLA (10%) + GOOG (10%)。\n2. 此部位為高確信長期投資，不受大盤短期波動影響。\n3. 建議停損：個股跌破季線(60MA) 且三天未站回。",
+                
+                title_ibit: "衛星配置 (10%) - IBIT",
+                strat_ibit: "● 10% 衛星配置 (IBIT)：\n1. 趨勢追蹤：比特幣波動劇烈，僅在日線 MA50 之上持有。\n2. 嚴格執行移動停利，不戀戰。\n3. 佔比嚴控在 10% 以下，避免風險擴散。"
             });
 
             // 功能函式
@@ -160,7 +216,7 @@
                 } catch (e) {} finally { setLoadingPrices(false); }
             }, [inputs.custom_ticker_1, inputs.custom_ticker_2, loadingPrices]);
 
-            // --- 週期績效統計 (修正：精確對比週期第一筆與最後一筆) ---
+            // --- 週期績效統計 ---
             const periodicStats = useMemo(() => {
                 if (records.length < 2) return { years: [], months: [] };
                 const sorted = [...records].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -188,7 +244,7 @@
                 return { years: calc(yearsMap), months: calc(monthsMap) };
             }, [records]);
 
-            // --- 圖表過濾邏輯：加上 key 強迫重繪 ---
+            // --- 圖表過濾邏輯 ---
             const stats = useMemo(() => {
                 if (records.length < 1) return { growth: 0, end: 0, chartData: [] };
                 const now = new Date();
@@ -492,27 +548,116 @@
                                 
                                 <Card className="p-0 overflow-hidden border-2 shadow-sm text-left font-black">
                                     <button onClick={() => setWhitepaperOpen(!isWhitepaperOpen)} className="w-full flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-800 font-black font-black font-black font-black">
-                                        <div className="flex items-center gap-2 dark:text-slate-200"><Icon name="BookOpen" size={18} /><span>策略執行協議 (全)</span></div>
+                                        <div className="flex items-center gap-2 dark:text-slate-200"><Icon name="BookOpen" size={18} /><span>策略執行協議 (全) - 點擊編輯</span></div>
                                         <Icon name={isWhitepaperOpen ? "ChevronUp" : "ChevronDown"} size={20} />
                                     </button>
                                     {isWhitepaperOpen && (
-                                        <div className="whitepaper-scroll p-6 text-[13px] space-y-6 leading-relaxed border-t dark:border-slate-800 bg-white dark:bg-slate-900 font-medium font-black">
-                                            <p className="text-emerald-600 font-black mb-1 font-black">● 核心進場條件：</p>
-                                            <ul className="pl-4 space-y-1 mb-3 text-slate-600 dark:text-slate-300">
-                                                <li>1. 收盤價站回週線 25EMA 且高於 3%。</li>
-                                                <li>2. EMA 5 向上穿過 EMA 12 確立短期強勢。</li>
-                                                <li>3. 同時滿足時，從現金切換至 1x QQQ。</li>
-                                            </ul>
-                                            <p className="text-indigo-600 dark:text-indigo-400 font-black mb-1">● 巡航與狙擊規則：</p>
-                                            <ul className="pl-4 space-y-2 mb-3 text-slate-600 dark:text-slate-300">
-                                                <li>• 當 5週線大於 12週線，持有 2x QLD。</li>
-                                                <li>• 股價回測高點超過 8%，全倉切換至 3x TQQQ 狙擊。</li>
-                                                <li>• 當 TQQQ 達標高點 98% 或跌破 5週線，立即退回 QLD。</li>
-                                            </ul>
-                                            <p className="text-amber-600 font-black mb-1 font-black">● 貸款加碼進場：</p>
-                                            <p className="pl-4 mb-3 text-slate-600 dark:text-slate-300">股價必須先跌破週 25EMA，隨後再次漲回站穩 25EMA 且 5週大於 12週時啟動資金。</p>
-                                            <p className="text-red-600 font-black mb-1 font-black">● 生死存亡避險：</p>
-                                            <p className="pl-4 text-slate-600 dark:text-slate-300">每日收盤跌破週線 25EMA 之 97% (-3%)，立即清倉轉為 100% 現金避險。</p>
+                                        <div className="whitepaper-scroll p-5 space-y-6 leading-relaxed border-t dark:border-slate-800 bg-white dark:bg-slate-900 font-medium font-black">
+                                            
+                                            {/* 編輯鎖定開關 */}
+                                            <div className="flex justify-end mb-4 border-b border-dashed border-slate-200 dark:border-slate-700 pb-2">
+                                                <button 
+                                                    onClick={() => setIsStrategyEditing(!isStrategyEditing)} 
+                                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${isStrategyEditing ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}
+                                                >
+                                                    <Icon name={isStrategyEditing ? "Unlock" : "Lock"} size={14} />
+                                                    <span>{isStrategyEditing ? "編輯中 (點擊鎖定)" : "鎖定中 (點擊修改)"}</span>
+                                                </button>
+                                            </div>
+
+                                            {/* 核心策略編輯區 */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-black">
+                                                    <Icon name="TrendingUp" size={16}/>
+                                                    <input 
+                                                        type="text" 
+                                                        value={inputs.title_core} 
+                                                        readOnly={!isStrategyEditing}
+                                                        onChange={e => handleInputChange('title_core', e.target.value)} 
+                                                        onBlur={e => syncToCloud('title_core', e.target.value)} 
+                                                        className={`title-input ${isStrategyEditing ? 'title-input-edit cursor-text' : 'cursor-default pointer-events-none'}`}
+                                                    />
+                                                </div>
+                                                <textarea 
+                                                    value={inputs.strat_core} 
+                                                    readOnly={!isStrategyEditing}
+                                                    onChange={e => handleInputChange('strat_core', e.target.value)} 
+                                                    onBlur={e => syncToCloud('strat_core', e.target.value)} 
+                                                    className={`w-full strategy-textarea resize-none ${!isStrategyEditing ? 'strategy-read-only' : ''}`} 
+                                                    placeholder="輸入核心 QQQ 策略..." 
+                                                />
+                                            </div>
+
+                                            {/* QLD/槓桿策略編輯區 (獨立分開) */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-black">
+                                                    <Icon name="TrendingUp" size={16}/>
+                                                    <input 
+                                                        type="text" 
+                                                        value={inputs.title_qld} 
+                                                        readOnly={!isStrategyEditing}
+                                                        onChange={e => handleInputChange('title_qld', e.target.value)} 
+                                                        onBlur={e => syncToCloud('title_qld', e.target.value)} 
+                                                        className={`title-input ${isStrategyEditing ? 'title-input-edit cursor-text' : 'cursor-default pointer-events-none'}`}
+                                                    />
+                                                </div>
+                                                <textarea 
+                                                    value={inputs.strat_qld} 
+                                                    readOnly={!isStrategyEditing}
+                                                    onChange={e => handleInputChange('strat_qld', e.target.value)} 
+                                                    onBlur={e => syncToCloud('strat_qld', e.target.value)} 
+                                                    className={`w-full strategy-textarea resize-none ${!isStrategyEditing ? 'strategy-read-only' : ''}`} 
+                                                    placeholder="輸入槓桿操作策略..." 
+                                                />
+                                            </div>
+
+                                            {/* 信仰/自選股策略編輯區 (標題改為輸入框) */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-black">
+                                                    <Icon name="Quote" size={16}/>
+                                                    <input 
+                                                        type="text" 
+                                                        value={inputs.title_faith} 
+                                                        readOnly={!isStrategyEditing}
+                                                        onChange={e => handleInputChange('title_faith', e.target.value)} 
+                                                        onBlur={e => syncToCloud('title_faith', e.target.value)} 
+                                                        className={`title-input ${isStrategyEditing ? 'title-input-edit cursor-text' : 'cursor-default pointer-events-none'}`}
+                                                        placeholder="自訂信仰持倉標題"
+                                                    />
+                                                </div>
+                                                <textarea 
+                                                    value={inputs.strat_faith} 
+                                                    readOnly={!isStrategyEditing}
+                                                    onChange={e => handleInputChange('strat_faith', e.target.value)} 
+                                                    onBlur={e => syncToCloud('strat_faith', e.target.value)} 
+                                                    className={`w-full strategy-textarea resize-none ${!isStrategyEditing ? 'strategy-read-only' : ''}`} 
+                                                    placeholder="輸入個股/信仰持倉策略..." 
+                                                />
+                                            </div>
+
+                                            {/* 衛星/IBIT策略編輯區 */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2 text-amber-500 dark:text-amber-400 font-black">
+                                                    <Icon name="TrendingUp" size={16}/>
+                                                    <input 
+                                                        type="text" 
+                                                        value={inputs.title_ibit} 
+                                                        readOnly={!isStrategyEditing}
+                                                        onChange={e => handleInputChange('title_ibit', e.target.value)} 
+                                                        onBlur={e => syncToCloud('title_ibit', e.target.value)} 
+                                                        className={`title-input ${isStrategyEditing ? 'title-input-edit cursor-text' : 'cursor-default pointer-events-none'}`}
+                                                    />
+                                                </div>
+                                                <textarea 
+                                                    value={inputs.strat_ibit} 
+                                                    readOnly={!isStrategyEditing}
+                                                    onChange={e => handleInputChange('strat_ibit', e.target.value)} 
+                                                    onBlur={e => syncToCloud('strat_ibit', e.target.value)} 
+                                                    className={`w-full strategy-textarea resize-none ${!isStrategyEditing ? 'strategy-read-only' : ''}`} 
+                                                    placeholder="輸入衛星/IBIT操作策略..." 
+                                                />
+                                            </div>
+
                                         </div>
                                     )}
                                 </Card>
