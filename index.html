@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="QQQ Control">
-    <title>QQQ 戰略儀表板 v8.2</title>
+    <title>QQQ 戰略儀表板 v9.3</title>
     
     <!-- 專屬 QQQ App 圖示 -->
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
@@ -64,7 +64,7 @@
         .strategy-read-only {
             border: 1px solid transparent !important;
             background-color: transparent !important;
-            cursor: default; /* 鼠標顯示為預設，提示不可編輯 */
+            cursor: default; 
         }
         .title-input {
             width: 100%;
@@ -79,20 +79,28 @@
             border-bottom: 2px solid #6366f1;
             padding-bottom: 4px;
         }
-        .whitepaper-scroll { max-height: 75vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .whitepaper-scroll { max-height: 60vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .tab-active { color: #4f46e5; border-top: 3px solid #4f46e5; }
         @keyframes pulse-dot { 0%, 100% { opacity: 0.6; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1.1); } }
         .sync-loading { animation: pulse-dot 1.2s infinite ease-in-out; }
         .repay-alert { animation: pulse-red 2s infinite; }
         @keyframes pulse-red { 0%, 100% { background-color: #991b1b; } 50% { background-color: #ef4444; } }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        /* 計算機專用樣式 */
+        .calc-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px dashed rgba(148, 163, 184, 0.2);
+        }
+        .calc-row:last-child { border-bottom: none; }
     </style>
 </head>
 <body class="light text-left font-black text-slate-900 dark:text-slate-100">
     <div id="root"></div>
 
     <script type="text/babel">
-        // 移除未使用的 useRef
         const { useState, useEffect, useMemo, useCallback } = React;
         const { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } = Recharts;
 
@@ -115,7 +123,7 @@
         const Icon = ({ name, size = 20, className = "" }) => {
             const icons = {
                 TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>,
-                Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>,
+                Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>,
                 RefreshCcw: <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 4a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16m-18-8h5V3m13 18h-5v5"/>,
                 LayoutDashboard: <><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></>,
                 History: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 0V3m0 5h5M12 7v5l4 2"/>,
@@ -134,8 +142,9 @@
                 MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>,
                 Fingerprint: <><path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10"/><path d="M12 12v3"/><path d="M16 17.5c-2.5 1.5-5.5 1.5-8 0"/></>, 
                 BarChart2: <path d="M18 20V10M12 20V4M6 20v-6"/>,
-                Lock: <><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></>,
-                Unlock: <><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" /></>
+                Lock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></g>,
+                Unlock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" /></g>,
+                Calculator: <g><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></g>
             };
             return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name] || <circle cx="12" cy="12" r="10" />}</svg>;
         };
@@ -159,9 +168,11 @@
             const [deletingId, setDeletingId] = useState(null);
             const [filterMode, setFilterMode] = useState('all');
             const [visibleCount, setVisibleCount] = useState(20);
-            const [isWhitepaperOpen, setWhitepaperOpen] = useState(false);
+            const [isWhitepaperOpen, setIsWhitepaperOpen] = useState(false); 
             const [isStatsOpen, setStatsOpen] = useState(false);
             const [isStrategyEditing, setIsStrategyEditing] = useState(false); 
+            const [simulatedTotal, setSimulatedTotal] = useState('');
+            const [isCalcOpen, setIsCalcOpen] = useState(false); 
 
             const [customSyncId, setCustomSyncId] = useState(() => localStorage.getItem('qqq_sync_id') || '');
             const [tempSyncId, setTempSyncId] = useState(customSyncId);
@@ -175,16 +186,17 @@
                 cash_balance: 0, record_date: new Date().toISOString().split('T')[0],
                 loan_amount: 0, loan_rate: 2.0, loan_years: 7, loan_repay_target: 20, 
                 loan_entry_valuation: 0, loan_monthly_repay: 0, motto: '', record_memo: '',
-                // 策略白皮書文字欄位 (預設值)
+                // 自訂策略分配比例 (預設 70/10/10/10)
+                alloc_core: 70,
+                alloc_faith_1: 10, 
+                alloc_faith_2: 10,
+                alloc_sat: 10,
                 title_core: "核心策略 (70%)",
                 strat_core: "● 70% 核心配置 (QLD / QQQ)：\n1. QQQ收盤價站回週線 25EMA 且高於 3% (安全區)。\n2. EMA 5 向上穿過 EMA 12 確立短期強勢。\n3. 同時滿足時，從現金切換至 1x QQQ 建立底倉。\n4. 每日收盤若跌破週線 25EMA 之 97% (-3%)，立即清倉轉為 100% 現金避險。",
-                
                 title_qld: "槓桿動態 (QLD/TQQQ)",
                 strat_qld: "● QLD/TQQQ 槓桿動態調節：\n1. 巡航模式：當 5週線 > 12週線 且趨勢向上，持有 2x QLD。\n2. 狙擊模式：股價回測高點超過 8%，全倉切換至 3x TQQQ。\n3. 退場機制：當 TQQQ 達標高點 98% 或跌破 5週線，立即退回 QLD 或 QQQ。",
-                
                 title_faith: "信仰持倉 (20%) - 自選組合", 
                 strat_faith: "● 20% 信仰持倉 (長期持有)：\n1. 配置目標：TSLA (10%) + GOOG (10%)。\n2. 此部位為高確信長期投資，不受大盤短期波動影響。\n3. 建議停損：個股跌破季線(60MA) 且三天未站回。",
-                
                 title_ibit: "衛星配置 (10%) - IBIT",
                 strat_ibit: "● 10% 衛星配置 (IBIT)：\n1. 趨勢追蹤：比特幣波動劇烈，僅在日線 MA50 之上持有。\n2. 嚴格執行移動停利，不戀戰。\n3. 佔比嚴控在 10% 以下，避免風險擴散。"
             });
@@ -260,6 +272,11 @@
                 const p = prices; const t1 = (inputs.custom_ticker_1 || "").toUpperCase(); const t2 = (inputs.custom_ticker_2 || "").toUpperCase();
                 return ( (p.QQQ || 0) * (parseFloat(inputs.qty_qqq) || 0) ) + ( (p.QLD || 0) * (parseFloat(inputs.qty_qld) || 0) ) + ( (p.TQQQ || 0) * (parseFloat(inputs.qty_tqqq) || 0) ) + ( (p.IBIT || 0) * (parseFloat(inputs.qty_ibit) || 0) ) + ( (p[t1] || 0) * (parseFloat(inputs.qty_custom_1) || 0) ) + ( (p[t2] || 0) * (parseFloat(inputs.qty_custom_2) || 0) ) + ( parseFloat(inputs.cash_balance) || 0 );
             }, [prices, inputs]);
+
+            // 計算策略配倉的基礎金額
+            const allocationBase = useMemo(() => {
+                return simulatedTotal ? parseFloat(simulatedTotal) : totalCapital;
+            }, [simulatedTotal, totalCapital]);
 
             const loanSellThreshold = useMemo(() => (parseFloat(inputs.loan_entry_valuation) || 0) * (1 + (parseFloat(inputs.loan_repay_target) || 0) / 100), [inputs.loan_entry_valuation, inputs.loan_repay_target]);
             const isTargetReached = totalCapital >= loanSellThreshold && inputs.loan_entry_valuation > 0;
@@ -349,6 +366,9 @@
                     <header className="fixed top-0 left-0 right-0 bg-indigo-900 dark:bg-slate-950 z-50 px-5 py-4 flex justify-between items-center shadow-lg text-white">
                         <div className="flex items-center gap-2 font-black"><div className="bg-white p-2 rounded-2xl shadow-sm"><Icon name="TrendingUp" className="text-indigo-900" size={18} /></div><h1 className="font-black text-lg">QQQ Control</h1></div>
                         <div className="flex items-center gap-2">
+                             {/* Header 功能鍵：計算機、策略白皮書、日夜模式、設定 */}
+                             <button onClick={() => { setIsCalcOpen(!isCalcOpen); setIsWhitepaperOpen(false); }} className={`p-2.5 rounded-xl border-2 transition-all active:scale-90 shadow-sm ${isCalcOpen ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-100 text-slate-700'}`}><Icon name="Calculator" size={20} /></button>
+                             <button onClick={() => { setIsWhitepaperOpen(!isWhitepaperOpen); setIsCalcOpen(false); }} className={`p-2.5 rounded-xl border-2 transition-all active:scale-90 shadow-sm ${isWhitepaperOpen ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-100 text-slate-700'}`}><Icon name="BookOpen" size={20} /></button>
                             <button onClick={() => setDarkMode(!darkMode)} className="p-2.5 rounded-xl bg-white/10 active:scale-90 font-black font-black"><Icon name={darkMode ? "Sun" : "Moon"} size={20} /></button>
                             <button onClick={() => setView('sync_settings')} className="p-2.5 rounded-xl bg-white border-2 border-slate-100 text-slate-700 active:scale-90 shadow-sm"><Icon name="Settings" size={20} /></button>
                             <div className="flex items-center gap-1.5 ml-1">
@@ -361,7 +381,177 @@
                     <main className="max-w-md mx-auto p-4 pt-24 space-y-6">
                         {view === 'dashboard' && (
                             <div className="space-y-6 animate-in fade-in font-black">
-                                {/* 新增：座右銘卡片 */}
+                                
+                                {/* 1. 戰略配倉計算機 (獨立置頂卡片) */}
+                                {isCalcOpen && (
+                                    <Card className="p-0 overflow-hidden border-4 border-indigo-400 bg-indigo-50 dark:bg-indigo-950 shadow-2xl text-left mb-6 animate-in slide-in-from-top-4 duration-300">
+                                        <div className="p-4 bg-indigo-600 text-white flex justify-between items-center">
+                                            <div className="flex items-center gap-2 font-black"><Icon name="Calculator" size={20} /><span>戰略配倉計算機</span></div>
+                                            <button onClick={() => setIsCalcOpen(false)}><Icon name="X" size={20} /></button>
+                                        </div>
+                                        
+                                        <div className="p-5 space-y-5">
+                                            <div className="flex gap-2">
+                                                <input 
+                                                    type="number" 
+                                                    placeholder="輸入預計總資產 (USD)..." 
+                                                    value={simulatedTotal}
+                                                    onChange={e => setSimulatedTotal(e.target.value)}
+                                                    className="flex-1 bg-white dark:bg-slate-800 border-2 border-indigo-200 rounded-xl px-4 py-3 text-lg font-black focus:border-indigo-500 outline-none"
+                                                />
+                                                <button 
+                                                    onClick={() => setSimulatedTotal(totalCapital.toFixed(0))}
+                                                    className="bg-indigo-600 text-white px-4 rounded-xl font-bold text-xs whitespace-nowrap active:scale-95 transition-transform"
+                                                >
+                                                    帶入<br/>淨值
+                                                </button>
+                                            </div>
+
+                                            {/* 配倉比例設定 */}
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] text-indigo-500 font-bold uppercase">核心 %</label>
+                                                    <input type="number" value={inputs.alloc_core} onChange={e => handleInputChange('alloc_core', e.target.value)} onBlur={(e) => syncToCloud('alloc_core', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-indigo-200 rounded-lg p-2 text-center font-bold text-indigo-600" />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] text-amber-500 font-bold uppercase">衛星 %</label>
+                                                    <input type="number" value={inputs.alloc_sat} onChange={e => handleInputChange('alloc_sat', e.target.value)} onBlur={(e) => syncToCloud('alloc_sat', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-amber-200 rounded-lg p-2 text-center font-bold text-amber-600" />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] text-sky-500 font-bold uppercase truncate">{inputs.custom_ticker_1 || '信仰1'} %</label>
+                                                    <input type="number" value={inputs.alloc_faith_1} onChange={e => handleInputChange('alloc_faith_1', e.target.value)} onBlur={(e) => syncToCloud('alloc_faith_1', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-sky-200 rounded-lg p-2 text-center font-bold text-sky-600" />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] text-cyan-500 font-bold uppercase truncate">{inputs.custom_ticker_2 || '信仰2'} %</label>
+                                                    <input type="number" value={inputs.alloc_faith_2} onChange={e => handleInputChange('alloc_faith_2', e.target.value)} onBlur={(e) => syncToCloud('alloc_faith_2', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-cyan-200 rounded-lg p-2 text-center font-bold text-cyan-600" />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2 text-sm">
+                                                {/* 核心部位 */}
+                                                <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border-l-4 border-indigo-500 shadow-sm">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-indigo-600 font-bold">● 核心部位 (${(allocationBase * (inputs.alloc_core/100)).toLocaleString(undefined, {maximumFractionDigits:0})})</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-4 gap-1 text-[10px] text-center text-slate-400 font-mono mb-1">
+                                                        <div className="col-span-1">標的</div><div className="col-span-1">現價</div><div className="col-span-2">建議股數</div>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        {['QQQ', 'QLD', 'TQQQ'].map(tk => (
+                                                            <div key={tk} className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center">
+                                                                <div className="text-slate-600 dark:text-slate-300">{tk}</div>
+                                                                <div className="text-slate-400">${prices[tk]?.toFixed(0)}</div>
+                                                                <div className="col-span-2 bg-slate-100 dark:bg-slate-700/50 rounded py-0.5 text-indigo-600 dark:text-indigo-300">
+                                                                    {prices[tk] > 0 ? Math.floor((allocationBase * (inputs.alloc_core/100)) / prices[tk]).toLocaleString() : '-'} 股
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        <div className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center border-t dark:border-slate-700 pt-1 mt-1">
+                                                            <div className="text-slate-500">現金</div>
+                                                            <div className="col-span-3 text-slate-400 text-right pr-2">空倉持有 ${ (allocationBase * (inputs.alloc_core/100)).toLocaleString(undefined, {maximumFractionDigits:0}) }</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* 信仰部位 - 獨立計算 */}
+                                                <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border-l-4 border-sky-500 shadow-sm">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-sky-600 font-bold">● 信仰部位 (${(allocationBase * ((inputs.alloc_faith_1 + inputs.alloc_faith_2)/100)).toLocaleString(undefined, {maximumFractionDigits:0})})</span>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        {inputs.custom_ticker_1 && inputs.custom_ticker_1.trim() !== '' && (
+                                                            <div className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center">
+                                                                <div className="text-slate-600 dark:text-slate-300 truncate">{inputs.custom_ticker_1}</div>
+                                                                <div className="text-slate-400">${prices[(inputs.custom_ticker_1||'').toUpperCase()]?.toFixed(0) || '-'}</div>
+                                                                <div className="col-span-2 bg-slate-100 dark:bg-slate-700/50 rounded py-0.5 text-sky-600 dark:text-sky-300">
+                                                                    {prices[(inputs.custom_ticker_1||'').toUpperCase()] > 0 ? Math.floor((allocationBase * (inputs.alloc_faith_1/100)) / prices[(inputs.custom_ticker_1||'').toUpperCase()]).toLocaleString() : '-'} 股 ({inputs.alloc_faith_1}%)
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {inputs.custom_ticker_2 && inputs.custom_ticker_2.trim() !== '' && (
+                                                            <div className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center">
+                                                                <div className="text-slate-600 dark:text-slate-300 truncate">{inputs.custom_ticker_2}</div>
+                                                                <div className="text-slate-400">${prices[(inputs.custom_ticker_2||'').toUpperCase()]?.toFixed(0) || '-'}</div>
+                                                                <div className="col-span-2 bg-slate-100 dark:bg-slate-700/50 rounded py-0.5 text-cyan-600 dark:text-cyan-300">
+                                                                    {prices[(inputs.custom_ticker_2||'').toUpperCase()] > 0 ? Math.floor((allocationBase * (inputs.alloc_faith_2/100)) / prices[(inputs.custom_ticker_2||'').toUpperCase()]).toLocaleString() : '-'} 股 ({inputs.alloc_faith_2}%)
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* 衛星部位 */}
+                                                <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border-l-4 border-amber-500 shadow-sm">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-amber-500 font-bold">● 衛星部位 (${(allocationBase * (inputs.alloc_sat/100)).toLocaleString(undefined, {maximumFractionDigits:0})})</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center">
+                                                        <div className="text-slate-600 dark:text-slate-300">IBIT</div>
+                                                        <div className="text-slate-400">${prices.IBIT?.toFixed(0)}</div>
+                                                        <div className="col-span-2 bg-slate-100 dark:bg-slate-700/50 rounded py-0.5 text-amber-600 dark:text-amber-300">
+                                                            {prices.IBIT > 0 ? Math.floor((allocationBase * (inputs.alloc_sat/100)) / prices.IBIT).toLocaleString() : '-'} 股
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Card>
+                                )}
+
+                                {/* 2. 策略白皮書 (獨立置頂卡片) */}
+                                {isWhitepaperOpen && (
+                                    <Card className="p-0 overflow-hidden border-4 border-indigo-400 bg-white dark:bg-slate-900 shadow-2xl text-left mb-6 animate-in slide-in-from-top-4 duration-300">
+                                        <div className="p-4 bg-indigo-600 text-white flex justify-between items-center">
+                                            <div className="flex items-center gap-2 font-black"><Icon name="BookOpen" size={20} /><span>策略執行協議 (Strategy Whitepaper)</span></div>
+                                            <button onClick={() => setIsWhitepaperOpen(false)}><Icon name="X" size={20} /></button>
+                                        </div>
+                                        <div className="whitepaper-scroll p-5 space-y-6 leading-relaxed bg-white dark:bg-slate-900 font-medium font-black">
+                                            <div className="flex justify-end mb-4 border-b border-dashed border-slate-200 dark:border-slate-700 pb-2">
+                                                <button onClick={() => setIsStrategyEditing(!isStrategyEditing)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${isStrategyEditing ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}>
+                                                    <Icon name={isStrategyEditing ? "Unlock" : "Lock"} size={14} /><span>{isStrategyEditing ? "編輯中 (點擊鎖定)" : "鎖定中 (點擊修改)"}</span>
+                                                </button>
+                                            </div>
+
+                                            {/* 核心策略編輯區 */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-black">
+                                                    <Icon name="TrendingUp" size={16}/>
+                                                    <input type="text" value={inputs.title_core} readOnly={!isStrategyEditing} onChange={e => handleInputChange('title_core', e.target.value)} onBlur={e => syncToCloud('title_core', e.target.value)} className={`title-input ${isStrategyEditing ? 'title-input-edit cursor-text' : 'cursor-default pointer-events-none'}`} />
+                                                </div>
+                                                <textarea value={inputs.strat_core} readOnly={!isStrategyEditing} onChange={e => handleInputChange('strat_core', e.target.value)} onBlur={e => syncToCloud('strat_core', e.target.value)} className={`w-full strategy-textarea resize-none ${!isStrategyEditing ? 'strategy-read-only' : ''}`} placeholder="輸入核心 QQQ 策略..." />
+                                            </div>
+
+                                            {/* QLD/槓桿策略編輯區 (獨立分開) */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-black">
+                                                    <Icon name="TrendingUp" size={16}/>
+                                                    <input type="text" value={inputs.title_qld} readOnly={!isStrategyEditing} onChange={e => handleInputChange('title_qld', e.target.value)} onBlur={e => syncToCloud('title_qld', e.target.value)} className={`title-input ${isStrategyEditing ? 'title-input-edit cursor-text' : 'cursor-default pointer-events-none'}`} />
+                                                </div>
+                                                <textarea value={inputs.strat_qld} readOnly={!isStrategyEditing} onChange={e => handleInputChange('strat_qld', e.target.value)} onBlur={e => syncToCloud('strat_qld', e.target.value)} className={`w-full strategy-textarea resize-none ${!isStrategyEditing ? 'strategy-read-only' : ''}`} placeholder="輸入槓桿操作策略..." />
+                                            </div>
+
+                                            {/* 信仰/自選股策略編輯區 (標題改為輸入框) */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-black">
+                                                    <Icon name="Quote" size={16}/>
+                                                    <input type="text" value={inputs.title_faith} readOnly={!isStrategyEditing} onChange={e => handleInputChange('title_faith', e.target.value)} onBlur={e => syncToCloud('title_faith', e.target.value)} className={`title-input ${isStrategyEditing ? 'title-input-edit cursor-text' : 'cursor-default pointer-events-none'}`} placeholder="自訂信仰持倉標題" />
+                                                </div>
+                                                <textarea value={inputs.strat_faith} readOnly={!isStrategyEditing} onChange={e => handleInputChange('strat_faith', e.target.value)} onBlur={e => syncToCloud('strat_faith', e.target.value)} className={`w-full strategy-textarea resize-none ${!isStrategyEditing ? 'strategy-read-only' : ''}`} placeholder="輸入個股/信仰持倉策略..." />
+                                            </div>
+
+                                            {/* 衛星/IBIT策略編輯區 */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2 text-amber-500 dark:text-amber-400 font-black">
+                                                    <Icon name="TrendingUp" size={16}/>
+                                                    <input type="text" value={inputs.title_ibit} readOnly={!isStrategyEditing} onChange={e => handleInputChange('title_ibit', e.target.value)} onBlur={e => syncToCloud('title_ibit', e.target.value)} className={`title-input ${isStrategyEditing ? 'title-input-edit cursor-text' : 'cursor-default pointer-events-none'}`} />
+                                                </div>
+                                                <textarea value={inputs.strat_ibit} readOnly={!isStrategyEditing} onChange={e => handleInputChange('strat_ibit', e.target.value)} onBlur={e => syncToCloud('strat_ibit', e.target.value)} className={`w-full strategy-textarea resize-none ${!isStrategyEditing ? 'strategy-read-only' : ''}`} placeholder="輸入衛星/IBIT操作策略..." />
+                                            </div>
+                                        </div>
+                                    </Card>
+                                )}
+
+                                {/* 座右銘卡片 */}
                                 <Card className="p-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg border-none">
                                     <div className="flex items-center gap-2 mb-1 opacity-80">
                                         <Icon name="Quote" size={16} className="text-white" />
@@ -412,13 +602,16 @@
                                     </div>
                                 </Card>
 
-                                <Card className="grid grid-cols-2 gap-4 text-left font-black font-black">
-                                    {[{ l: "QQQ", f: "qty_qqq", s: "QQQ" }, { l: "QLD", f: "qty_qld", s: "QLD" }, { l: "TQQQ", f: "qty_tqqq", s: "TQQQ" }, { l: "IBIT", f: "qty_ibit", s: "IBIT" }].map(it => (
-                                        <div key={it.f} className="space-y-1"><div className="flex justify-between items-center px-1 font-black"><label className="text-[11px] text-slate-400 uppercase font-black">{it.l}</label><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded font-mono tracking-tighter">${prices[it.s]?.toFixed(2) || '0.00'}</span></div><input type="number" value={inputs[it.f]} onChange={e => handleInputChange(it.f, e.target.value)} onBlur={(e) => syncToCloud(it.f, e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-50 dark:border-slate-700 rounded-2xl p-4 font-black text-lg text-center" /></div>
-                                    ))}
-                                    <div className="space-y-1 text-left"><div className="flex justify-between items-center px-1 font-black"><input type="text" value={inputs.custom_ticker_1} onChange={e => handleInputChange('custom_ticker_1', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_1', e.target.value.toUpperCase())} className="text-[11px] text-slate-400 bg-transparent p-0 w-16 outline-none text-left" /><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded font-mono tracking-tighter">${prices[(inputs.custom_ticker_1 || "").trim().toUpperCase()]?.toFixed(2) || '0.00'}</span></div><input type="number" value={inputs.qty_custom_1} onChange={e => handleInputChange('qty_custom_1', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_1', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 font-black text-lg text-center font-black" /></div>
-                                    <div className="space-y-1 text-left"><div className="flex justify-between items-center px-1 font-black"><input type="text" value={inputs.custom_ticker_2} onChange={e => handleInputChange('custom_ticker_2', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_2', e.target.value.toUpperCase())} className="text-[11px] text-slate-400 bg-transparent p-0 w-16 outline-none text-left" /><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded font-mono tracking-tighter">${prices[(inputs.custom_ticker_2 || "").trim().toUpperCase()]?.toFixed(2) || '0.00'}</span></div><input type="number" value={inputs.qty_custom_2} onChange={e => handleInputChange('qty_custom_2', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_2', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 font-black text-lg text-center font-black" /></div>
-                                    <div className="col-span-2 space-y-1 text-center font-black font-black"><label className="text-[11px] font-black text-slate-500 px-1 uppercase block text-center w-full font-black">現金餘額 (USD)</label><input type="number" value={inputs.cash_balance} onChange={e => handleInputChange('cash_balance', e.target.value)} onBlur={(e) => syncToCloud('cash_balance', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-indigo-100/50 dark:border-indigo-900/50 rounded-2xl p-4 font-black text-xl text-indigo-600" /></div>
+                                <Card className="space-y-4 text-left font-black font-black border-2 border-indigo-500 dark:border-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.2)]">
+                                    <SectionTitle title="持倉數量輸入 (Input Holdings)" iconName="Edit2" />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {[{ l: "QQQ", f: "qty_qqq", s: "QQQ" }, { l: "QLD", f: "qty_qld", s: "QLD" }, { l: "TQQQ", f: "qty_tqqq", s: "TQQQ" }, { l: "IBIT", f: "qty_ibit", s: "IBIT" }].map(it => (
+                                            <div key={it.f} className="space-y-1"><div className="flex justify-between items-center px-1 font-black"><label className="text-[11px] text-slate-400 uppercase font-black">{it.l}</label><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded font-mono tracking-tighter">${prices[it.s]?.toFixed(2) || '0.00'}</span></div><input type="number" value={inputs[it.f]} onChange={e => handleInputChange(it.f, e.target.value)} onBlur={(e) => syncToCloud(it.f, e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-4 font-black text-lg text-center" /></div>
+                                        ))}
+                                        <div className="space-y-1 text-left"><div className="flex justify-between items-center px-1 font-black"><input type="text" value={inputs.custom_ticker_1} onChange={e => handleInputChange('custom_ticker_1', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_1', e.target.value.toUpperCase())} className="text-[11px] text-slate-400 bg-transparent p-0 w-16 outline-none text-left" /><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded font-mono tracking-tighter">${prices[(inputs.custom_ticker_1 || "").trim().toUpperCase()]?.toFixed(2) || '0.00'}</span></div><input type="number" value={inputs.qty_custom_1} onChange={e => handleInputChange('qty_custom_1', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_1', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-4 font-black text-lg text-center font-black" /></div>
+                                        <div className="space-y-1 text-left"><div className="flex justify-between items-center px-1 font-black"><input type="text" value={inputs.custom_ticker_2} onChange={e => handleInputChange('custom_ticker_2', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_2', e.target.value.toUpperCase())} className="text-[11px] text-slate-400 bg-transparent p-0 w-16 outline-none text-left" /><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded font-mono tracking-tighter">${prices[(inputs.custom_ticker_2 || "").trim().toUpperCase()]?.toFixed(2) || '0.00'}</span></div><input type="number" value={inputs.qty_custom_2} onChange={e => handleInputChange('qty_custom_2', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_2', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-4 font-black text-lg text-center font-black" /></div>
+                                        <div className="col-span-2 space-y-1 text-center font-black font-black"><label className="text-[11px] font-black text-slate-500 px-1 uppercase block text-center w-full font-black">現金餘額 (USD)</label><input type="number" value={inputs.cash_balance} onChange={e => handleInputChange('cash_balance', e.target.value)} onBlur={(e) => syncToCloud('cash_balance', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-indigo-100/50 dark:border-indigo-900/50 rounded-2xl p-4 font-black text-xl text-indigo-600" /></div>
+                                    </div>
                                 </Card>
 
                                 {/* 技術指標輸入區 - 新增自選 EMA60 */}
@@ -625,122 +818,6 @@
                             <div className="space-y-6 animate-in fade-in text-left">
                                 <Card className="bg-slate-800 text-white p-6 shadow-2xl relative overflow-hidden font-black font-black font-black"><div className="absolute right-0 top-0 p-4 opacity-10 font-black"><Icon name="Fingerprint" size={100} /></div><SectionTitle title="目前同步金鑰 ID" iconName="Fingerprint" /><span className="text-lg font-black font-mono uppercase font-black">{effectiveUserId || '正在連結...'}</span></Card>
                                 <Card className="space-y-4 font-black"><SectionTitle title="切換同步 ID" iconName="CheckCircle" /><input type="text" value={tempSyncId} onChange={e => setTempSyncId(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-5 font-black text-lg focus:border-indigo-500" placeholder="輸入 ID" /><button onClick={() => { setCustomSyncId(tempSyncId.trim()); localStorage.setItem('qqq_sync_id', tempSyncId.trim()); setView('dashboard'); }} className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl active:scale-95 font-bold uppercase tracking-widest font-black">套用同步</button></Card>
-                                
-                                <Card className="p-0 overflow-hidden border-2 shadow-sm text-left font-black">
-                                    <button onClick={() => setWhitepaperOpen(!isWhitepaperOpen)} className="w-full flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-800 font-black font-black font-black font-black">
-                                        <div className="flex items-center gap-2 dark:text-slate-200"><Icon name="BookOpen" size={18} /><span>策略執行協議 (全) - 點擊編輯</span></div>
-                                        <Icon name={isWhitepaperOpen ? "ChevronUp" : "ChevronDown"} size={20} />
-                                    </button>
-                                    {isWhitepaperOpen && (
-                                        <div className="whitepaper-scroll p-5 space-y-6 leading-relaxed border-t dark:border-slate-800 bg-white dark:bg-slate-900 font-medium font-black">
-                                            
-                                            {/* 編輯鎖定開關 */}
-                                            <div className="flex justify-end mb-4 border-b border-dashed border-slate-200 dark:border-slate-700 pb-2">
-                                                <button 
-                                                    onClick={() => setIsStrategyEditing(!isStrategyEditing)} 
-                                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${isStrategyEditing ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}
-                                                >
-                                                    <Icon name={isStrategyEditing ? "Unlock" : "Lock"} size={14} />
-                                                    <span>{isStrategyEditing ? "編輯中 (點擊鎖定)" : "鎖定中 (點擊修改)"}</span>
-                                                </button>
-                                            </div>
-
-                                            {/* 核心策略編輯區 */}
-                                            <div className="space-y-2">
-                                                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-black">
-                                                    <Icon name="TrendingUp" size={16}/>
-                                                    <input 
-                                                        type="text" 
-                                                        value={inputs.title_core} 
-                                                        readOnly={!isStrategyEditing}
-                                                        onChange={e => handleInputChange('title_core', e.target.value)} 
-                                                        onBlur={e => syncToCloud('title_core', e.target.value)} 
-                                                        className={`title-input ${isStrategyEditing ? 'title-input-edit cursor-text' : 'cursor-default pointer-events-none'}`}
-                                                    />
-                                                </div>
-                                                <textarea 
-                                                    value={inputs.strat_core} 
-                                                    readOnly={!isStrategyEditing}
-                                                    onChange={e => handleInputChange('strat_core', e.target.value)} 
-                                                    onBlur={e => syncToCloud('strat_core', e.target.value)} 
-                                                    className={`w-full strategy-textarea resize-none ${!isStrategyEditing ? 'strategy-read-only' : ''}`} 
-                                                    placeholder="輸入核心 QQQ 策略..." 
-                                                />
-                                            </div>
-
-                                            {/* QLD/槓桿策略編輯區 (獨立分開) */}
-                                            <div className="space-y-2">
-                                                <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-black">
-                                                    <Icon name="TrendingUp" size={16}/>
-                                                    <input 
-                                                        type="text" 
-                                                        value={inputs.title_qld} 
-                                                        readOnly={!isStrategyEditing}
-                                                        onChange={e => handleInputChange('title_qld', e.target.value)} 
-                                                        onBlur={e => syncToCloud('title_qld', e.target.value)} 
-                                                        className={`title-input ${isStrategyEditing ? 'title-input-edit cursor-text' : 'cursor-default pointer-events-none'}`}
-                                                    />
-                                                </div>
-                                                <textarea 
-                                                    value={inputs.strat_qld} 
-                                                    readOnly={!isStrategyEditing}
-                                                    onChange={e => handleInputChange('strat_qld', e.target.value)} 
-                                                    onBlur={e => syncToCloud('strat_qld', e.target.value)} 
-                                                    className={`w-full strategy-textarea resize-none ${!isStrategyEditing ? 'strategy-read-only' : ''}`} 
-                                                    placeholder="輸入槓桿操作策略..." 
-                                                />
-                                            </div>
-
-                                            {/* 信仰/自選股策略編輯區 (標題改為輸入框) */}
-                                            <div className="space-y-2">
-                                                <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-black">
-                                                    <Icon name="Quote" size={16}/>
-                                                    <input 
-                                                        type="text" 
-                                                        value={inputs.title_faith} 
-                                                        readOnly={!isStrategyEditing}
-                                                        onChange={e => handleInputChange('title_faith', e.target.value)} 
-                                                        onBlur={e => syncToCloud('title_faith', e.target.value)} 
-                                                        className={`title-input ${isStrategyEditing ? 'title-input-edit cursor-text' : 'cursor-default pointer-events-none'}`}
-                                                        placeholder="自訂信仰持倉標題"
-                                                    />
-                                                </div>
-                                                <textarea 
-                                                    value={inputs.strat_faith} 
-                                                    readOnly={!isStrategyEditing}
-                                                    onChange={e => handleInputChange('strat_faith', e.target.value)} 
-                                                    onBlur={e => syncToCloud('strat_faith', e.target.value)} 
-                                                    className={`w-full strategy-textarea resize-none ${!isStrategyEditing ? 'strategy-read-only' : ''}`} 
-                                                    placeholder="輸入個股/信仰持倉策略..." 
-                                                />
-                                            </div>
-
-                                            {/* 衛星/IBIT策略編輯區 */}
-                                            <div className="space-y-2">
-                                                <div className="flex items-center gap-2 text-amber-500 dark:text-amber-400 font-black">
-                                                    <Icon name="TrendingUp" size={16}/>
-                                                    <input 
-                                                        type="text" 
-                                                        value={inputs.title_ibit} 
-                                                        readOnly={!isStrategyEditing}
-                                                        onChange={e => handleInputChange('title_ibit', e.target.value)} 
-                                                        onBlur={e => syncToCloud('title_ibit', e.target.value)} 
-                                                        className={`title-input ${isStrategyEditing ? 'title-input-edit cursor-text' : 'cursor-default pointer-events-none'}`}
-                                                    />
-                                                </div>
-                                                <textarea 
-                                                    value={inputs.strat_ibit} 
-                                                    readOnly={!isStrategyEditing}
-                                                    onChange={e => handleInputChange('strat_ibit', e.target.value)} 
-                                                    onBlur={e => syncToCloud('strat_ibit', e.target.value)} 
-                                                    className={`w-full strategy-textarea resize-none ${!isStrategyEditing ? 'strategy-read-only' : ''}`} 
-                                                    placeholder="輸入衛星/IBIT操作策略..." 
-                                                />
-                                            </div>
-
-                                        </div>
-                                    )}
-                                </Card>
                             </div>
                         )}
                     </main>
