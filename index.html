@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="QQQ Control">
-    <title>QQQ 戰略儀表板 v10.1 (Stable)</title>
+    <title>QQQ 戰略儀表板 v10.2 (Final Clean)</title>
     
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
 
@@ -56,7 +56,6 @@
         const { useState, useEffect, useMemo, useCallback } = React;
         const { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } = Recharts;
 
-        // Firebase Init
         const appId = "qqq-strategic-production-v1"; 
         const FINNHUB_API_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
         const firebaseConfig = { apiKey: "AIzaSyBpax3wlTwHTe6G3niZajtTxpoUWbgvX80", authDomain: "qldmax.firebaseapp.com", projectId: "qldmax", storageBucket: "qldmax.firebasestorage.app", messagingSenderId: "752199866954", appId: "1:752199866954:web:50d17ae522095c363d64b3" };
@@ -64,7 +63,6 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // Optimized Icon Component
         const Icon = ({ name, size = 20, className = "" }) => {
             const icons = {
                 TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>,
@@ -136,7 +134,7 @@
             });
 
             const showToast = (txt) => { setMessage(txt); setTimeout(() => setMessage(null), 3000); };
-            const handleInputChange = (f, v) => setInputs(p => ({ ...p, [f]: (typeof p[f] === 'number') ? (v === '' ? 0 : parseFloat(v)) : v }));
+            const handleInputChange = (f, v) => setInputs(p => ({ ...p, [f]: v === '' ? '' : (isNaN(v) ? v : parseFloat(v)) }));
             const syncToCloud = async (f, v) => { if (!effectiveUserId) return; await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ [f]: v }, { merge: true }); };
 
             const fetchPrices = useCallback(async () => {
@@ -153,6 +151,8 @@
                     setPrices(prev => ({ ...prev, ...newMap }));
                 } catch (e) {} finally { setLoadingPrices(false); }
             }, [inputs.custom_ticker_1, inputs.custom_ticker_2, loadingPrices]);
+
+            const getNum = (val) => val === '' ? 0 : val;
 
             const periodicStats = useMemo(() => {
                 if (records.length < 2) return { years: [], months: [] };
@@ -181,16 +181,16 @@
 
             const totalCapital = useMemo(() => {
                 const p = prices; const t1 = (inputs.custom_ticker_1 || "").toUpperCase(); const t2 = (inputs.custom_ticker_2 || "").toUpperCase();
-                return ( (p.QQQ || 0) * (parseFloat(inputs.qty_qqq) || 0) ) + ( (p.QLD || 0) * (parseFloat(inputs.qty_qld) || 0) ) + ( (p.TQQQ || 0) * (parseFloat(inputs.qty_tqqq) || 0) ) + ( (p.IBIT || 0) * (parseFloat(inputs.qty_ibit) || 0) ) + ( (p[t1] || 0) * (parseFloat(inputs.qty_custom_1) || 0) ) + ( (p[t2] || 0) * (parseFloat(inputs.qty_custom_2) || 0) ) + ( parseFloat(inputs.cash_balance) || 0 );
+                return ( (p.QQQ || 0) * (getNum(inputs.qty_qqq)) ) + ( (p.QLD || 0) * (getNum(inputs.qty_qld)) ) + ( (p.TQQQ || 0) * (getNum(inputs.qty_tqqq)) ) + ( (p.IBIT || 0) * (getNum(inputs.qty_ibit)) ) + ( (p[t1] || 0) * (getNum(inputs.qty_custom_1)) ) + ( (p[t2] || 0) * (getNum(inputs.qty_custom_2)) ) + ( getNum(inputs.cash_balance) );
             }, [prices, inputs]);
 
             const allocationBase = useMemo(() => simulatedTotal ? parseFloat(simulatedTotal) : totalCapital, [simulatedTotal, totalCapital]);
-            const loanSellThreshold = useMemo(() => (parseFloat(inputs.loan_entry_valuation) || 0) * (1 + (parseFloat(inputs.loan_repay_target) || 0) / 100), [inputs.loan_entry_valuation, inputs.loan_repay_target]);
+            const loanSellThreshold = useMemo(() => (getNum(inputs.loan_entry_valuation)) * (1 + (getNum(inputs.loan_repay_target)) / 100), [inputs.loan_entry_valuation, inputs.loan_repay_target]);
             const isTargetReached = totalCapital >= loanSellThreshold && inputs.loan_entry_valuation > 0;
 
             const pieData = useMemo(() => {
                 const p = prices; const t1 = (inputs.custom_ticker_1 || "").toUpperCase(); const t2 = (inputs.custom_ticker_2 || "").toUpperCase();
-                const d = [ { name: 'QQQ', value: (p.QQQ||0)*(parseFloat(inputs.qty_qqq)||0), color: '#4f46e5' }, { name: 'QLD', value: (p.QLD||0)*(parseFloat(inputs.qty_qld)||0), color: '#818cf8' }, { name: 'TQQQ', value: (p.TQQQ||0)*(parseFloat(inputs.qty_tqqq)||0), color: '#c084fc' }, { name: 'IBIT', value: (p.IBIT||0)*(parseFloat(inputs.qty_ibit)||0), color: '#f59e0b' }, { name: t1, value: (p[t1]||0)*(parseFloat(inputs.qty_custom_1)||0), color: '#10b981' }, { name: t2, value: (p[t2]||0)*(parseFloat(inputs.qty_custom_2)||0), color: '#06b6d4' }, { name: '現金', value: parseFloat(inputs.cash_balance)||0, color: '#94a3b8' } ];
+                const d = [ { name: 'QQQ', value: (p.QQQ||0)*(getNum(inputs.qty_qqq)), color: '#4f46e5' }, { name: 'QLD', value: (p.QLD||0)*(getNum(inputs.qty_qld)), color: '#818cf8' }, { name: 'TQQQ', value: (p.TQQQ||0)*(getNum(inputs.qty_tqqq)), color: '#c084fc' }, { name: 'IBIT', value: (p.IBIT||0)*(getNum(inputs.qty_ibit)), color: '#f59e0b' }, { name: t1, value: (p[t1]||0)*(getNum(inputs.qty_custom_1)), color: '#10b981' }, { name: t2, value: (p[t2]||0)*(getNum(inputs.qty_custom_2)), color: '#06b6d4' }, { name: '現金', value: getNum(inputs.cash_balance), color: '#94a3b8' } ];
                 const filtered = d.filter(x => x.value > 0); const sum = filtered.reduce((a, b) => a + b.value, 0);
                 return filtered.map(x => ({ ...x, percentage: sum > 0 ? ((x.value / sum) * 100).toFixed(1) : 0 }));
             }, [prices, inputs]);
@@ -198,30 +198,28 @@
             const currentLeverage = useMemo(() => {
                 if (totalCapital <= 0) return 0;
                 const p = prices; const t1 = (inputs.custom_ticker_1 || "").toUpperCase(); const t2 = (inputs.custom_ticker_2 || "").toUpperCase();
-                const val_tqqq = (p.TQQQ || 0) * (inputs.qty_tqqq || 0); const val_qld = (p.QLD || 0) * (inputs.qty_qld || 0); const val_qqq = (p.QQQ || 0) * (inputs.qty_qqq || 0);
-                const val_others = ( (p.IBIT || 0) * (inputs.qty_ibit || 0) ) + ( (p[t1] || 0) * (inputs.qty_custom_1) || 0 ) + ( (p[t2] || 0) * (inputs.qty_custom_2) || 0 );
+                const val_tqqq = (p.TQQQ || 0) * getNum(inputs.qty_tqqq); const val_qld = (p.QLD || 0) * getNum(inputs.qty_qld); const val_qqq = (p.QQQ || 0) * getNum(inputs.qty_qqq);
+                const val_others = ( (p.IBIT || 0) * getNum(inputs.qty_ibit) ) + ( (p[t1] || 0) * getNum(inputs.qty_custom_1) ) + ( (p[t2] || 0) * getNum(inputs.qty_custom_2) );
                 const exposure = (val_tqqq * 3) + (val_qld * 2) + (val_qqq * 1) + (val_others * 1);
                 return (exposure / totalCapital).toFixed(2);
             }, [totalCapital, prices, inputs]);
 
-            const analysis = useMemo(() => {
-                const q = prices.QQQ; const { qqq_ema5: e5, qqq_ema12: e12, qqq_ema25: e25 } = inputs;
-                if (!q || !e25) return { rec: "更新中...", level: "info" };
-                const isDeath = q < (e25 * 0.97); const isUp = e5 > e12;
-                if (isDeath) return { rec: "CASH (全現金)", msg: "⚠️ 跌破生死線，強制撤離。", level: "error" };
-                if (!isUp) return { rec: "QQQ (1x)", msg: "📉 趨勢轉弱，主動降槓。", level: "warning" };
-                return { rec: "QLD (2x)", msg: "🚀 上升趨勢，維持巡航。", level: "info" };
-            }, [prices, inputs]);
-
-            const nonCoreLeverageContribution = useMemo(() => (inputs.alloc_faith_1 + inputs.alloc_faith_2 + inputs.alloc_sat) / 100 * 1, [inputs.alloc_faith_1, inputs.alloc_faith_2, inputs.alloc_sat]);
+            const nonCoreLeverageContribution = useMemo(() => (getNum(inputs.alloc_faith_1) + getNum(inputs.alloc_faith_2) + getNum(inputs.alloc_sat)) / 100 * 1, [inputs.alloc_faith_1, inputs.alloc_faith_2, inputs.alloc_sat]);
 
             const strategyAlerts = useMemo(() => {
                 const alerts = []; const p = prices; const i = inputs; const t1 = (i.custom_ticker_1 || "").toUpperCase(); const t2 = (i.custom_ticker_2 || "").toUpperCase();
-                if (i.qqq_ema25 > 0 && p.QQQ < (i.qqq_ema25 * 0.97)) alerts.push({ type: 'danger', title: '🛑 核心部位：崩盤避險', msg: 'QQQ 跌破週線 25EMA (含-3%緩衝)！策略建議：核心部位全數轉為現金 (CASH) 避險。' });
-                else if (i.qqq_ema5 > 0 && i.qqq_ema12 > 0 && i.qqq_ema5 > i.qqq_ema12 && p.QQQ > (i.qqq_ema25 * 1.03)) alerts.push({ type: 'opportunity', title: '🚀 核心部位：巡航模式 (QLD)', msg: '週線 5>12 且站穩 25EMA (含+3%確認)。策略建議：核心部位切換至 2x QLD。' });
-                if (i.qqq_ath > 0 && p.QQQ < (i.qqq_ath * 0.92) && p.QQQ > (i.qqq_ema25 * 1.03)) alerts.push({ type: 'sniper', title: '🎯 核心部位：狙擊機會 (TQQQ)', msg: 'QQQ 距前高回檔超過 8% 且趨勢未破。策略建議：可視情況切換 3x TQQQ 進行短線狙擊。' });
-                if (i.current_positions === 'TQQQ' && p.QQQ < (i.qqq_ema5 * 0.97) && i.qqq_ema5 > 0) alerts.push({ type: 'warning', title: '📉 核心部位：攻擊熄火', msg: 'QQQ 收盤跌破週 5EMA (含-3%緩衝)。策略建議：TQQQ 獲利/停損，退守 QLD 或 QQQ。' });
-                const checkRisk = (ticker, price, ema) => { if (ticker && price > 0 && ema > 0 && price < (ema * 0.97)) alerts.push({ type: 'risk', title: `⚠️ 賣出訊號：${ticker}`, msg: `${ticker} 跌破週線 50EMA (含-3%緩衝)。策略建議：賣出轉 SGOV 短債避險。` }); };
+                const ema25 = getNum(i.qqq_ema25); const ema5 = getNum(i.qqq_ema5); const ema12 = getNum(i.qqq_ema12); const ath = getNum(i.qqq_ath);
+                if (ema25 > 0 && p.QQQ < (ema25 * 0.97)) alerts.push({ type: 'danger', title: '🛑 核心部位：崩盤避險', msg: `QQQ 跌破週線 25EMA $${ema25} (含-3%緩衝 $${(ema25*0.97).toFixed(2)})！策略建議：核心部位全數轉為現金 (CASH) 避險。` });
+                else if (ema5 > 0 && ema12 > 0 && ema5 > ema12 && p.QQQ > (ema25 * 1.03)) alerts.push({ type: 'opportunity', title: '🚀 核心部位：巡航模式 (QLD)', msg: `週線 5>12 且站穩 25EMA $${ema25} (含+3%確認 $${(ema25*1.03).toFixed(2)})。策略建議：核心部位切換至 2x QLD。` });
+                if (ath > 0 && p.QQQ < (ath * 0.92) && p.QQQ > (ema25 * 1.03)) alerts.push({ type: 'sniper', title: '🎯 核心部位：狙擊機會 (TQQQ)', msg: 'QQQ 距前高回檔超過 8% 且趨勢未破。策略建議：可視情況切換 3x TQQQ 進行短線狙擊。' });
+                if (i.current_positions === 'TQQQ' && p.QQQ < (ema5 * 0.97) && ema5 > 0) alerts.push({ type: 'warning', title: '📉 核心部位：攻擊熄火', msg: `QQQ 收盤跌破週 5EMA $${ema5} (含-3%緩衝 $${(ema5*0.97).toFixed(2)})。策略建議：TQQQ 獲利/停損，退守 QLD 或 QQQ。` });
+                const checkRisk = (ticker, price, ema) => { 
+                    const e = getNum(ema);
+                    if (ticker && price > 0 && e > 0) {
+                        if (price < (e * 0.97)) alerts.push({ type: 'risk', title: `⚠️ 賣出訊號：${ticker}`, msg: `${ticker} 跌破週線 50EMA ($${e}) 之下方 3% 緩衝位 ($${(e*0.97).toFixed(2)})，建議賣出轉 SGOV。` });
+                        if (price > (e * 1.03)) alerts.push({ type: 'opportunity', title: `🔵 買進訊號：${ticker}`, msg: `${ticker} 突破週線 50EMA ($${e}) 之上方 3% 緩衝位 ($${(e*1.03).toFixed(2)})，趨勢翻多，建議買進。` });
+                    }
+                };
                 checkRisk('IBIT', p.IBIT, i.ibit_ema50_wk); checkRisk(t1, p[t1], i.custom_1_ema50_wk); checkRisk(t2, p[t2], i.custom_2_ema50_wk);
                 return alerts;
             }, [prices, inputs]);
@@ -254,7 +252,6 @@
                     <main className="max-w-md mx-auto p-4 pt-24 space-y-6">
                         {view === 'dashboard' && (
                             <div className="space-y-6 animate-in fade-in font-black">
-                                
                                 {isCalcOpen && ( 
                                     <Card className="p-0 overflow-hidden border-4 border-indigo-400 bg-indigo-50 dark:bg-indigo-950 shadow-2xl text-left mb-6 animate-in slide-in-from-top-4 duration-300">
                                         <div className="p-4 bg-indigo-600 text-white flex justify-between items-center"><div className="flex items-center gap-2 font-black"><Icon name="Calculator" size={20} /><span>戰略配倉計算機</span></div><button onClick={() => setIsCalcOpen(false)}><Icon name="X" size={20} /></button></div>
@@ -267,9 +264,9 @@
                                                 <div className="space-y-1"><label className="text-[10px] text-cyan-500 font-bold uppercase truncate">{inputs.custom_ticker_2 || '信仰2'} %</label><input type="number" value={inputs.alloc_faith_2} onChange={e => handleInputChange('alloc_faith_2', e.target.value)} onBlur={(e) => syncToCloud('alloc_faith_2', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-cyan-200 rounded-lg p-2 text-center font-bold text-cyan-600" /></div>
                                             </div>
                                             <div className="space-y-2 text-sm">
-                                                <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border-l-4 border-indigo-500 shadow-sm"><div className="flex justify-between items-center mb-1"><span className="text-indigo-600 font-bold">● 核心部位 (${(allocationBase * (inputs.alloc_core/100)).toLocaleString(undefined, {maximumFractionDigits:0})})</span></div><div className="grid grid-cols-4 gap-1 text-[10px] text-center text-slate-400 font-mono mb-1"><div className="col-span-1">標的</div><div className="col-span-1">現價</div><div className="col-span-2">建議股數</div></div><div className="space-y-1">{['QQQ', 'QLD', 'TQQQ'].map(tk => (<div key={tk} className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center"><div className="text-slate-600 dark:text-slate-300">{tk}</div><div className="text-slate-400">${prices[tk]?.toFixed(0)}</div><div className="col-span-2 flex justify-between items-center bg-slate-100 dark:bg-slate-700/50 rounded px-2 py-0.5"><span className="text-indigo-600 dark:text-indigo-300">{prices[tk] > 0 ? Math.floor((allocationBase * (inputs.alloc_core/100)) / prices[tk]).toLocaleString() : '-'} 股</span><span className="text-[9px] text-slate-400 ml-1">({(nonCoreLeverageContribution + (inputs.alloc_core / 100 * (tk === 'QQQ' ? 1 : tk === 'QLD' ? 2 : 3))).toFixed(2)}x)</span></div></div>))}<div className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center border-t dark:border-slate-700 pt-1 mt-1"><div className="text-slate-500">現金</div><div className="col-span-3 text-slate-400 text-right pr-2">空倉持有 ${ (allocationBase * (inputs.alloc_core/100)).toLocaleString(undefined, {maximumFractionDigits:0}) }</div></div></div></div>
-                                                <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border-l-4 border-sky-500 shadow-sm"><div className="flex justify-between items-center mb-1"><span className="text-sky-600 font-bold">● 信仰部位 (${(allocationBase * ((inputs.alloc_faith_1 + inputs.alloc_faith_2)/100)).toLocaleString(undefined, {maximumFractionDigits:0})})</span></div><div className="space-y-1">{inputs.custom_ticker_1 && inputs.custom_ticker_1.trim() !== '' && (<div className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center"><div className="text-slate-600 dark:text-slate-300 truncate">{inputs.custom_ticker_1}</div><div className="text-slate-400">${prices[(inputs.custom_ticker_1||'').toUpperCase()]?.toFixed(0) || '-'}</div><div className="col-span-2 bg-slate-100 dark:bg-slate-700/50 rounded py-0.5 text-sky-600 dark:text-sky-300">{prices[(inputs.custom_ticker_1||'').toUpperCase()] > 0 ? Math.floor((allocationBase * (inputs.alloc_faith_1/100)) / prices[(inputs.custom_ticker_1||'').toUpperCase()]).toLocaleString() : '-'} 股 ({inputs.alloc_faith_1}%)</div></div>)}{inputs.custom_ticker_2 && inputs.custom_ticker_2.trim() !== '' && (<div className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center"><div className="text-slate-600 dark:text-slate-300 truncate">{inputs.custom_ticker_2}</div><div className="text-slate-400">${prices[(inputs.custom_ticker_2||'').toUpperCase()]?.toFixed(0) || '-'}</div><div className="col-span-2 bg-slate-100 dark:bg-slate-700/50 rounded py-0.5 text-cyan-600 dark:text-cyan-300">{prices[(inputs.custom_ticker_2||'').toUpperCase()] > 0 ? Math.floor((allocationBase * (inputs.alloc_faith_2/100)) / prices[(inputs.custom_ticker_2||'').toUpperCase()]).toLocaleString() : '-'} 股 ({inputs.alloc_faith_2}%)</div></div>)}</div></div>
-                                                <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border-l-4 border-amber-500 shadow-sm"><div className="flex justify-between items-center mb-1"><span className="text-amber-500 font-bold">● 衛星部位 (${(allocationBase * (inputs.alloc_sat/100)).toLocaleString(undefined, {maximumFractionDigits:0})})</span></div><div className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center"><div className="text-slate-600 dark:text-slate-300">IBIT</div><div className="text-slate-400">${prices.IBIT?.toFixed(0)}</div><div className="col-span-2 bg-slate-100 dark:bg-slate-700/50 rounded py-0.5 text-amber-600 dark:text-amber-300">{prices.IBIT > 0 ? Math.floor((allocationBase * (inputs.alloc_sat/100)) / prices.IBIT).toLocaleString() : '-'} 股</div></div></div>
+                                                <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border-l-4 border-indigo-500 shadow-sm"><div className="flex justify-between items-center mb-1"><span className="text-indigo-600 font-bold">● 核心部位 (${(allocationBase * (getNum(inputs.alloc_core)/100)).toLocaleString(undefined, {maximumFractionDigits:0})})</span></div><div className="grid grid-cols-4 gap-1 text-[10px] text-center text-slate-400 font-mono mb-1"><div className="col-span-1">標的</div><div className="col-span-1">現價</div><div className="col-span-2">建議股數</div></div><div className="space-y-1">{['QQQ', 'QLD', 'TQQQ'].map(tk => (<div key={tk} className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center"><div className="text-slate-600 dark:text-slate-300">{tk}</div><div className="text-slate-400">${prices[tk]?.toFixed(0)}</div><div className="col-span-2 flex justify-between items-center bg-slate-100 dark:bg-slate-700/50 rounded px-2 py-0.5"><span className="text-indigo-600 dark:text-indigo-300">{prices[tk] > 0 ? Math.floor((allocationBase * (getNum(inputs.alloc_core)/100)) / prices[tk]).toLocaleString() : '-'} 股</span><span className="text-[9px] text-slate-400 ml-1">({(nonCoreLeverageContribution + (getNum(inputs.alloc_core) / 100 * (tk === 'QQQ' ? 1 : tk === 'QLD' ? 2 : 3))).toFixed(2)}x)</span></div></div>))}<div className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center border-t dark:border-slate-700 pt-1 mt-1"><div className="text-slate-500">現金</div><div className="col-span-3 text-slate-400 text-right pr-2">空倉持有 ${ (allocationBase * (getNum(inputs.alloc_core)/100)).toLocaleString(undefined, {maximumFractionDigits:0}) }</div></div></div></div>
+                                                <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border-l-4 border-sky-500 shadow-sm"><div className="flex justify-between items-center mb-1"><span className="text-sky-600 font-bold">● 信仰部位 (${(allocationBase * ((getNum(inputs.alloc_faith_1) + getNum(inputs.alloc_faith_2))/100)).toLocaleString(undefined, {maximumFractionDigits:0})})</span></div><div className="space-y-1">{inputs.custom_ticker_1 && inputs.custom_ticker_1.trim() !== '' && (<div className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center"><div className="text-slate-600 dark:text-slate-300 truncate">{inputs.custom_ticker_1}</div><div className="text-slate-400">${prices[(inputs.custom_ticker_1||'').toUpperCase()]?.toFixed(0) || '-'}</div><div className="col-span-2 bg-slate-100 dark:bg-slate-700/50 rounded py-0.5 text-sky-600 dark:text-sky-300">{prices[(inputs.custom_ticker_1||'').toUpperCase()] > 0 ? Math.floor((allocationBase * (getNum(inputs.alloc_faith_1)/100)) / prices[(inputs.custom_ticker_1||'').toUpperCase()]).toLocaleString() : '-'} 股 ({inputs.alloc_faith_1}%)</div></div>)}{inputs.custom_ticker_2 && inputs.custom_ticker_2.trim() !== '' && (<div className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center"><div className="text-slate-600 dark:text-slate-300 truncate">{inputs.custom_ticker_2}</div><div className="text-slate-400">${prices[(inputs.custom_ticker_2||'').toUpperCase()]?.toFixed(0) || '-'}</div><div className="col-span-2 bg-slate-100 dark:bg-slate-700/50 rounded py-0.5 text-cyan-600 dark:text-cyan-300">{prices[(inputs.custom_ticker_2||'').toUpperCase()] > 0 ? Math.floor((allocationBase * (inputs.alloc_faith_2/100)) / prices[(inputs.custom_ticker_2||'').toUpperCase()]).toLocaleString() : '-'} 股 ({inputs.alloc_faith_2}%)</div></div>)}</div></div>
+                                                <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border-l-4 border-amber-500 shadow-sm"><div className="flex justify-between items-center mb-1"><span className="text-amber-500 font-bold">● 衛星部位 (${(allocationBase * (getNum(inputs.alloc_sat)/100)).toLocaleString(undefined, {maximumFractionDigits:0})})</span></div><div className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center"><div className="text-slate-600 dark:text-slate-300">IBIT</div><div className="text-slate-400">${prices.IBIT?.toFixed(0)}</div><div className="col-span-2 bg-slate-100 dark:bg-slate-700/50 rounded py-0.5 text-amber-600 dark:text-amber-300">{prices.IBIT > 0 ? Math.floor((allocationBase * (getNum(inputs.alloc_sat)/100)) / prices.IBIT).toLocaleString() : '-'} 股</div></div></div>
                                             </div>
                                         </div>
                                     </Card>
@@ -329,7 +326,6 @@
                                     </div>
                                 </Card>
 
-                                {/* 技術指標輸入區 - 新增自選 EMA50 (週) */}
                                 <Card className="space-y-4">
                                     <SectionTitle title="技術指標參數 (QQQ週線/其他)" iconName="Settings" />
                                     <div className="grid grid-cols-3 gap-3">
