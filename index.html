@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="QQQ Control">
-    <title>QQQ 戰略儀表板 v10.0 (Final)</title>
+    <title>QQQ 戰略儀表板 v10.1 (Stable)</title>
     
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
 
@@ -255,23 +255,6 @@
                         {view === 'dashboard' && (
                             <div className="space-y-6 animate-in fade-in font-black">
                                 
-                                {strategyAlerts.length > 0 && (
-                                    <div className="space-y-3 animate-in slide-in-from-top-4 duration-500">
-                                        {strategyAlerts.map((alert, idx) => (
-                                            <Card key={idx} className={`risk-alert-card border-none shadow-xl p-4 ${getAlertColor(alert.type)}`}>
-                                                <div className="flex items-start gap-3">
-                                                    <div className="p-2 bg-white/20 rounded-full flex-shrink-0"><Icon name="ShieldAlert" size={24} className="animate-pulse" /></div>
-                                                    <div className="flex-1">
-                                                        <div className="font-black text-lg mb-1">{alert.title}</div>
-                                                        <div className="text-xs font-bold opacity-90 leading-relaxed mb-2">{alert.msg}</div>
-                                                        <button onClick={() => copyToMemo(alert.msg)} className="flex items-center gap-1 bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg text-[10px] transition-colors"><Icon name="Save" size={12} /> 寫入備註</button>
-                                                    </div>
-                                                </div>
-                                            </Card>
-                                        ))}
-                                    </div>
-                                )}
-
                                 {isCalcOpen && ( 
                                     <Card className="p-0 overflow-hidden border-4 border-indigo-400 bg-indigo-50 dark:bg-indigo-950 shadow-2xl text-left mb-6 animate-in slide-in-from-top-4 duration-300">
                                         <div className="p-4 bg-indigo-600 text-white flex justify-between items-center"><div className="flex items-center gap-2 font-black"><Icon name="Calculator" size={20} /><span>戰略配倉計算機</span></div><button onClick={() => setIsCalcOpen(false)}><Icon name="X" size={20} /></button></div>
@@ -346,6 +329,7 @@
                                     </div>
                                 </Card>
 
+                                {/* 技術指標輸入區 - 新增自選 EMA50 (週) */}
                                 <Card className="space-y-4">
                                     <SectionTitle title="技術指標參數 (QQQ週線/其他)" iconName="Settings" />
                                     <div className="grid grid-cols-3 gap-3">
@@ -503,3 +487,4 @@
     </script>
 </body>
 </html>
+
