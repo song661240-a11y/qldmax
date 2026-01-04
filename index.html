@@ -5,14 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="QQQ Control">
-    <title>QQQ 戰略儀表板 v10.2 (Final Clean)</title>
+    <meta name="apple-mobile-web-app-title" content="Alpha Horizon">
+    <title>Alpha Horizon Dashboard v3.3 (Calculator Final Split)</title>
     
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <!-- Re-added prop-types as Recharts UMD depends on it -->
     <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
     <script src="https://unpkg.com/recharts@2.10.0/umd/Recharts.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -23,7 +24,7 @@
     <script>
         tailwind.config = {
             darkMode: 'class',
-            theme: { extend: { colors: { indigo: { 950: '#1e1b4b' } } } }
+            theme: { extend: { colors: { indigo: { 950: '#1e1b4b' }, slate: { 850: '#1e293b' } } } }
         }
     </script>
 
@@ -40,20 +41,24 @@
         .title-input-edit { border-bottom: 2px solid #6366f1; padding-bottom: 4px; }
         .whitepaper-scroll { max-height: 60vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .tab-active { color: #4f46e5; border-top: 3px solid #4f46e5; }
-        @keyframes pulse-dot { 0%, 100% { opacity: 0.6; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1.1); } }
-        .sync-loading { animation: pulse-dot 1.2s infinite ease-in-out; }
-        .risk-alert-card { animation: pulse-border 2s infinite; }
-        @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
         .alert-btn-pulse { animation: alert-pulse 1.5s infinite; }
         @keyframes alert-pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .holding-input-group { background-color: rgba(255,255,255,0.5); border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden; }
+        .dark .holding-input-group { background-color: rgba(30, 41, 59, 0.5); border-color: #334155; }
+        .btn-active { transform: scale(0.98); transition: transform 0.1s; }
+        /* Mobile optimization */
+        .safe-pb { padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
+        input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        .accordion-content { transition: max-height 0.3s ease-out, opacity 0.3s ease-out; max-height: 0; opacity: 0; overflow: hidden; }
+        .accordion-content.open { max-height: 1000px; opacity: 1; }
     </style>
 </head>
 <body class="light text-left font-black text-slate-900 dark:text-slate-100">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useCallback } = React;
+        const { useState, useEffect, useMemo, useCallback, useRef } = React;
         const { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } = Recharts;
 
         const appId = "qqq-strategic-production-v1"; 
@@ -63,45 +68,267 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        const Icon = ({ name, size = 20, className = "" }) => {
-            const icons = {
-                TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>,
-                Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>,
-                RefreshCcw: <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 4a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16m-18-8h5V3m13 18h-5v5"/>,
-                LayoutDashboard: <><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></>,
-                History: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 0V3m0 5h5M12 7v5l4 2"/>,
-                Landmark: <><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 11 4 11 12 2"/></>,
-                Save: <><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></>,
-                Quote: <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5zM16 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-2c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5z"/>,
-                ShieldAlert: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></>,
-                CheckCircle: <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>,
-                Edit2: <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>,
-                Trash2: <><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></>,
-                X: <><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></>,
-                BookOpen: <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>,
-                ChevronDown: <path d="m6 9 6 6 6-6"/>,
-                ChevronUp: <path d="m18 15-6-6-6 6"/>,
-                PieChartIcon: <><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></>,
-                MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>,
-                Fingerprint: <><path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10"/><path d="M12 12v3"/><path d="M16 17.5c-2.5 1.5-5.5 1.5-8 0"/></>, 
-                BarChart2: <path d="M18 20V10M12 20V4M6 20v-6"/>,
-                Lock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></g>,
-                Unlock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" /></g>,
-                Calculator: <g><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></g>,
-                AlertCircle: <g><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></g>
-            };
-            return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name] || <circle cx="12" cy="12" r="10" />}</svg>;
+        // Icons
+        const ICON_MAP = {
+            TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>,
+            Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>,
+            RefreshCcw: <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 4a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16m-18-8h5V3m13 18h-5v5"/>,
+            LayoutDashboard: <><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></>,
+            History: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 0V3m0 5h5M12 7v5l4 2"/>,
+            Landmark: <><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 11 4 11 12 2"/></>,
+            Save: <><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></>,
+            Quote: <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5zM16 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-2c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5z"/>,
+            ShieldAlert: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></>,
+            CheckCircle: <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>,
+            Edit2: <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>,
+            Trash2: <><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></>,
+            X: <><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></>,
+            BookOpen: <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>,
+            ChevronDown: <path d="m6 9 6 6 6-6"/>,
+            ChevronUp: <path d="m18 15-6-6-6 6"/>,
+            PieChartIcon: <><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></>,
+            MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>,
+            Fingerprint: <><path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10"/><path d="M12 12v3"/><path d="M16 17.5c-2.5 1.5-5.5 1.5-8 0"/></>, 
+            BarChart2: <path d="M18 20V10M12 20V4M6 20v-6"/>,
+            Lock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></g>,
+            Unlock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" /></g>,
+            Calculator: <g><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></g>,
+            AlertCircle: <g><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></g>,
+            Sun: <circle cx="12" cy="12" r="5" />,
+            Moon: <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>,
+            Scale: <g><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></g>,
+            Wallet: <g><path d="M20 7h-3a2 2 0 0 1-2-2V3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7zM16 5h4v4h-4z"/></g>,
+            Download: <g><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></g>,
+            Upload: <g><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></g>,
+            DollarSign: <g><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></g>,
+            Plus: <g><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></g>,
+            Minus: <g><line x1="5" y1="12" x2="19" y2="12" /></g>,
+            ArrowRight: <g><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></g>,
+            Calendar: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></>
         };
-
+        const Icon = ({ name, size = 20, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{ICON_MAP[name] || <circle cx="12" cy="12" r="10" />}</svg>;
+        
         const Card = ({ children, className = "" }) => <div className={`rounded-[2rem] shadow-xl border p-5 transition-all bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 ${className}`}>{children}</div>;
         const SectionTitle = ({ title, iconName }) => <h2 className="text-[11px] font-black mb-3 flex items-center gap-2 uppercase tracking-widest text-slate-500 dark:text-slate-400 font-black font-black"><Icon name={iconName} size={14} /> {title}</h2>;
+
+        // --- Collapsible Section Component ---
+        const CollapsibleSection = ({ title, iconName, children, defaultOpen = false }) => {
+            const [isOpen, setIsOpen] = useState(defaultOpen);
+            return (
+                <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+                    <button onClick={() => setIsOpen(!isOpen)} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50">
+                        <div className="flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-200">
+                            <Icon name={iconName} size={18} /> {title}
+                        </div>
+                        <Icon name="ChevronDown" className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} size={16} />
+                    </button>
+                    <div className={`accordion-content ${isOpen ? 'open' : ''}`}>
+                        <div className="p-4 border-t border-slate-100 dark:border-slate-700">
+                            {children}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Calculator Modal (Split: Deposit vs Simulate) ---
+        const AllocationToolModal = ({ isOpen, onClose, totalCapital, inputs, prices, getNum }) => {
+            const [mode, setMode] = useState('deposit'); // 'deposit' or 'simulate'
+            const [inputValue, setInputValue] = useState(''); // Shared input value (amount or target total)
+            const [localAlloc, setLocalAlloc] = useState({ core: 0, sat1: 0, sat2: 0, ibit: 0 });
+
+            useEffect(() => {
+                if (isOpen) {
+                    setLocalAlloc({
+                        core: getNum(inputs.alloc_core),
+                        sat1: getNum(inputs.alloc_custom_1),
+                        sat2: getNum(inputs.alloc_custom_2),
+                        ibit: getNum(inputs.alloc_sat)
+                    });
+                    setInputValue(''); // Reset on open
+                    setMode('deposit'); // Default to deposit
+                }
+            }, [isOpen, inputs, totalCapital]);
+
+            if (!isOpen) return null;
+
+            const val = parseFloat(inputValue) || 0;
+            const tCore = (inputs.ticker_core_1 || "QQQ").toUpperCase();
+            
+            // Current Holdings Value
+            const valTQQQ = (prices.TQQQ || 0) * getNum(inputs.qty_tqqq);
+            const valCore1 = (prices[tCore] || 0) * getNum(inputs.qty_qqq);
+            const valSat1 = (prices[(inputs.custom_ticker_1||"").toUpperCase()] || 0) * getNum(inputs.qty_custom_1);
+            const valSat2 = (prices[(inputs.custom_ticker_2||"").toUpperCase()] || 0) * getNum(inputs.qty_custom_2);
+            const valIBIT = (prices.IBIT || 0) * getNum(inputs.qty_ibit);
+
+            let targetTotal = 0;
+            let displayData = [];
+
+            if (mode === 'deposit') {
+                // Mode: Deposit
+                // Target Total = Current + Input
+                targetTotal = totalCapital + val;
+            } else {
+                // Mode: Simulate
+                // Target Total = Input
+                targetTotal = val;
+            }
+
+            // Calculate Target Values per Asset based on localAlloc
+            const targetValues = {
+                TQQQ: (targetTotal * (localAlloc.core / 100)) / 2,
+                [tCore]: (targetTotal * (localAlloc.core / 100)) / 2,
+                [inputs.custom_ticker_1 || 'T1']: targetTotal * (localAlloc.sat1 / 100),
+                [inputs.custom_ticker_2 || 'T2']: targetTotal * (localAlloc.sat2 / 100),
+                IBIT: targetTotal * (localAlloc.ibit / 100)
+            };
+
+            const currentValues = {
+                TQQQ: valTQQQ,
+                [tCore]: valCore1,
+                [inputs.custom_ticker_1 || 'T1']: valSat1,
+                [inputs.custom_ticker_2 || 'T2']: valSat2,
+                IBIT: valIBIT
+            };
+
+            // Build Display Data
+            if (mode === 'deposit') {
+                // Deposit Logic: Only show POSITIVE buys to distribute the cash
+                const buyTQQQ = Math.max(0, targetValues.TQQQ - valTQQQ);
+                const buyCore1 = Math.max(0, targetValues[tCore] - valCore1);
+                const buySat1 = Math.max(0, targetValues[inputs.custom_ticker_1 || 'T1'] - valSat1);
+                const buySat2 = Math.max(0, targetValues[inputs.custom_ticker_2 || 'T2'] - valSat2);
+                const buyIBIT = Math.max(0, targetValues.IBIT - valIBIT);
+
+                const totalNeed = buyTQQQ + buyCore1 + buySat1 + buySat2 + buyIBIT;
+                const ratio = totalNeed > 0 ? Math.min(1, val / totalNeed) : 0;
+
+                displayData = [
+                    { k: 'TQQQ', v: buyTQQQ * ratio, type: 'buy' },
+                    { k: tCore, v: buyCore1 * ratio, type: 'buy' },
+                    { k: inputs.custom_ticker_1 || 'T1', v: buySat1 * ratio, type: 'buy' },
+                    { k: inputs.custom_ticker_2 || 'T2', v: buySat2 * ratio, type: 'buy' },
+                    { k: 'IBIT', v: buyIBIT * ratio, type: 'buy' }
+                ];
+            } else {
+                // Simulate Logic: Show Diff (Target - Current)
+                displayData = [
+                    { k: 'TQQQ', v: targetValues.TQQQ, diff: targetValues.TQQQ - valTQQQ, type: 'diff' },
+                    { k: tCore, v: targetValues[tCore], diff: targetValues[tCore] - valCore1, type: 'diff' },
+                    { k: inputs.custom_ticker_1 || 'T1', v: targetValues[inputs.custom_ticker_1 || 'T1'], diff: targetValues[inputs.custom_ticker_1 || 'T1'] - valSat1, type: 'diff' },
+                    { k: inputs.custom_ticker_2 || 'T2', v: targetValues[inputs.custom_ticker_2 || 'T2'], diff: targetValues[inputs.custom_ticker_2 || 'T2'] - valSat2, type: 'diff' },
+                    { k: 'IBIT', v: targetValues.IBIT, diff: targetValues.IBIT - valIBIT, type: 'diff' }
+                ];
+            }
+
+            const totalAllocPercent = localAlloc.core + localAlloc.sat1 + localAlloc.sat2 + localAlloc.ibit;
+            const isAllocValid = Math.abs(totalAllocPercent - 100) < 0.1;
+
+            return (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in">
+                    <Card className="w-full max-w-sm border-2 border-indigo-400 bg-white dark:bg-slate-900 shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
+                        <div className="flex justify-between items-center mb-4 sticky top-0 bg-white dark:bg-slate-900 z-10 pb-2 border-b dark:border-slate-800">
+                            <h3 className="font-black text-indigo-600 flex items-center gap-2"><Icon name="Calculator" /> 計算機</h3>
+                            <button onClick={onClose}><Icon name="X" /></button>
+                        </div>
+
+                        {/* Mode Tabs */}
+                        <div className="flex gap-2 mb-4 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                            <button onClick={() => { setMode('deposit'); setInputValue(''); }} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${mode === 'deposit' ? 'bg-orange-100 text-orange-600 shadow-sm' : 'text-slate-400'}`}>💰 資金注入</button>
+                            <button onClick={() => { setMode('simulate'); setInputValue(totalCapital.toFixed(0)); }} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${mode === 'simulate' ? 'bg-white dark:bg-slate-700 shadow text-indigo-600' : 'text-slate-400'}`}>🎯 目標試算</button>
+                        </div>
+
+                        {/* Input Field */}
+                        <div className="mb-4">
+                            <label className={`text-[10px] font-bold block text-center mb-1 ${mode === 'deposit' ? 'text-orange-500' : 'text-indigo-500'}`}>
+                                {mode === 'deposit' ? '➕ 注入金額 (USD)' : '🎯 預期總資產 (USD)'}
+                            </label>
+                            <input type="number" value={inputValue} onChange={e => setInputValue(e.target.value)} className={`w-full p-4 rounded-xl text-xl font-black mb-1 text-center outline-none border-2 ${mode === 'deposit' ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-600 focus:ring-2 focus:ring-orange-400' : 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 text-indigo-600 focus:ring-2 focus:ring-indigo-400'}`} autoFocus />
+                            {mode === 'deposit' && <p className="text-[10px] text-center text-slate-400">注入後總值: ${(totalCapital + val).toLocaleString(undefined, {maximumFractionDigits:0})}</p>}
+                        </div>
+
+                        {/* Allocations Config */}
+                        <div className="mb-4 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-xs font-bold text-slate-500">目標配比設定 (%)</span>
+                                <span className={`text-xs font-black ${isAllocValid ? 'text-emerald-500' : 'text-red-500'}`}>合計: {totalAllocPercent.toFixed(0)}%</span>
+                            </div>
+                            <div className="grid grid-cols-4 gap-2 text-center">
+                                <div><label className="text-[9px] block text-slate-400">Core</label><input type="number" value={localAlloc.core} onChange={e => setLocalAlloc({...localAlloc, core: parseFloat(e.target.value)||0})} className="w-full bg-white dark:bg-slate-700 rounded p-1 text-center font-bold text-sm" /></div>
+                                <div><label className="text-[9px] block text-slate-400">IBIT</label><input type="number" value={localAlloc.ibit} onChange={e => setLocalAlloc({...localAlloc, ibit: parseFloat(e.target.value)||0})} className="w-full bg-white dark:bg-slate-700 rounded p-1 text-center font-bold text-sm" /></div>
+                                <div><label className="text-[9px] block text-slate-400 truncate">{inputs.custom_ticker_1 || 'T1'}</label><input type="number" value={localAlloc.sat1} onChange={e => setLocalAlloc({...localAlloc, sat1: parseFloat(e.target.value)||0})} className="w-full bg-white dark:bg-slate-700 rounded p-1 text-center font-bold text-sm" /></div>
+                                <div><label className="text-[9px] block text-slate-400 truncate">{inputs.custom_ticker_2 || 'T2'}</label><input type="number" value={localAlloc.sat2} onChange={e => setLocalAlloc({...localAlloc, sat2: parseFloat(e.target.value)||0})} className="w-full bg-white dark:bg-slate-700 rounded p-1 text-center font-bold text-sm" /></div>
+                            </div>
+                        </div>
+
+                        {/* Result Table */}
+                        <div className="space-y-1.5 text-sm">
+                            <div className="grid grid-cols-12 gap-1 text-[10px] text-slate-400 text-center border-b pb-1 dark:border-slate-800 font-bold uppercase tracking-wider">
+                                <div className="col-span-3 text-left pl-1">標的</div>
+                                <div className="col-span-3">現值</div>
+                                <div className="col-span-3">{mode === 'deposit' ? '分配' : '目標'}</div>
+                                <div className="col-span-3">建議操作</div>
+                            </div>
+                            {displayData.map((d) => {
+                                if (!d.k) return null;
+                                const currentVal = currentValues[d.k] || 0;
+                                
+                                let actionVal = 0;
+                                let displayTarget = 0;
+
+                                if (d.type === 'buy') {
+                                    actionVal = d.v; // Positive buy amount
+                                    displayTarget = d.v; // Show allocated amount
+                                } else {
+                                    actionVal = d.diff; // Diff (+/-)
+                                    displayTarget = d.v; // Show target total
+                                }
+
+                                const price = prices[d.k.toUpperCase()] || 0;
+                                const shares = price > 0 ? actionVal / price : 0;
+                                
+                                return (
+                                    <div key={d.k} className="grid grid-cols-12 gap-1 items-center p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                        <div className="col-span-3 text-left font-bold text-slate-700 dark:text-slate-200 truncate text-[11px]">{d.k}</div>
+                                        <div className="col-span-3 text-center text-slate-400 text-[10px]">${currentVal.toLocaleString(undefined,{maximumFractionDigits:0})}</div>
+                                        
+                                        {/* Target / Alloc Column */}
+                                        <div className="col-span-3 text-center font-bold text-[10px] text-slate-500">
+                                            ${displayTarget.toLocaleString(undefined,{maximumFractionDigits:0})}
+                                        </div>
+                                        
+                                        {/* Action Column */}
+                                        <div className={`col-span-3 text-right font-black text-xs`}>
+                                            {mode === 'deposit' ? (
+                                                <span className="text-orange-500">
+                                                    +{actionVal.toLocaleString(undefined,{maximumFractionDigits:0})}
+                                                    <div className="text-[9px] opacity-70">+{shares.toFixed(0)}股</div>
+                                                </span>
+                                            ) : (
+                                                <span className={actionVal > 0 ? 'text-emerald-500' : 'text-red-500'}>
+                                                    {actionVal > 0 ? '+' : ''}{actionVal.toLocaleString(undefined,{maximumFractionDigits:0})}
+                                                    <div className="text-[9px] opacity-70">{shares > 0 ? '+' : ''}{shares.toFixed(0)}股</div>
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                             {!isAllocValid && <p className="text-center text-red-500 text-xs py-2">⚠️ 配比總和非 100%，請修正</p>}
+                        </div>
+                    </Card>
+                </div>
+            );
+        };
 
         const App = () => {
             const [user, setUser] = useState(null);
             const [view, setView] = useState('dashboard');
             const [records, setRecords] = useState([]);
-            const [prices, setPrices] = useState({ QQQ: 0, QLD: 0, TQQQ: 0, IBIT: 0 });
+            const [prices, setPrices] = useState({ QQQ: 0, TQQQ: 0, IBIT: 0, SGOV: 0 }); 
             const [loadingPrices, setLoadingPrices] = useState(false);
+            const [priceError, setPriceError] = useState(false);
             const [isSaving, setIsSaving] = useState(false);
             const [darkMode, setDarkMode] = useState(() => localStorage.getItem('qqq_theme') === 'dark');
             const [message, setMessage] = useState(null);
@@ -109,50 +336,106 @@
             const [editForm, setEditForm] = useState(null);
             const [deletingId, setDeletingId] = useState(null);
             const [filterMode, setFilterMode] = useState('all');
-            const [visibleCount, setVisibleCount] = useState(20);
-            const [isWhitepaperOpen, setIsWhitepaperOpen] = useState(false); 
-            const [isStatsOpen, setStatsOpen] = useState(false);
-            const [isStrategyEditing, setIsStrategyEditing] = useState(false); 
-            const [simulatedTotal, setSimulatedTotal] = useState('');
-            const [isCalcOpen, setIsCalcOpen] = useState(false); 
-            const [isAlertsView, setIsAlertsView] = useState(false);
+            
+            // Modified: visibleCount default to 5, added states for Year/Month tables
+            const [visibleCount, setVisibleCount] = useState(5);
+            const [visibleYears, setVisibleYears] = useState(5);
+            const [visibleMonths, setVisibleMonths] = useState(5);
+            
+            const [isAllocationToolOpen, setIsAllocationToolOpen] = useState(false);
+            const [isAlertsView, setIsAlertsView] = useState(true); 
+            const [historyTab, setHistoryTab] = useState('list');
 
             const [customSyncId, setCustomSyncId] = useState(() => localStorage.getItem('qqq_sync_id') || '');
             const [tempSyncId, setTempSyncId] = useState(customSyncId);
             const effectiveUserId = customSyncId || (user ? user.uid : null);
 
             const [inputs, setInputs] = useState({
-                qqq_ema5: 0, qqq_ema12: 0, qqq_ema25: 0, qqq_ath: 0, 
-                ibit_ema50_wk: 0, custom_1_ema50_wk: 0, custom_2_ema50_wk: 0, 
-                current_positions: 'CASH', qty_qqq: 0, qty_qld: 0, qty_tqqq: 0, qty_ibit: 0,
-                custom_ticker_1: 'TSLA', qty_custom_1: 0, custom_ticker_2: 'GOOGL', qty_custom_2: 0,
+                // Indicators
+                qqq_ema125: 0, ibit_ema50: 0, custom_1_ema50: 0, custom_2_ema50: 0, 
+                // Positions
+                ticker_core_1: 'QQQ', 
+                qty_qqq: 0, avg_cost_qqq: 0, qty_tqqq: 0, avg_cost_tqqq: 0,
+                qty_ibit: 0, avg_cost_ibit: 0, qty_sgov: 0, avg_cost_sgov: 0, 
+                custom_ticker_1: 'TSLA', qty_custom_1: 0, avg_cost_custom_1: 0,
+                custom_ticker_2: 'NVDA', qty_custom_2: 0, avg_cost_custom_2: 0, 
                 cash_balance: 0, record_date: new Date().toISOString().split('T')[0],
+                // Allocations
+                alloc_core: 80, alloc_sat: 10, alloc_custom_1: 10, alloc_custom_2: 0,
+                // Loan
                 loan_amount: 0, loan_rate: 2.0, loan_years: 7, loan_repay_target: 20, 
                 loan_entry_valuation: 0, loan_monthly_repay: 0, motto: '', record_memo: '',
-                alloc_core: 70, alloc_faith_1: 10, alloc_faith_2: 10, alloc_sat: 10,
-                title_core: "核心策略 (70%)", strat_core: "", title_qld: "槓桿動態 (QLD/TQQQ)", strat_qld: "", title_faith: "信仰持倉 (20%) - 自選組合", strat_faith: "", title_ibit: "衛星配置 (10%) - IBIT", strat_ibit: ""
+                // FX
+                usdtwd_rate: 32.5,
+                // Strategy Text (Now in Settings)
+                title_core: "核心策略 (80%) - QQQ/TQQQ", 
+                strat_core: "進攻模式：40% QQQ + 40% TQQQ。\n防禦模式 (SGOV)：當 QQQ < 125 EMA (日線 -3%) 時全數轉入 SGOV。\n\n★ 核心再平衡機制：\n1. 季度檢查 (1/4/7/10月首日)：\n   若 TQQQ 佔核心比例超出 45%~55% 區間，調整回 50%/50%。\n\n2. 強制閾值 (隨時監控)：\n   若 TQQQ 佔核心比例 > 65% 或 < 35%，無視日期立即強制調整回 50%/50%。", 
+                title_custom: "自選衛星 (10%) - TSLA", 
+                strat_custom: "止損：價格 < 50 EMA (週線 -3%) 轉入 QQQ。\n歸隊：價格 > 50 EMA (週線 +5%) 買回。\n\n★ 衛星再平衡 (獲利收割)：\n若單一衛星資產價值 > 總資產 15%，賣出超額部分，獲利按 50/50 轉入核心 (QQQ+TQQQ)。", 
+                title_ibit: "衛星配置 (10%) - IBIT", 
+                strat_ibit: "止損：價格 < 50 EMA (週線 -3%) 轉入 QQQ。\n特殊：週一開盤前比特幣崩盤，直接市價賣出。\n\n★ 衛星再平衡 (獲利收割)：\n若 IBIT 價值 > 總資產 15%，賣出超額部分，獲利按 50/50 轉入核心。"
             });
 
             const showToast = (txt) => { setMessage(txt); setTimeout(() => setMessage(null), 3000); };
             const handleInputChange = (f, v) => setInputs(p => ({ ...p, [f]: v === '' ? '' : (isNaN(v) ? v : parseFloat(v)) }));
             const syncToCloud = async (f, v) => { if (!effectiveUserId) return; await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ [f]: v }, { merge: true }); };
 
-            const fetchPrices = useCallback(async () => {
-                if (loadingPrices) return; setLoadingPrices(true);
-                const t1 = (inputs.custom_ticker_1 || "").trim().toUpperCase(); const t2 = (inputs.custom_ticker_2 || "").trim().toUpperCase();
-                const syms = [...new Set(['QQQ', 'QLD', 'TQQQ', 'IBIT', t1, t2].filter(Boolean))];
+            const fetchPrices = useCallback(async (force = false) => {
+                if (loadingPrices) return; 
+                const CACHE_KEY = 'qqq_price_cache_v5'; 
+                const CACHE_DURATION = 5 * 60 * 1000; 
+                
+                const tCore = (inputs.ticker_core_1 || "QQQ").trim().toUpperCase();
+                const t1 = (inputs.custom_ticker_1 || "").trim().toUpperCase(); 
+                const t2 = (inputs.custom_ticker_2 || "").trim().toUpperCase();
+                const syms = [...new Set([tCore, 'TQQQ', 'IBIT', 'SGOV', t1, t2].filter(Boolean))];
+
+                if (!force) {
+                    const cached = localStorage.getItem(CACHE_KEY);
+                    if (cached) {
+                        const { timestamp, data } = JSON.parse(cached);
+                        const allFound = syms.every(s => data[s] !== undefined);
+                        if (Date.now() - timestamp < CACHE_DURATION && allFound) { setPrices(data); setPriceError(false); return; }
+                    }
+                }
+                setLoadingPrices(true);
                 try {
                     const results = await Promise.allSettled(syms.map(async (s) => {
                         const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${s}&token=${FINNHUB_API_KEY}`);
+                        if (!res.ok) throw new Error('Network response was not ok');
                         const d = await res.json();
                         return { symbol: s, price: d.c || 0 };
                     }));
-                    const newMap = {}; results.forEach(res => { if (res.status === 'fulfilled' && res.value.price > 0) newMap[res.value.symbol] = res.value.price; });
-                    setPrices(prev => ({ ...prev, ...newMap }));
-                } catch (e) {} finally { setLoadingPrices(false); }
-            }, [inputs.custom_ticker_1, inputs.custom_ticker_2, loadingPrices]);
+                    const newMap = {}; 
+                    results.forEach(res => { if (res.status === 'fulfilled' && res.value.price > 0) newMap[res.value.symbol] = res.value.price; });
+                    setPrices(prev => {
+                        const updated = { ...prev, ...newMap };
+                        localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: updated }));
+                        return updated;
+                    });
+                    setPriceError(false);
+                } catch (e) { 
+                    console.error("Fetch error", e); 
+                    setPriceError(true);
+                } finally { setLoadingPrices(false); }
+            }, [inputs.custom_ticker_1, inputs.custom_ticker_2, inputs.ticker_core_1, loadingPrices]);
 
-            const getNum = (val) => val === '' ? 0 : val;
+            const getNum = (val) => val === '' ? 0 : parseFloat(val);
+
+            // MDD Calculation
+            const mddStats = useMemo(() => {
+                if (records.length < 2) return { mdd: 0, peak: 0, dropDate: '' };
+                const sorted = [...records].sort((a, b) => new Date(a.date) - new Date(b.date));
+                let peak = 0;
+                let maxDrawdown = 0;
+                let mddDate = '';
+                sorted.forEach(r => {
+                    if (r.total_equity > peak) peak = r.total_equity;
+                    const drawdown = peak > 0 ? (peak - r.total_equity) / peak : 0;
+                    if (drawdown > maxDrawdown) { maxDrawdown = drawdown; mddDate = r.date; }
+                });
+                return { mdd: (maxDrawdown * 100).toFixed(2), peak, dropDate: mddDate };
+            }, [records]);
 
             const periodicStats = useMemo(() => {
                 if (records.length < 2) return { years: [], months: [] };
@@ -180,49 +463,189 @@
             }, [records, filterMode]);
 
             const totalCapital = useMemo(() => {
-                const p = prices; const t1 = (inputs.custom_ticker_1 || "").toUpperCase(); const t2 = (inputs.custom_ticker_2 || "").toUpperCase();
-                return ( (p.QQQ || 0) * (getNum(inputs.qty_qqq)) ) + ( (p.QLD || 0) * (getNum(inputs.qty_qld)) ) + ( (p.TQQQ || 0) * (getNum(inputs.qty_tqqq)) ) + ( (p.IBIT || 0) * (getNum(inputs.qty_ibit)) ) + ( (p[t1] || 0) * (getNum(inputs.qty_custom_1)) ) + ( (p[t2] || 0) * (getNum(inputs.qty_custom_2)) ) + ( getNum(inputs.cash_balance) );
+                const p = prices; 
+                const tCore = (inputs.ticker_core_1 || "QQQ").toUpperCase();
+                const t1 = (inputs.custom_ticker_1 || "").toUpperCase(); 
+                const t2 = (inputs.custom_ticker_2 || "").toUpperCase();
+                return ( (p[tCore] || 0) * (getNum(inputs.qty_qqq)) ) + 
+                       ( (p.TQQQ || 0) * (getNum(inputs.qty_tqqq)) ) + 
+                       ( (p.IBIT || 0) * (getNum(inputs.qty_ibit)) ) + 
+                       ( (p.SGOV || 0) * (getNum(inputs.qty_sgov)) ) + 
+                       ( (p[t1] || 0) * (getNum(inputs.qty_custom_1)) ) + 
+                       ( (p[t2] || 0) * (getNum(inputs.qty_custom_2)) ) + 
+                       ( getNum(inputs.cash_balance) );
             }, [prices, inputs]);
 
-            const allocationBase = useMemo(() => simulatedTotal ? parseFloat(simulatedTotal) : totalCapital, [simulatedTotal, totalCapital]);
+            const totalCost = useMemo(() => {
+                const i = inputs;
+                return (getNum(i.qty_qqq) * getNum(i.avg_cost_qqq)) + 
+                       (getNum(i.qty_tqqq) * getNum(i.avg_cost_tqqq)) + 
+                       (getNum(i.qty_ibit) * getNum(i.avg_cost_ibit)) + 
+                       (getNum(i.qty_sgov) * getNum(i.avg_cost_sgov)) + 
+                       (getNum(i.qty_custom_1) * getNum(i.avg_cost_custom_1)) + 
+                       (getNum(i.qty_custom_2) * getNum(i.avg_cost_custom_2)) + 
+                       getNum(i.cash_balance);
+            }, [inputs]);
+
+            const totalPL = totalCapital - totalCost;
+            const totalROI = totalCost > 0 ? (totalPL / totalCost) * 100 : 0;
+            const allocationBase = totalCapital;
             const loanSellThreshold = useMemo(() => (getNum(inputs.loan_entry_valuation)) * (1 + (getNum(inputs.loan_repay_target)) / 100), [inputs.loan_entry_valuation, inputs.loan_repay_target]);
             const isTargetReached = totalCapital >= loanSellThreshold && inputs.loan_entry_valuation > 0;
 
             const pieData = useMemo(() => {
-                const p = prices; const t1 = (inputs.custom_ticker_1 || "").toUpperCase(); const t2 = (inputs.custom_ticker_2 || "").toUpperCase();
-                const d = [ { name: 'QQQ', value: (p.QQQ||0)*(getNum(inputs.qty_qqq)), color: '#4f46e5' }, { name: 'QLD', value: (p.QLD||0)*(getNum(inputs.qty_qld)), color: '#818cf8' }, { name: 'TQQQ', value: (p.TQQQ||0)*(getNum(inputs.qty_tqqq)), color: '#c084fc' }, { name: 'IBIT', value: (p.IBIT||0)*(getNum(inputs.qty_ibit)), color: '#f59e0b' }, { name: t1, value: (p[t1]||0)*(getNum(inputs.qty_custom_1)), color: '#10b981' }, { name: t2, value: (p[t2]||0)*(getNum(inputs.qty_custom_2)), color: '#06b6d4' }, { name: '現金', value: getNum(inputs.cash_balance), color: '#94a3b8' } ];
-                const filtered = d.filter(x => x.value > 0); const sum = filtered.reduce((a, b) => a + b.value, 0);
+                const p = prices; 
+                const tCore = (inputs.ticker_core_1 || "QQQ").toUpperCase();
+                const t1 = (inputs.custom_ticker_1 || "").toUpperCase(); 
+                const t2 = (inputs.custom_ticker_2 || "").toUpperCase();
+                const calcItem = (name, qty, cost, price, color) => {
+                    const value = (price || 0) * getNum(qty);
+                    const totalItemCost = getNum(qty) * getNum(cost);
+                    const pl = value - totalItemCost;
+                    const roi = totalItemCost > 0 ? (pl / totalItemCost) * 100 : 0;
+                    return { name, value, cost: totalItemCost, pl, roi, color };
+                };
+                const d = [ 
+                    calcItem(tCore, inputs.qty_qqq, inputs.avg_cost_qqq, p[tCore], '#4f46e5'),
+                    calcItem('TQQQ', inputs.qty_tqqq, inputs.avg_cost_tqqq, p.TQQQ, '#c084fc'),
+                    calcItem('SGOV', inputs.qty_sgov, inputs.avg_cost_sgov, p.SGOV, '#64748b'),
+                    calcItem('IBIT', inputs.qty_ibit, inputs.avg_cost_ibit, p.IBIT, '#f59e0b'),
+                    calcItem(t1, inputs.qty_custom_1, inputs.avg_cost_custom_1, p[t1], '#10b981'),
+                    calcItem(t2, inputs.qty_custom_2, inputs.avg_cost_custom_2, p[t2], '#06b6d4'),
+                    { name: '現金', value: getNum(inputs.cash_balance), cost: getNum(inputs.cash_balance), pl: 0, roi: 0, color: '#94a3b8' } 
+                ];
+                const filtered = d.filter(x => x.value > 0); 
+                const sum = filtered.reduce((a, b) => a + b.value, 0);
                 return filtered.map(x => ({ ...x, percentage: sum > 0 ? ((x.value / sum) * 100).toFixed(1) : 0 }));
             }, [prices, inputs]);
 
+            const CustomTooltip = ({ active, payload }) => {
+                if (active && payload && payload.length) {
+                    const d = payload[0].payload;
+                    return (
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl shadow-xl text-xs font-black">
+                            <p className="mb-1 text-slate-500">{d.name}</p>
+                            <p className="text-lg mb-2 text-slate-800 dark:text-slate-100">${d.value.toLocaleString()}</p>
+                            {d.name !== '現金' && (<div className="space-y-1 pt-2 border-t dark:border-slate-700"><div className="flex justify-between gap-4"><span className="text-slate-400">損益</span><span className={d.pl >= 0 ? 'text-emerald-500' : 'text-red-500'}>{d.pl > 0 ? '+' : ''}{d.pl.toLocaleString(undefined, {maximumFractionDigits:0})}</span></div><div className="flex justify-between gap-4"><span className="text-slate-400">報酬</span><span className={d.roi >= 0 ? 'text-emerald-500' : 'text-red-500'}>{d.roi > 0 ? '+' : ''}{d.roi.toFixed(1)}%</span></div></div>)}
+                        </div>
+                    );
+                }
+                return null;
+            };
+
             const currentLeverage = useMemo(() => {
                 if (totalCapital <= 0) return 0;
-                const p = prices; const t1 = (inputs.custom_ticker_1 || "").toUpperCase(); const t2 = (inputs.custom_ticker_2 || "").toUpperCase();
-                const val_tqqq = (p.TQQQ || 0) * getNum(inputs.qty_tqqq); const val_qld = (p.QLD || 0) * getNum(inputs.qty_qld); const val_qqq = (p.QQQ || 0) * getNum(inputs.qty_qqq);
+                const p = prices; 
+                const tCore = (inputs.ticker_core_1 || "QQQ").toUpperCase();
+                const t1 = (inputs.custom_ticker_1 || "").toUpperCase(); 
+                const t2 = (inputs.custom_ticker_2 || "").toUpperCase();
+                const val_tqqq = (p.TQQQ || 0) * getNum(inputs.qty_tqqq); const val_qqq = (p[tCore] || 0) * getNum(inputs.qty_qqq);
                 const val_others = ( (p.IBIT || 0) * getNum(inputs.qty_ibit) ) + ( (p[t1] || 0) * getNum(inputs.qty_custom_1) ) + ( (p[t2] || 0) * getNum(inputs.qty_custom_2) );
-                const exposure = (val_tqqq * 3) + (val_qld * 2) + (val_qqq * 1) + (val_others * 1);
+                const exposure = (val_tqqq * 3) + (val_qqq * 1) + (val_others * 1);
                 return (exposure / totalCapital).toFixed(2);
             }, [totalCapital, prices, inputs]);
 
-            const nonCoreLeverageContribution = useMemo(() => (getNum(inputs.alloc_faith_1) + getNum(inputs.alloc_faith_2) + getNum(inputs.alloc_sat)) / 100 * 1, [inputs.alloc_faith_1, inputs.alloc_faith_2, inputs.alloc_sat]);
+            const rebalanceStatus = useMemo(() => {
+                const p = prices; const i = inputs; 
+                const tCore = (i.ticker_core_1 || "QQQ").toUpperCase();
+                const t1 = (i.custom_ticker_1 || "").toUpperCase();
+                const t2 = (i.custom_ticker_2 || "").toUpperCase();
+                
+                const valQQQ = (p[tCore] || 0) * getNum(i.qty_qqq);
+                const valTQQQ = (p.TQQQ || 0) * getNum(i.qty_tqqq);
+                const valCustom1 = (p[t1] || 0) * getNum(i.qty_custom_1);
+                const valCustom2 = (p[t2] || 0) * getNum(i.qty_custom_2);
+                const valIBIT = (p.IBIT || 0) * getNum(i.qty_ibit);
+                
+                const coreTotal = valQQQ + valTQQQ;
+                const total = totalCapital || 1; 
+
+                const tqqqRatio = coreTotal > 0 ? (valTQQQ / coreTotal) * 100 : 0;
+                const custom1Weight = (valCustom1 / total) * 100;
+                const custom2Weight = (valCustom2 / total) * 100;
+                const ibitWeight = (valIBIT / total) * 100;
+
+                const coreTargetHalf = coreTotal / 2;
+                const tqqqDiffVal = coreTargetHalf - valTQQQ;
+                const qqqDiffVal = coreTargetHalf - valQQQ;
+
+                const targetCustom1Val = total * (getNum(i.alloc_custom_1) / 100);
+                const sellCustom1Val = valCustom1 - targetCustom1Val;
+                const targetCustom2Val = total * (getNum(i.alloc_custom_2) / 100);
+                const sellCustom2Val = valCustom2 - targetCustom2Val;
+                const targetIbitVal = total * (getNum(i.alloc_sat) / 100);
+                const sellIbitVal = valIBIT - targetIbitVal;
+
+                return {
+                    tqqqRatio, isCoreImbalanced: tqqqRatio > 65 || tqqqRatio < 35, tqqqDiffVal, qqqDiffVal,
+                    custom1Weight: custom1Weight.toFixed(1), isCustom1Overweight: custom1Weight > 15, sellCustom1Val,
+                    custom2Weight: custom2Weight.toFixed(1), isCustom2Overweight: custom2Weight > 15, sellCustom2Val,
+                    ibitWeight: ibitWeight.toFixed(1), isIbitOverweight: ibitWeight > 15, sellIbitVal,
+                    t1, t2, tCore
+                };
+            }, [prices, inputs, totalCapital]);
 
             const strategyAlerts = useMemo(() => {
-                const alerts = []; const p = prices; const i = inputs; const t1 = (i.custom_ticker_1 || "").toUpperCase(); const t2 = (i.custom_ticker_2 || "").toUpperCase();
-                const ema25 = getNum(i.qqq_ema25); const ema5 = getNum(i.qqq_ema5); const ema12 = getNum(i.qqq_ema12); const ath = getNum(i.qqq_ath);
-                if (ema25 > 0 && p.QQQ < (ema25 * 0.97)) alerts.push({ type: 'danger', title: '🛑 核心部位：崩盤避險', msg: `QQQ 跌破週線 25EMA $${ema25} (含-3%緩衝 $${(ema25*0.97).toFixed(2)})！策略建議：核心部位全數轉為現金 (CASH) 避險。` });
-                else if (ema5 > 0 && ema12 > 0 && ema5 > ema12 && p.QQQ > (ema25 * 1.03)) alerts.push({ type: 'opportunity', title: '🚀 核心部位：巡航模式 (QLD)', msg: `週線 5>12 且站穩 25EMA $${ema25} (含+3%確認 $${(ema25*1.03).toFixed(2)})。策略建議：核心部位切換至 2x QLD。` });
-                if (ath > 0 && p.QQQ < (ath * 0.92) && p.QQQ > (ema25 * 1.03)) alerts.push({ type: 'sniper', title: '🎯 核心部位：狙擊機會 (TQQQ)', msg: 'QQQ 距前高回檔超過 8% 且趨勢未破。策略建議：可視情況切換 3x TQQQ 進行短線狙擊。' });
-                if (i.current_positions === 'TQQQ' && p.QQQ < (ema5 * 0.97) && ema5 > 0) alerts.push({ type: 'warning', title: '📉 核心部位：攻擊熄火', msg: `QQQ 收盤跌破週 5EMA $${ema5} (含-3%緩衝 $${(ema5*0.97).toFixed(2)})。策略建議：TQQQ 獲利/停損，退守 QLD 或 QQQ。` });
-                const checkRisk = (ticker, price, ema) => { 
-                    const e = getNum(ema);
-                    if (ticker && price > 0 && e > 0) {
-                        if (price < (e * 0.97)) alerts.push({ type: 'risk', title: `⚠️ 賣出訊號：${ticker}`, msg: `${ticker} 跌破週線 50EMA ($${e}) 之下方 3% 緩衝位 ($${(e*0.97).toFixed(2)})，建議賣出轉 SGOV。` });
-                        if (price > (e * 1.03)) alerts.push({ type: 'opportunity', title: `🔵 買進訊號：${ticker}`, msg: `${ticker} 突破週線 50EMA ($${e}) 之上方 3% 緩衝位 ($${(e*1.03).toFixed(2)})，趨勢翻多，建議買進。` });
+                const alerts = []; const p = prices; const i = inputs; 
+                const { tCore, t1, t2, tqqqRatio, isCoreImbalanced, isCustom1Overweight, isCustom2Overweight, isIbitOverweight, custom1Weight, custom2Weight, ibitWeight, tqqqDiffVal, qqqDiffVal, sellCustom1Val, sellCustom2Val, sellIbitVal } = rebalanceStatus;
+                
+                const ema125 = getNum(i.qqq_ema125); 
+                const customEma1 = getNum(i.custom_1_ema50);
+                const customEma2 = getNum(i.custom_2_ema50);
+                const ibitEma = getNum(i.ibit_ema50);
+
+                if (ema125 > 0) {
+                    const sellTrigger = ema125 * 0.97;
+                    const buyTrigger = ema125 * 1.05;
+                    const priceCheck = p.QQQ || p[tCore]; 
+                    if (priceCheck < sellTrigger) {
+                        alerts.push({ type: 'danger', title: '🛑 熊市訊號 (Risk-Off)', msg: `動作：清倉所有資產 ➔ 全數轉入 SGOV。\n原因：${tCore}/QQQ 跌破 125 EMA (日) 下方 3% ($${sellTrigger.toFixed(2)})。` });
+                    } else if (priceCheck > buyTrigger) {
+                        alerts.push({ type: 'opportunity', title: '🚀 牛市訊號 (Risk-On)', msg: `動作：賣出 SGOV ➔ 建倉進攻部位 (40% TQQQ, 40% QQQ, 20% 衛星)。\n原因：${tCore}/QQQ 突破 125 EMA (日) 上方 5% ($${buyTrigger.toFixed(2)})。` });
                     }
-                };
-                checkRisk('IBIT', p.IBIT, i.ibit_ema50_wk); checkRisk(t1, p[t1], i.custom_1_ema50_wk); checkRisk(t2, p[t2], i.custom_2_ema50_wk);
+                }
+
+                if (isCoreImbalanced) {
+                    let msg = "";
+                    if (tqqqRatio > 65) {
+                        const sellAmt = Math.abs(tqqqDiffVal);
+                        const shares = p.TQQQ > 0 ? Math.floor(sellAmt / p.TQQQ) : 0;
+                        msg = `動作：賣出 TQQQ $${sellAmt.toFixed(0)} (約 ${shares} 股)，買入 QQQ。`;
+                    } else {
+                        const sellAmt = Math.abs(qqqDiffVal);
+                        const shares = (p.QQQ || p[tCore]) > 0 ? Math.floor(sellAmt / (p.QQQ || p[tCore])) : 0;
+                        msg = `動作：賣出 QQQ $${sellAmt.toFixed(0)} (約 ${shares} 股)，買入 TQQQ。`;
+                    }
+                    alerts.push({ type: 'warning', title: '⚖️ 核心再平衡觸發', msg: `${msg}\n原因：TQQQ 佔比 ${tqqqRatio.toFixed(1)}% 已偏離安全區間 (35%-65%)。` });
+                }
+                
+                if (isCustom1Overweight) {
+                    const shares = (p[t1] || 0) > 0 ? Math.floor(sellCustom1Val / p[t1]) : 0;
+                    alerts.push({ type: 'opportunity', title: `💰 ${t1} 獲利收割`, msg: `動作：賣出 ${t1} $${sellCustom1Val.toFixed(0)} (約 ${shares} 股)，獲利轉入核心。\n原因：${t1} 權重 ${custom1Weight}% 已超過 15% 上限。` });
+                }
+                if (isCustom2Overweight) {
+                    const shares = (p[t2] || 0) > 0 ? Math.floor(sellCustom2Val / p[t2]) : 0;
+                    alerts.push({ type: 'opportunity', title: `💰 ${t2} 獲利收割`, msg: `動作：賣出 ${t2} $${sellCustom2Val.toFixed(0)} (約 ${shares} 股)，獲利轉入核心。\n原因：${t2} 權重 ${custom2Weight}% 已超過 15% 上限。` });
+                }
+                if (isIbitOverweight) {
+                    const shares = p.IBIT > 0 ? Math.floor(sellIbitVal / p.IBIT) : 0;
+                    alerts.push({ type: 'opportunity', title: `💰 IBIT 獲利收割`, msg: `動作：賣出 IBIT $${sellIbitVal.toFixed(0)} (約 ${shares} 股)，獲利轉入核心。\n原因：IBIT 權重 ${ibitWeight}% 已超過 15% 上限。` });
+                }
+
+                if (ema125 > 0 && (p.QQQ || 0) >= ema125 * 0.97) {
+                    if (customEma1 > 0 && (p[t1] || 0) < customEma1 * 0.97) {
+                        alerts.push({ type: 'risk', title: `⚠️ 止損警示：${t1}`, msg: `動作：賣出 ${t1} ➔ 資金轉入 QQQ。\n原因：跌破 50 EMA (週) 下方 3% ($${(customEma1*0.97).toFixed(2)})。` });
+                    }
+                    if (customEma2 > 0 && (p[t2] || 0) < customEma2 * 0.97) {
+                        alerts.push({ type: 'risk', title: `⚠️ 止損警示：${t2}`, msg: `動作：賣出 ${t2} ➔ 資金轉入 QQQ。\n原因：跌破 50 EMA (週) 下方 3% ($${(customEma2*0.97).toFixed(2)})。` });
+                    }
+                    if (ibitEma > 0 && p.IBIT < ibitEma * 0.97) {
+                        alerts.push({ type: 'risk', title: `⚠️ 止損警示：IBIT`, msg: `動作：賣出 IBIT ➔ 資金轉入 QQQ。\n原因：跌破 50 EMA (週) 下方 3% ($${(ibitEma*0.97).toFixed(2)})。` });
+                    }
+                }
+                
                 return alerts;
-            }, [prices, inputs]);
+            }, [prices, inputs, rebalanceStatus]);
 
             const copyToMemo = (msg) => { const newMemo = (inputs.record_memo || '') + '\n' + `[${new Date().toLocaleDateString()}] ${msg}`; setInputs(prev => ({ ...prev, record_memo: newMemo })); showToast("已寫入備註"); };
 
@@ -230,77 +653,77 @@
             useEffect(() => { if (!effectiveUserId) return; const userPath = db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId); userPath.collection('trading_records').onSnapshot(snap => setRecords(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.date) - new Date(a.date)))); userPath.collection('config').doc('current').onSnapshot(snap => { if (snap.exists) setInputs(prev => ({ ...prev, ...snap.data(), record_date: new Date().toISOString().split('T')[0] })); }); fetchPrices(); }, [effectiveUserId]);
             useEffect(() => { const root = window.document.documentElement; if (darkMode) root.classList.add('dark'); else root.classList.remove('dark'); }, [darkMode]);
 
-            const save = async () => { if (!effectiveUserId || isSaving) return; setIsSaving(true); const d = new Date(inputs.record_date); d.setHours(12, 0, 0, 0); try { await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('trading_records').add({ date: d.toISOString(), total_equity: totalCapital, core_pos: inputs.current_positions, prices: { ...prices }, inputs: { ...inputs }, memo: inputs.record_memo || '' }); await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('config').doc('current').set(inputs, { merge: true }); showToast("同步成功！"); setInputs(p => ({ ...p, record_memo: '' })); } catch (e) { showToast("儲存失敗"); } finally { setIsSaving(false); } };
+            const save = async () => { if (!effectiveUserId || isSaving) return; setIsSaving(true); const d = new Date(inputs.record_date); d.setHours(12, 0, 0, 0); try { await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('trading_records').add({ date: d.toISOString(), total_equity: totalCapital, core_pos: inputs.current_positions || 'Mix', prices: { ...prices }, inputs: { ...inputs }, memo: inputs.record_memo || '' }); await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('config').doc('current').set(inputs, { merge: true }); showToast("同步成功！"); setInputs(p => ({ ...p, record_memo: '' })); } catch (e) { showToast("儲存失敗"); } finally { setIsSaving(false); } };
             const confirmDelete = async (id) => { try { await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('trading_records').doc(id).delete(); setDeletingId(null); showToast("已刪除"); } catch (e) {} };
-            const updateRecord = async (id) => { const d = new Date(editForm.date); d.setHours(12, 0, 0, 0); const hP = editForm.prices || prices; const hI = editForm.inputs; const t1 = (hI.custom_ticker_1 || "").toUpperCase(); const t2 = (hI.custom_ticker_2 || "").toUpperCase(); const nT = ( (hP.QQQ || 0) * (parseFloat(hI.qty_qqq) || 0) ) + ( (hP.QLD || 0) * (parseFloat(hI.qty_qld) || 0) ) + ( (hP.TQQQ || 0) * (parseFloat(hI.qty_tqqq) || 0) ) + ( (hP.IBIT || 0) * (parseFloat(hI.qty_ibit) || 0) ) + ( (hP[t1] || 0) * (parseFloat(hI.qty_custom_1) || 0) ) + ( (hP[t2] || 0) * (parseFloat(hI.qty_custom_2) || 0) ) + ( parseFloat(hI.cash_balance) || 0 ); await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('trading_records').doc(id).update({ date: d.toISOString(), inputs: hI, total_equity: nT, memo: editForm.memo || '' }); setEditingId(null); showToast("修改完成"); };
-            const getAlertColor = (type) => { switch(type) { case 'danger': return 'bg-red-500 border-red-700 text-white'; case 'risk': return 'bg-orange-500 border-orange-700 text-white'; case 'opportunity': return 'bg-blue-600 border-blue-800 text-white'; case 'sniper': return 'bg-purple-600 border-purple-800 text-white'; case 'warning': return 'bg-yellow-500 border-yellow-700 text-white'; default: return 'bg-slate-700 text-white'; } };
+            const updateRecord = async (id) => { const d = new Date(editForm.date); d.setHours(12, 0, 0, 0); const hP = editForm.prices || prices; const hI = editForm.inputs; const t1 = (hI.custom_ticker_1 || "").toUpperCase(); const t2 = (hI.custom_ticker_2 || "").toUpperCase(); const nT = ( (hP.QQQ || 0) * (parseFloat(hI.qty_qqq) || 0) ) + ( (hP.QLD || 0) * (parseFloat(hI.qty_qld) || 0) ) + ( (hP.TQQQ || 0) * (parseFloat(hI.qty_tqqq) || 0) ) + ( (hP.IBIT || 0) * (parseFloat(hI.qty_ibit) || 0) ) + ( (hP.SGOV || 0) * (parseFloat(hI.qty_sgov) || 0) ) + ( (hP[t1] || 0) * (parseFloat(hI.qty_custom_1) || 0) ) + ( (hP[t2] || 0) * (parseFloat(hI.qty_custom_2) || 0) ) + ( parseFloat(hI.cash_balance) || 0 ); await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('trading_records').doc(id).update({ date: d.toISOString(), inputs: hI, total_equity: nT, memo: editForm.memo || '' }); setEditingId(null); showToast("修改完成"); };
+            
+            const handleExport = () => { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records)); const downloadAnchorNode = document.createElement('a'); downloadAnchorNode.setAttribute("href", dataStr); downloadAnchorNode.setAttribute("download", "qqq_backup_" + new Date().toISOString().split('T')[0] + ".json"); document.body.appendChild(downloadAnchorNode); downloadAnchorNode.click(); downloadAnchorNode.remove(); };
+            const handleImport = async (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = async (event) => { try { const imported = JSON.parse(event.target.result); if (Array.isArray(imported)) { await Promise.all(imported.map(r => db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('trading_records').add(r))); showToast("匯入成功"); } } catch (err) { showToast("格式錯誤"); } }; reader.readAsText(file); };
 
             return (
-                <div className="pb-32 min-h-screen transition-colors duration-300 font-black text-left select-none overflow-x-hidden">
+                <div className="pb-40 min-h-screen transition-colors duration-300 font-black text-left select-none overflow-x-hidden">
                     {message && <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-top-4 font-black"><div className="bg-indigo-600 text-white px-6 py-3 rounded-full shadow-2xl text-sm flex items-center gap-2"><Icon name="CheckCircle" size={16} /> {message}</div></div>}
+                    <AllocationToolModal isOpen={isAllocationToolOpen} onClose={() => setIsAllocationToolOpen(false)} totalCapital={totalCapital} inputs={inputs} prices={prices} getNum={getNum} />
+                    
                     <header className="fixed top-0 left-0 right-0 bg-indigo-900 dark:bg-slate-950 z-50 px-5 py-4 flex justify-between items-center shadow-lg text-white">
-                        <div className="flex items-center gap-2 font-black"><div className="bg-white p-2 rounded-2xl shadow-sm"><Icon name="TrendingUp" className="text-indigo-900" size={18} /></div><h1 className="font-black text-lg">QQQ Control</h1></div>
+                        <div className="flex items-center gap-2 font-black"><div className="bg-white p-2 rounded-2xl shadow-sm"><Icon name="TrendingUp" className="text-indigo-900" size={18} /></div><h1 className="font-black text-lg">Alpha Horizon</h1></div>
                         <div className="flex items-center gap-2">
-                             <button onClick={() => { setIsCalcOpen(!isCalcOpen); setIsWhitepaperOpen(false); }} className={`p-2.5 rounded-xl border-2 transition-all active:scale-90 shadow-sm ${isCalcOpen ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-100 text-slate-700'}`}><Icon name="Calculator" size={20} /></button>
-                             <button onClick={() => { setIsWhitepaperOpen(!isWhitepaperOpen); setIsCalcOpen(false); }} className={`p-2.5 rounded-xl border-2 transition-all active:scale-90 shadow-sm ${isWhitepaperOpen ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-100 text-slate-700'}`}><Icon name="BookOpen" size={20} /></button>
+                             <button onClick={() => setIsAllocationToolOpen(true)} className="p-2.5 rounded-xl bg-indigo-600 border border-indigo-500 text-white shadow-sm active:scale-90"><Icon name="Calculator" size={20} /></button>
                             <button onClick={() => setDarkMode(!darkMode)} className="p-2.5 rounded-xl bg-white/10 active:scale-90 font-black font-black"><Icon name={darkMode ? "Sun" : "Moon"} size={20} /></button>
                             <button onClick={() => setView('sync_settings')} className="p-2.5 rounded-xl bg-white border-2 border-slate-100 text-slate-700 active:scale-90 shadow-sm"><Icon name="Settings" size={20} /></button>
-                            <div className="flex items-center gap-1.5 ml-1"><button onClick={fetchPrices} className="p-2 text-white/80 active:rotate-180 transition-transform font-black font-black"><Icon name="RefreshCcw" size={22} className={loadingPrices ? 'animate-spin' : ''} /></button><div className={`w-3.5 h-3.5 rounded-full border-2 ${loadingPrices ? 'bg-red-500 border-red-300 sync-loading' : 'bg-emerald-500 border-emerald-300 shadow-emerald-500/50'}`}></div></div>
+                            <div className="flex items-center gap-1.5 ml-1"><button onClick={() => fetchPrices(true)} className={`p-2 text-white/80 active:rotate-180 transition-transform font-black font-black ${priceError ? 'text-red-400' : ''}`}><Icon name="RefreshCcw" size={22} className={loadingPrices ? 'animate-spin' : ''} /></button><div className={`w-3.5 h-3.5 rounded-full border-2 ${priceError ? 'bg-red-500 border-white' : loadingPrices ? 'bg-yellow-400 border-yellow-200 sync-loading' : 'bg-emerald-500 border-emerald-300 shadow-emerald-500/50'}`}></div></div>
                         </div>
                     </header>
 
                     <main className="max-w-md mx-auto p-4 pt-24 space-y-6">
                         {view === 'dashboard' && (
                             <div className="space-y-6 animate-in fade-in font-black">
-                                {isCalcOpen && ( 
-                                    <Card className="p-0 overflow-hidden border-4 border-indigo-400 bg-indigo-50 dark:bg-indigo-950 shadow-2xl text-left mb-6 animate-in slide-in-from-top-4 duration-300">
-                                        <div className="p-4 bg-indigo-600 text-white flex justify-between items-center"><div className="flex items-center gap-2 font-black"><Icon name="Calculator" size={20} /><span>戰略配倉計算機</span></div><button onClick={() => setIsCalcOpen(false)}><Icon name="X" size={20} /></button></div>
-                                        <div className="p-5 space-y-5">
-                                            <div className="flex gap-2"><input type="number" placeholder="輸入預計總資產 (USD)..." value={simulatedTotal} onChange={e => setSimulatedTotal(e.target.value)} className="flex-1 bg-white dark:bg-slate-800 border-2 border-indigo-200 rounded-xl px-4 py-3 text-lg font-black focus:border-indigo-500 outline-none" /><button onClick={() => setSimulatedTotal(totalCapital.toFixed(0))} className="bg-indigo-600 text-white px-4 rounded-xl font-bold text-xs whitespace-nowrap active:scale-95 transition-transform">帶入<br/>淨值</button></div>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div className="space-y-1"><label className="text-[10px] text-indigo-500 font-bold uppercase">核心 %</label><input type="number" value={inputs.alloc_core} onChange={e => handleInputChange('alloc_core', e.target.value)} onBlur={(e) => syncToCloud('alloc_core', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-indigo-200 rounded-lg p-2 text-center font-bold text-indigo-600" /></div>
-                                                <div className="space-y-1"><label className="text-[10px] text-amber-500 font-bold uppercase">衛星 %</label><input type="number" value={inputs.alloc_sat} onChange={e => handleInputChange('alloc_sat', e.target.value)} onBlur={(e) => syncToCloud('alloc_sat', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-amber-200 rounded-lg p-2 text-center font-bold text-amber-600" /></div>
-                                                <div className="space-y-1"><label className="text-[10px] text-sky-500 font-bold uppercase truncate">{inputs.custom_ticker_1 || '信仰1'} %</label><input type="number" value={inputs.alloc_faith_1} onChange={e => handleInputChange('alloc_faith_1', e.target.value)} onBlur={(e) => syncToCloud('alloc_faith_1', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-sky-200 rounded-lg p-2 text-center font-bold text-sky-600" /></div>
-                                                <div className="space-y-1"><label className="text-[10px] text-cyan-500 font-bold uppercase truncate">{inputs.custom_ticker_2 || '信仰2'} %</label><input type="number" value={inputs.alloc_faith_2} onChange={e => handleInputChange('alloc_faith_2', e.target.value)} onBlur={(e) => syncToCloud('alloc_faith_2', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-cyan-200 rounded-lg p-2 text-center font-bold text-cyan-600" /></div>
-                                            </div>
-                                            <div className="space-y-2 text-sm">
-                                                <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border-l-4 border-indigo-500 shadow-sm"><div className="flex justify-between items-center mb-1"><span className="text-indigo-600 font-bold">● 核心部位 (${(allocationBase * (getNum(inputs.alloc_core)/100)).toLocaleString(undefined, {maximumFractionDigits:0})})</span></div><div className="grid grid-cols-4 gap-1 text-[10px] text-center text-slate-400 font-mono mb-1"><div className="col-span-1">標的</div><div className="col-span-1">現價</div><div className="col-span-2">建議股數</div></div><div className="space-y-1">{['QQQ', 'QLD', 'TQQQ'].map(tk => (<div key={tk} className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center"><div className="text-slate-600 dark:text-slate-300">{tk}</div><div className="text-slate-400">${prices[tk]?.toFixed(0)}</div><div className="col-span-2 flex justify-between items-center bg-slate-100 dark:bg-slate-700/50 rounded px-2 py-0.5"><span className="text-indigo-600 dark:text-indigo-300">{prices[tk] > 0 ? Math.floor((allocationBase * (getNum(inputs.alloc_core)/100)) / prices[tk]).toLocaleString() : '-'} 股</span><span className="text-[9px] text-slate-400 ml-1">({(nonCoreLeverageContribution + (getNum(inputs.alloc_core) / 100 * (tk === 'QQQ' ? 1 : tk === 'QLD' ? 2 : 3))).toFixed(2)}x)</span></div></div>))}<div className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center border-t dark:border-slate-700 pt-1 mt-1"><div className="text-slate-500">現金</div><div className="col-span-3 text-slate-400 text-right pr-2">空倉持有 ${ (allocationBase * (getNum(inputs.alloc_core)/100)).toLocaleString(undefined, {maximumFractionDigits:0}) }</div></div></div></div>
-                                                <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border-l-4 border-sky-500 shadow-sm"><div className="flex justify-between items-center mb-1"><span className="text-sky-600 font-bold">● 信仰部位 (${(allocationBase * ((getNum(inputs.alloc_faith_1) + getNum(inputs.alloc_faith_2))/100)).toLocaleString(undefined, {maximumFractionDigits:0})})</span></div><div className="space-y-1">{inputs.custom_ticker_1 && inputs.custom_ticker_1.trim() !== '' && (<div className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center"><div className="text-slate-600 dark:text-slate-300 truncate">{inputs.custom_ticker_1}</div><div className="text-slate-400">${prices[(inputs.custom_ticker_1||'').toUpperCase()]?.toFixed(0) || '-'}</div><div className="col-span-2 bg-slate-100 dark:bg-slate-700/50 rounded py-0.5 text-sky-600 dark:text-sky-300">{prices[(inputs.custom_ticker_1||'').toUpperCase()] > 0 ? Math.floor((allocationBase * (getNum(inputs.alloc_faith_1)/100)) / prices[(inputs.custom_ticker_1||'').toUpperCase()]).toLocaleString() : '-'} 股 ({inputs.alloc_faith_1}%)</div></div>)}{inputs.custom_ticker_2 && inputs.custom_ticker_2.trim() !== '' && (<div className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center"><div className="text-slate-600 dark:text-slate-300 truncate">{inputs.custom_ticker_2}</div><div className="text-slate-400">${prices[(inputs.custom_ticker_2||'').toUpperCase()]?.toFixed(0) || '-'}</div><div className="col-span-2 bg-slate-100 dark:bg-slate-700/50 rounded py-0.5 text-cyan-600 dark:text-cyan-300">{prices[(inputs.custom_ticker_2||'').toUpperCase()] > 0 ? Math.floor((allocationBase * (inputs.alloc_faith_2/100)) / prices[(inputs.custom_ticker_2||'').toUpperCase()]).toLocaleString() : '-'} 股 ({inputs.alloc_faith_2}%)</div></div>)}</div></div>
-                                                <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border-l-4 border-amber-500 shadow-sm"><div className="flex justify-between items-center mb-1"><span className="text-amber-500 font-bold">● 衛星部位 (${(allocationBase * (getNum(inputs.alloc_sat)/100)).toLocaleString(undefined, {maximumFractionDigits:0})})</span></div><div className="grid grid-cols-4 gap-1 text-xs text-center font-bold items-center"><div className="text-slate-600 dark:text-slate-300">IBIT</div><div className="text-slate-400">${prices.IBIT?.toFixed(0)}</div><div className="col-span-2 bg-slate-100 dark:bg-slate-700/50 rounded py-0.5 text-amber-600 dark:text-amber-300">{prices.IBIT > 0 ? Math.floor((allocationBase * (getNum(inputs.alloc_sat)/100)) / prices.IBIT).toLocaleString() : '-'} 股</div></div></div>
-                                            </div>
-                                        </div>
-                                    </Card>
-                                )}
-
-                                {isWhitepaperOpen && ( 
-                                    <Card className="p-0 overflow-hidden border-4 border-indigo-400 bg-white dark:bg-slate-900 shadow-2xl text-left mb-6 animate-in slide-in-from-top-4 duration-300">
-                                        <div className="p-4 bg-indigo-600 text-white flex justify-between items-center"><div className="flex items-center gap-2 font-black"><Icon name="BookOpen" size={20} /><span>策略執行協議 (Strategy Whitepaper)</span></div><button onClick={() => setIsWhitepaperOpen(false)}><Icon name="X" size={20} /></button></div>
-                                        <div className="whitepaper-scroll p-5 space-y-6 leading-relaxed bg-white dark:bg-slate-900 font-medium font-black">
-                                            <div className="flex justify-end mb-4 border-b border-dashed border-slate-200 dark:border-slate-700 pb-2"><button onClick={() => setIsStrategyEditing(!isStrategyEditing)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${isStrategyEditing ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}><Icon name={isStrategyEditing ? "Unlock" : "Lock"} size={14} /><span>{isStrategyEditing ? "編輯中 (點擊鎖定)" : "鎖定中 (點擊修改)"}</span></button></div>
-                                            <div className="space-y-2"><div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-black"><Icon name="TrendingUp" size={16}/> <input type="text" value={inputs.title_core} readOnly={!isStrategyEditing} onChange={e => handleInputChange('title_core', e.target.value)} onBlur={e => syncToCloud('title_core', e.target.value)} className={`title-input ${isStrategyEditing ? 'title-input-edit cursor-text' : 'cursor-default pointer-events-none'}`} /></div><textarea value={inputs.strat_core} readOnly={!isStrategyEditing} onChange={e => handleInputChange('strat_core', e.target.value)} onBlur={e => syncToCloud('strat_core', e.target.value)} className={`w-full strategy-textarea resize-none ${!isStrategyEditing ? 'strategy-read-only' : ''}`} placeholder="輸入核心 QQQ 策略..." /></div>
-                                            <div className="space-y-2"><div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-black"><Icon name="TrendingUp" size={16}/> <input type="text" value={inputs.title_qld} readOnly={!isStrategyEditing} onChange={e => handleInputChange('title_qld', e.target.value)} onBlur={e => syncToCloud('title_qld', e.target.value)} className={`title-input ${isStrategyEditing ? 'title-input-edit cursor-text' : 'cursor-default pointer-events-none'}`} /></div><textarea value={inputs.strat_qld} readOnly={!isStrategyEditing} onChange={e => handleInputChange('strat_qld', e.target.value)} onBlur={e => syncToCloud('strat_qld', e.target.value)} className={`w-full strategy-textarea resize-none ${!isStrategyEditing ? 'strategy-read-only' : ''}`} placeholder="輸入槓桿操作策略..." /></div>
-                                            <div className="space-y-2"><div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-black"><Icon name="Quote" size={16}/> <input type="text" value={inputs.title_faith} readOnly={!isStrategyEditing} onChange={e => handleInputChange('title_faith', e.target.value)} onBlur={e => syncToCloud('title_faith', e.target.value)} className={`title-input ${isStrategyEditing ? 'title-input-edit cursor-text' : 'cursor-default pointer-events-none'}`} placeholder="自訂信仰持倉標題" /></div><textarea value={inputs.strat_faith} readOnly={!isStrategyEditing} onChange={e => handleInputChange('strat_faith', e.target.value)} onBlur={e => syncToCloud('strat_faith', e.target.value)} className={`w-full strategy-textarea resize-none ${!isStrategyEditing ? 'strategy-read-only' : ''}`} placeholder="輸入個股/信仰持倉策略..." /></div>
-                                            <div className="space-y-2"><div className="flex items-center gap-2 text-amber-500 dark:text-amber-400 font-black"><Icon name="TrendingUp" size={16}/> <input type="text" value={inputs.title_ibit} readOnly={!isStrategyEditing} onChange={e => handleInputChange('title_ibit', e.target.value)} onBlur={e => syncToCloud('title_ibit', e.target.value)} className={`title-input ${isStrategyEditing ? 'title-input-edit cursor-text' : 'cursor-default pointer-events-none'}`} /></div><textarea value={inputs.strat_ibit} readOnly={!isStrategyEditing} onChange={e => handleInputChange('strat_ibit', e.target.value)} onBlur={e => syncToCloud('strat_ibit', e.target.value)} className={`w-full strategy-textarea resize-none ${!isStrategyEditing ? 'strategy-read-only' : ''}`} placeholder="輸入衛星/IBIT操作策略..." /></div>
-                                        </div>
-                                    </Card>
-                                )}
-
-                                <Card className="p-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg border-none relative overflow-hidden transition-all duration-300">
+                                <Card className="p-4 bg-gradient-to-r from-slate-800 to-indigo-900 text-white shadow-lg border-none relative overflow-hidden transition-all duration-300">
                                     <div className="flex justify-between items-start mb-2">
                                         <div className="flex items-center gap-2 opacity-80"><Icon name={isAlertsView ? "ShieldAlert" : "Quote"} size={16} className="text-white" /><span className="text-[10px] uppercase tracking-widest font-bold">{isAlertsView ? "策略警示 (Alerts)" : "投資座右銘 (Motto)"}</span></div>
                                         <button onClick={() => setIsAlertsView(!isAlertsView)} className={`p-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-all ${strategyAlerts.length > 0 ? 'alert-btn-pulse bg-red-500/80 hover:bg-red-500' : ''}`}><Icon name="AlertCircle" size={18} className="text-white" /></button>
                                     </div>
                                     {isAlertsView ? (
                                         <div className="space-y-2 min-h-[60px] animate-in fade-in slide-in-from-right-4">
-                                            {strategyAlerts.length > 0 ? (strategyAlerts.map((alert, idx) => (<div key={idx} className="bg-white/10 p-2 rounded-lg border border-white/20 backdrop-blur-sm"><div className="font-bold text-sm mb-1 flex items-center gap-1">{alert.type === 'danger' && '🔴'}{alert.type === 'risk' && '🟠'}{alert.type === 'opportunity' && '🔵'}{alert.type === 'sniper' && '🟣'}{alert.type === 'warning' && '🟡'}{alert.title}</div><div className="text-xs opacity-90 leading-snug mb-2">{alert.msg}</div><button onClick={() => copyToMemo(alert.msg)} className="flex items-center gap-1 bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-[9px] transition-colors ml-auto w-fit"><Icon name="Save" size={10} /> 存入備註</button></div>))) : (<div className="flex flex-col items-center justify-center h-full py-4 opacity-70"><Icon name="CheckCircle" size={32} className="mb-1" /><span className="text-xs">目前無觸發警示，策略運行正常。</span></div>)}
+                                            {strategyAlerts.length > 0 ? (strategyAlerts.map((alert, idx) => (<div key={idx} className="bg-white/10 p-2 rounded-lg border border-white/20 backdrop-blur-sm"><div className="font-bold text-sm mb-1 flex items-center gap-1">{alert.type === 'danger' && '🔴'}{alert.type === 'risk' && '🟠'}{alert.type === 'opportunity' && '🔵'}{alert.type === 'sniper' && '🟣'}{alert.type === 'warning' && '🟡'}{alert.title}</div><div className="text-xs opacity-90 leading-snug mb-2 whitespace-pre-line">{alert.msg}</div><button onClick={() => copyToMemo(alert.msg)} className="flex items-center gap-1 bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-[9px] transition-colors ml-auto w-fit"><Icon name="Save" size={10} /> 存入備註</button></div>))) : (<div className="flex flex-col items-center justify-center h-full py-4 opacity-70"><Icon name="CheckCircle" size={32} className="mb-1" /><span className="text-xs">目前無觸發警示，策略運行正常。</span></div>)}
                                         </div>
                                     ) : (
                                         <textarea value={inputs.motto} onChange={e => handleInputChange('motto', e.target.value)} onBlur={e => syncToCloud('motto', e.target.value)} className="w-full bg-transparent text-lg font-black text-center placeholder-white/50 outline-none resize-none animate-in fade-in slide-in-from-left-4" rows="2" placeholder="在此輸入您的投資心法..." />
                                     )}
                                 </Card>
 
-                                <div className="grid grid-cols-2 gap-3 text-center">
-                                    <Card className="py-4 px-1 flex flex-col items-center justify-center min-h-[85px] font-black"><span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">手持部位</span><select value={inputs.current_positions} onChange={e => { handleInputChange('current_positions', e.target.value); syncToCloud('current_positions', e.target.value); }} className="font-black text-center dark:text-white cursor-pointer py-1 text-[13px] h-auto"><option value="CASH">💰 現金</option><option value="QQQ">📈 1x QQQ</option><option value="QLD">🚀 2x QLD</option><option value="TQQQ">🔥 3x TQQQ</option></select></Card>
+                                <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 border-2 border-slate-200 dark:border-slate-700 shadow-lg">
+                                    <div className="flex items-center gap-2 mb-3 text-xs font-black text-slate-400 uppercase tracking-widest"><Icon name="Scale" size={14} /> 再平衡健康度檢測</div>
+                                    <div className="space-y-3">
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between items-center text-sm font-bold">
+                                                <span className="text-slate-600 dark:text-slate-300">核心 TQQQ 佔比 (目標 50%)</span>
+                                                <span className={rebalanceStatus.isCoreImbalanced ? 'text-red-500 animate-pulse' : 'text-emerald-500'}>{rebalanceStatus.tqqqRatio.toFixed(1)}% {rebalanceStatus.isCoreImbalanced && '⚠️'}</span>
+                                            </div>
+                                            <div className="h-2.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                <div className={`h-full ${rebalanceStatus.isCoreImbalanced ? 'bg-red-500' : 'bg-indigo-500'}`} style={{ width: `${Math.min(rebalanceStatus.tqqqRatio, 100)}%` }}></div>
+                                            </div>
+                                            <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>35% (買進)</span><span>65% (賣出)</span></div>
+                                        </div>
+                                        
+                                        <div className="pt-3 border-t dark:border-slate-800 grid grid-cols-2 gap-4">
+                                            <div>
+                                                <div className="flex justify-between text-[10px] text-slate-500 mb-1"><span>{inputs.custom_ticker_1 || '自選1'} 權重</span><span className={rebalanceStatus.isCustom1Overweight ? 'text-red-500' : 'text-slate-400'}>{rebalanceStatus.custom1Weight}%</span></div>
+                                                {rebalanceStatus.isCustom1Overweight && <div className="text-[9px] text-red-500 font-bold">⚠️ 超過 15%</div>}
+                                            </div>
+                                            <div>
+                                                <div className="flex justify-between text-[10px] text-slate-500 mb-1"><span>{inputs.custom_ticker_2 || '自選2'} 權重</span><span className={rebalanceStatus.isCustom2Overweight ? 'text-red-500' : 'text-slate-400'}>{rebalanceStatus.custom2Weight}%</span></div>
+                                                {rebalanceStatus.isCustom2Overweight && <div className="text-[9px] text-red-500 font-bold">⚠️ 超過 15%</div>}
+                                            </div>
+                                            <div>
+                                                <div className="flex justify-between text-[10px] text-slate-500 mb-1"><span>IBIT 權重</span><span className={rebalanceStatus.isIbitOverweight ? 'text-red-500' : 'text-slate-400'}>{rebalanceStatus.ibitWeight}%</span></div>
+                                                {rebalanceStatus.isIbitOverweight && <div className="text-[9px] text-red-500 font-bold">⚠️ 超過 15%</div>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="w-full">
                                     <Card className="py-4 px-1 flex flex-col items-center justify-center min-h-[85px] font-black"><span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">紀錄日期</span><input type="date" value={inputs.record_date} onChange={e => handleInputChange('record_date', e.target.value)} className="font-black dark:text-white py-1 text-[13px] h-auto font-black" /></Card>
                                 </div>
 
@@ -308,36 +731,99 @@
                                     <div className="absolute -right-4 -bottom-4 opacity-10 rotate-12 font-black font-black"><Icon name="TrendingUp" size={160} /></div>
                                     <label className="text-[10px] opacity-50 uppercase tracking-widest block mb-1">Portfolio Valuation</label>
                                     <div className="flex items-baseline gap-3 flex-wrap font-black"><div className="text-4xl font-black">${totalCapital.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>{inputs.loan_amount > 0 && <div className="text-xs font-black text-amber-400 bg-amber-400/20 px-3 py-1 rounded-full border border-amber-400/30">L: ${inputs.loan_amount.toLocaleString()}</div>}</div>
-                                    <div className="text-[12px] opacity-30 mt-5 uppercase flex items-center gap-2 font-black font-black font-black"><Icon name="CheckCircle" size={14} /> 淨資產: ${(totalCapital - inputs.loan_amount).toLocaleString()}</div>
+                                    <div className="text-sm font-bold opacity-60 mt-1">≈ NT$ {(totalCapital * (inputs.usdtwd_rate || 32.5)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                    <div className="mt-4 pt-3 border-t border-white/10 flex gap-4 text-xs font-bold">
+                                        <div className="flex flex-col"><span className="opacity-40 uppercase text-[9px]">總損益</span><span className={totalPL >= 0 ? 'text-emerald-400' : 'text-red-400'}>{totalPL >= 0 ? '+' : ''}${totalPL.toLocaleString(undefined, {maximumFractionDigits:0})}</span></div>
+                                        <div className="flex flex-col"><span className="opacity-40 uppercase text-[9px]">總報酬率</span><span className={totalROI >= 0 ? 'text-emerald-400' : 'text-red-400'}>{totalROI >= 0 ? '+' : ''}{totalROI.toFixed(2)}%</span></div>
+                                        <div className="flex flex-col ml-auto text-right"><span className="opacity-40 uppercase text-[9px]">淨資產</span><span>${(totalCapital - inputs.loan_amount).toLocaleString()}</span></div>
+                                    </div>
                                 </Card>
 
                                 <Card className="p-4 overflow-hidden text-center relative font-black font-black">
                                     <div className="flex justify-between items-center mb-2"><SectionTitle title="資產分配圓餅圖" iconName="PieChartIcon" /><span className="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200 px-2 py-1 rounded-lg font-bold">槓桿: {currentLeverage}x</span></div>
-                                    <div className="h-64 w-full mt-2 font-black"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value" label={({ percentage }) => `${percentage}%`}>{pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />)}</Pie><Tooltip formatter={(v) => `$${v.toLocaleString()}`} /><Legend verticalAlign="bottom" align="center" iconType="circle" /></PieChart></ResponsiveContainer></div>
+                                    <div className="h-64 w-full mt-2 font-black">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value" label={({ percentage }) => `${percentage}%`}>
+                                                    {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />)}
+                                                </Pie>
+                                                <Tooltip content={<CustomTooltip />} />
+                                                <Legend verticalAlign="bottom" align="center" iconType="circle" />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
                                 </Card>
 
                                 <Card className="space-y-4 text-left font-black font-black border-2 border-indigo-500 dark:border-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.2)]">
-                                    <SectionTitle title="持倉數量輸入 (Input Holdings)" iconName="Edit2" />
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {[{ l: "QQQ", f: "qty_qqq", s: "QQQ" }, { l: "QLD", f: "qty_qld", s: "QLD" }, { l: "TQQQ", f: "qty_tqqq", s: "TQQQ" }, { l: "IBIT", f: "qty_ibit", s: "IBIT" }].map(it => (<div key={it.f} className="space-y-1"><div className="flex justify-between items-center px-1 font-black"><label className="text-[11px] text-slate-400 uppercase font-black">{it.l}</label><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded font-mono tracking-tighter">${prices[it.s]?.toFixed(2) || '0.00'}</span></div><input type="number" value={inputs[it.f]} onChange={e => handleInputChange(it.f, e.target.value)} onBlur={(e) => syncToCloud(it.f, e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-4 font-black text-lg text-center" /></div>))}
-                                        <div className="space-y-1 text-left"><div className="flex justify-between items-center px-1 font-black"><input type="text" value={inputs.custom_ticker_1} onChange={e => handleInputChange('custom_ticker_1', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_1', e.target.value.toUpperCase())} className="text-[11px] text-slate-400 bg-transparent p-0 w-16 outline-none text-left" /><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded font-mono tracking-tighter">${prices[(inputs.custom_ticker_1 || "").trim().toUpperCase()]?.toFixed(2) || '0.00'}</span></div><input type="number" value={inputs.qty_custom_1} onChange={e => handleInputChange('qty_custom_1', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_1', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-4 font-black text-lg text-center font-black" /></div>
-                                        <div className="space-y-1 text-left"><div className="flex justify-between items-center px-1 font-black"><input type="text" value={inputs.custom_ticker_2} onChange={e => handleInputChange('custom_ticker_2', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_2', e.target.value.toUpperCase())} className="text-[11px] text-slate-400 bg-transparent p-0 w-16 outline-none text-left" /><span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded font-mono tracking-tighter">${prices[(inputs.custom_ticker_2 || "").trim().toUpperCase()]?.toFixed(2) || '0.00'}</span></div><input type="number" value={inputs.qty_custom_2} onChange={e => handleInputChange('qty_custom_2', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_2', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-4 font-black text-lg text-center font-black" /></div>
-                                        <div className="col-span-2 space-y-1 text-center font-black font-black"><label className="text-[11px] font-black text-slate-500 px-1 uppercase block text-center w-full font-black">現金餘額 (USD)</label><input type="number" value={inputs.cash_balance} onChange={e => handleInputChange('cash_balance', e.target.value)} onBlur={(e) => syncToCloud('cash_balance', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-indigo-100/50 dark:border-indigo-900/50 rounded-2xl p-4 font-black text-xl text-indigo-600" /></div>
+                                    <SectionTitle title="持倉數量與成本 (Holdings)" iconName="Edit2" />
+                                    <div className="space-y-3">
+                                        <div className="grid grid-cols-12 gap-2 text-[10px] text-slate-400 uppercase tracking-widest text-center px-1">
+                                            <div className="col-span-3 text-left">標的</div><div className="col-span-4">股數</div><div className="col-span-5">平均成本</div>
+                                        </div>
+                                        {/* Core 1: QQQ (Editable) */}
+                                        <div className="holding-input-group grid grid-cols-12 gap-0">
+                                            <div className="col-span-3 flex flex-col justify-center px-2 bg-slate-100 dark:bg-slate-800/50">
+                                                <input type="text" value={inputs.ticker_core_1} onChange={e => handleInputChange('ticker_core_1', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('ticker_core_1', e.target.value.toUpperCase())} className="w-full text-xs font-black bg-transparent p-0 outline-none text-left text-indigo-600 dark:text-indigo-400" placeholder="QQQ" />
+                                                <span className="text-[9px] text-slate-400 font-mono">${prices[(inputs.ticker_core_1 || "QQQ").toUpperCase()]?.toFixed(1)}</span>
+                                            </div>
+                                            <input type="number" placeholder="股數" value={inputs.qty_qqq} onChange={e => handleInputChange('qty_qqq', e.target.value)} onBlur={(e) => syncToCloud('qty_qqq', e.target.value)} className="col-span-4 bg-transparent border-r border-slate-200 dark:border-slate-700 font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors" />
+                                            <input type="number" placeholder="成本" value={inputs.avg_cost_qqq} onChange={e => handleInputChange('avg_cost_qqq', e.target.value)} onBlur={(e) => syncToCloud('avg_cost_qqq', e.target.value)} className="col-span-5 bg-transparent font-medium text-sm text-center text-slate-500 focus:bg-white dark:focus:bg-slate-800 transition-colors" />
+                                        </div>
+                                        
+                                        {/* Core 2: TQQQ (Fixed) */}
+                                        <div className="holding-input-group grid grid-cols-12 gap-0">
+                                            <div className="col-span-3 flex flex-col justify-center px-3 bg-slate-100 dark:bg-slate-800/50"><span className="text-xs font-black">TQQQ</span><span className="text-[9px] text-indigo-500 font-mono">${prices.TQQQ?.toFixed(1)}</span></div>
+                                            <input type="number" placeholder="股數" value={inputs.qty_tqqq} onChange={e => handleInputChange('qty_tqqq', e.target.value)} onBlur={(e) => syncToCloud('qty_tqqq', e.target.value)} className="col-span-4 bg-transparent border-r border-slate-200 dark:border-slate-700 font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors" />
+                                            <input type="number" placeholder="成本" value={inputs.avg_cost_tqqq} onChange={e => handleInputChange('avg_cost_tqqq', e.target.value)} onBlur={(e) => syncToCloud('avg_cost_tqqq', e.target.value)} className="col-span-5 bg-transparent font-medium text-sm text-center text-slate-500 focus:bg-white dark:focus:bg-slate-800 transition-colors" />
+                                        </div>
+
+                                        {/* IBIT */}
+                                        <div className="holding-input-group grid grid-cols-12 gap-0">
+                                            <div className="col-span-3 flex flex-col justify-center px-3 bg-slate-100 dark:bg-slate-800/50"><span className="text-xs font-black">IBIT</span><span className="text-[9px] text-indigo-500 font-mono">${prices.IBIT?.toFixed(1)}</span></div>
+                                            <input type="number" placeholder="股數" value={inputs.qty_ibit} onChange={e => handleInputChange('qty_ibit', e.target.value)} onBlur={(e) => syncToCloud('qty_ibit', e.target.value)} className="col-span-4 bg-transparent border-r border-slate-200 dark:border-slate-700 font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors" />
+                                            <input type="number" placeholder="成本" value={inputs.avg_cost_ibit} onChange={e => handleInputChange('avg_cost_ibit', e.target.value)} onBlur={(e) => syncToCloud('avg_cost_ibit', e.target.value)} className="col-span-5 bg-transparent font-medium text-sm text-center text-slate-500 focus:bg-white dark:focus:bg-slate-800 transition-colors" />
+                                        </div>
+
+                                        {/* SGOV */}
+                                        <div className="holding-input-group grid grid-cols-12 gap-0">
+                                            <div className="col-span-3 flex flex-col justify-center px-3 bg-slate-100 dark:bg-slate-800/50"><span className="text-xs font-black">SGOV</span><span className="text-[9px] text-indigo-500 font-mono">${prices.SGOV?.toFixed(1)}</span></div>
+                                            <input type="number" placeholder="股數" value={inputs.qty_sgov} onChange={e => handleInputChange('qty_sgov', e.target.value)} onBlur={(e) => syncToCloud('qty_sgov', e.target.value)} className="col-span-4 bg-transparent border-r border-slate-200 dark:border-slate-700 font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors" />
+                                            <input type="number" placeholder="成本" value={inputs.avg_cost_sgov} onChange={e => handleInputChange('avg_cost_sgov', e.target.value)} onBlur={(e) => syncToCloud('avg_cost_sgov', e.target.value)} className="col-span-5 bg-transparent font-medium text-sm text-center text-slate-500 focus:bg-white dark:focus:bg-slate-800 transition-colors" />
+                                        </div>
+
+                                        {/* Custom 1 */}
+                                        <div className="holding-input-group grid grid-cols-12 gap-0">
+                                            <div className="col-span-3 flex flex-col justify-center px-2 bg-slate-100 dark:bg-slate-800/50">
+                                                <input type="text" value={inputs.custom_ticker_1} onChange={e => handleInputChange('custom_ticker_1', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_1', e.target.value.toUpperCase())} className="w-full text-xs font-black bg-transparent p-0 outline-none text-left" placeholder="自選1" />
+                                                <span className="text-[9px] text-indigo-500 font-mono">${prices[(inputs.custom_ticker_1 || "").trim().toUpperCase()]?.toFixed(1) || '-'}</span>
+                                            </div>
+                                            <input type="number" placeholder="股數" value={inputs.qty_custom_1} onChange={e => handleInputChange('qty_custom_1', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_1', e.target.value)} className="col-span-4 bg-transparent border-r border-slate-200 dark:border-slate-700 font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors" />
+                                            <input type="number" placeholder="成本" value={inputs.avg_cost_custom_1} onChange={e => handleInputChange('avg_cost_custom_1', e.target.value)} onBlur={(e) => syncToCloud('avg_cost_custom_1', e.target.value)} className="col-span-5 bg-transparent font-medium text-sm text-center text-slate-500 focus:bg-white dark:focus:bg-slate-800 transition-colors" />
+                                        </div>
+
+                                        {/* Custom 2 (NEW) */}
+                                        <div className="holding-input-group grid grid-cols-12 gap-0">
+                                            <div className="col-span-3 flex flex-col justify-center px-2 bg-slate-100 dark:bg-slate-800/50">
+                                                <input type="text" value={inputs.custom_ticker_2} onChange={e => handleInputChange('custom_ticker_2', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_2', e.target.value.toUpperCase())} className="w-full text-xs font-black bg-transparent p-0 outline-none text-left" placeholder="自選2" />
+                                                <span className="text-[9px] text-indigo-500 font-mono">${prices[(inputs.custom_ticker_2 || "").trim().toUpperCase()]?.toFixed(1) || '-'}</span>
+                                            </div>
+                                            <input type="number" placeholder="股數" value={inputs.qty_custom_2} onChange={e => handleInputChange('qty_custom_2', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_2', e.target.value)} className="col-span-4 bg-transparent border-r border-slate-200 dark:border-slate-700 font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors" />
+                                            <input type="number" placeholder="成本" value={inputs.avg_cost_custom_2} onChange={e => handleInputChange('avg_cost_custom_2', e.target.value)} onBlur={(e) => syncToCloud('avg_cost_custom_2', e.target.value)} className="col-span-5 bg-transparent font-medium text-sm text-center text-slate-500 focus:bg-white dark:focus:bg-slate-800 transition-colors" />
+                                        </div>
+
+                                        <div className="pt-2"><label className="text-[11px] font-black text-slate-500 px-1 uppercase block text-center w-full mb-1">現金餘額 (USD)</label><input type="number" value={inputs.cash_balance} onChange={e => handleInputChange('cash_balance', e.target.value)} onBlur={(e) => syncToCloud('cash_balance', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-indigo-100/50 dark:border-indigo-900/50 rounded-2xl p-4 font-black text-xl text-indigo-600" /></div>
                                     </div>
                                 </Card>
 
                                 <Card className="space-y-4">
-                                    <SectionTitle title="技術指標參數 (QQQ週線/其他)" iconName="Settings" />
-                                    <div className="grid grid-cols-3 gap-3">
-                                        {[{ l: "EMA 5 (週)", f: "qqq_ema5" }, { l: "EMA 12 (週)", f: "qqq_ema12" }, { l: "EMA 25 (週)", f: "qqq_ema25" }].map(it => (<div key={it.f} className="space-y-1"><label className="text-[10px] text-slate-400 uppercase block text-center">{it.l}</label><input type="number" value={inputs[it.f]} onChange={e => handleInputChange(it.f, e.target.value)} onBlur={e => syncToCloud(it.f, e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 font-black text-center" /></div>))}
+                                    <SectionTitle title="技術指標參數 (MA Settings)" iconName="Settings" />
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1"><label className="text-[10px] text-indigo-500 uppercase block text-center">QQQ 125 EMA (日)</label><input type="number" value={inputs.qqq_ema125} onChange={e => handleInputChange('qqq_ema125', e.target.value)} onBlur={e => syncToCloud('qqq_ema125', e.target.value)} className="w-full bg-indigo-50 dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900 rounded-xl p-2.5 font-black text-center" /></div>
+                                        <div className="space-y-1"><label className="text-[10px] text-amber-500 uppercase block text-center">IBIT 50 EMA (週)</label><input type="number" value={inputs.ibit_ema50} onChange={e => handleInputChange('ibit_ema50', e.target.value)} onBlur={e => syncToCloud('ibit_ema50', e.target.value)} className="w-full bg-amber-50 dark:bg-slate-800 border border-amber-100 dark:border-amber-900 rounded-xl p-2.5 font-black text-center" /></div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                         <div className="space-y-1"><label className="text-[10px] text-slate-400 uppercase block text-center">QQQ 前高 (ATH)</label><input type="number" value={inputs.qqq_ath} onChange={e => handleInputChange('qqq_ath', e.target.value)} onBlur={e => syncToCloud('qqq_ath', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 font-black text-center" /></div>
-                                        <div className="space-y-1"><label className="text-[10px] text-amber-500 uppercase block text-center">IBIT EMA 50 (週)</label><input type="number" value={inputs.ibit_ema50_wk} onChange={e => handleInputChange('ibit_ema50_wk', e.target.value)} onBlur={e => syncToCloud('ibit_ema50_wk', e.target.value)} className="w-full bg-amber-50 dark:bg-slate-800 border border-amber-100 dark:border-amber-900 rounded-xl p-2.5 font-black text-center" /></div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                        <div className="space-y-1"><label className="text-[10px] text-sky-500 uppercase block text-center truncate">{inputs.custom_ticker_1 || '自選1'} EMA 50 (週)</label><input type="number" value={inputs.custom_1_ema50_wk} onChange={e => handleInputChange('custom_1_ema50_wk', e.target.value)} onBlur={e => syncToCloud('custom_1_ema50_wk', e.target.value)} className="w-full bg-sky-50 dark:bg-slate-800 border border-sky-100 dark:border-sky-900/50 rounded-xl p-2.5 font-black text-center" /></div>
-                                        <div className="space-y-1"><label className="text-[10px] text-sky-500 uppercase block text-center truncate">{inputs.custom_ticker_2 || '自選2'} EMA 50 (週)</label><input type="number" value={inputs.custom_2_ema50_wk} onChange={e => handleInputChange('custom_2_ema50_wk', e.target.value)} onBlur={e => syncToCloud('custom_2_ema50_wk', e.target.value)} className="w-full bg-sky-50 dark:bg-slate-800 border border-sky-100 dark:border-sky-900/50 rounded-xl p-2.5 font-black text-center" /></div>
+                                        <div className="space-y-1"><label className="text-[10px] text-sky-500 uppercase block text-center truncate">{inputs.custom_ticker_1 || '自選1'} 50 EMA (週)</label><input type="number" value={inputs.custom_1_ema125} onChange={e => handleInputChange('custom_1_ema125', e.target.value)} onBlur={e => syncToCloud('custom_1_ema125', e.target.value)} className="w-full bg-sky-50 dark:bg-slate-800 border border-sky-100 dark:border-sky-900/50 rounded-xl p-2.5 font-black text-center" /></div>
+                                        <div className="space-y-1"><label className="text-[10px] text-sky-500 uppercase block text-center truncate">{inputs.custom_ticker_2 || '自選2'} 50 EMA (週)</label><input type="number" value={inputs.custom_2_ema50} onChange={e => handleInputChange('custom_2_ema50', e.target.value)} onBlur={e => syncToCloud('custom_2_ema50', e.target.value)} className="w-full bg-sky-50 dark:bg-slate-800 border border-sky-100 dark:border-sky-900/50 rounded-xl p-2.5 font-black text-center" /></div>
                                     </div>
                                 </Card>
 
@@ -352,11 +838,14 @@
                             <div className="space-y-6 animate-in fade-in text-left">
                                 <div className="flex gap-2 p-1.5 bg-slate-200 dark:bg-slate-800 rounded-3xl shadow-inner text-left font-black font-black font-black">
                                     {['all', 'year', 'month'].map(m => (
-                                        <button key={m} onClick={() => setFilterMode(m)} className={`flex-1 py-4 rounded-2xl text-xs font-black uppercase transition-all ${filterMode === m ? 'bg-white shadow text-indigo-600 scale-[1.02]' : 'text-slate-500 font-black font-black'}`}>{m === 'all' ? '全部' : m === 'year' ? '年度' : '本月'}</button>
+                                        <button key={m} onClick={() => { setFilterMode(m); setVisibleCount(5); }} className={`flex-1 py-4 rounded-2xl text-xs font-black uppercase transition-all ${filterMode === m ? 'bg-white shadow text-indigo-600 scale-[1.02]' : 'text-slate-500 font-black font-black'}`}>{m === 'all' ? '全部' : m === 'year' ? '年度' : '本月'}</button>
                                     ))}
                                 </div>
                                 <Card className="h-72 p-2 shadow-xl border-none overflow-hidden bg-white dark:bg-slate-900 font-black font-black">
-                                    <SectionTitle title="資產成長趨勢" iconName="TrendingUp" />
+                                    <div className="flex justify-between items-center mb-2">
+                                        <SectionTitle title="資產成長趨勢" iconName="TrendingUp" />
+                                        <span className="text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded-lg font-bold">Max Drawdown: -{mddStats.mdd}%</span>
+                                    </div>
                                     <ResponsiveContainer width="100%" height="100%" key={filterMode + stats.chartData.length}>
                                         <AreaChart data={stats.chartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
                                             <defs><linearGradient id="colorEq" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs>
@@ -368,81 +857,175 @@
                                         </AreaChart>
                                     </ResponsiveContainer>
                                 </Card>
-                                <Card className="p-0 overflow-hidden border-2 border-indigo-100 dark:border-indigo-900/40 shadow-sm text-left font-black font-black">
-                                    <button onClick={() => setStatsOpen(!isStatsOpen)} className="w-full flex items-center justify-between p-5 bg-indigo-50 dark:bg-indigo-950/40 font-black text-indigo-700 dark:text-indigo-300">
-                                        <div className="flex items-center gap-2"><Icon name="BarChart2" size={18} /><span>週期成長統計 (年度/月度)</span></div>
-                                        <Icon name={isStatsOpen ? "ChevronUp" : "ChevronDown"} size={20} />
-                                    </button>
-                                    {isStatsOpen && (
-                                        <div className="p-5 space-y-6 max-h-[400px] overflow-y-auto no-scrollbar font-black text-[12px] bg-white dark:bg-slate-900 font-black">
-                                            <div>
-                                                <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-3 border-b pb-1 dark:border-slate-800 font-black">● 年度結算 (年初 vs 年末)</p>
-                                                <div className="space-y-2 font-black font-black font-black">
-                                                    {periodicStats.years.map(y => (
-                                                        <div key={y.label} className="flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl">
-                                                            <span>{y.label} 年</span>
-                                                            <div className="text-right font-black font-black">
-                                                                <p className={`text-sm ${y.diff >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{y.diff >= 0 ? '+' : ''}${y.diff.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                                                                <p className={`text-[10px] ${y.diff >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{y.pct.toFixed(2)}%</p>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-3 border-b pb-1 dark:border-slate-800 font-black">● 月度成長 (月初 vs 月末)</p>
-                                                <div className="grid grid-cols-1 gap-2 font-black">
-                                                    {periodicStats.months.map(m => (
-                                                        <div key={m.label} className="flex justify-between items-center p-2.5 border-b dark:border-slate-800 font-black">
-                                                            <span>{m.label}</span>
-                                                            <span className={`font-mono ${m.diff >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{m.diff >= 0 ? '+' : ''}{m.pct.toFixed(1)}%</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </Card>
-                                <div className="space-y-4 pb-28 font-black text-left font-black">
-                                    {records.filter(r => { const d = new Date(r.date); const now = new Date(); if (filterMode === 'year') return d.getFullYear() === now.getFullYear(); if (filterMode === 'month') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); return true; }).slice(0, visibleCount).map(rec => (
-                                        <Card key={rec.id} className="border-none shadow-md p-5 bg-white dark:bg-slate-800/50 text-left font-black font-black font-black">
-                                            {editingId === rec.id ? (
-                                                <div className="space-y-5 animate-in slide-in-from-top-1 text-left font-black font-black font-black font-black">
-                                                    <div className="flex justify-between items-center border-b dark:border-slate-700 pb-3 text-indigo-600 font-black font-black font-black"><span className="text-sm uppercase tracking-widest text-left font-black">修改歷史數據</span><button onClick={() => setEditingId(null)} className="p-1"><Icon name="X" size={24} /></button></div>
-                                                    <div className="grid grid-cols-2 gap-4 text-left font-black">
-                                                        <div className="col-span-2 space-y-1"><label className="text-[11px] font-black text-slate-400 uppercase">日期</label><input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 font-black outline-none font-black" /></div>
-                                                        {['qty_qqq', 'qty_qld', 'qty_tqqq', 'qty_ibit'].map(f => (<div key={f} className="space-y-1 font-black"><label className="text-[11px] font-black text-slate-400 uppercase text-left">{f.replace('qty_', '').toUpperCase()} 數量</label><input type="number" value={editForm.inputs[f] || 0} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, [f]: e.target.value}})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 font-black outline-none font-black" /></div>))}
-                                                        <div className="space-y-1 font-black"><label className="text-[11px] font-black text-slate-400 uppercase font-black">{editForm.inputs.custom_ticker_1 || '自選1'} 數量</label><input type="number" value={editForm.inputs.qty_custom_1} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, qty_custom_1: e.target.value}})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 font-black outline-none font-black font-black" /></div>
-                                                        <div className="space-y-1 font-black"><label className="text-[11px] font-black text-slate-400 uppercase font-black">{editForm.inputs.custom_ticker_2 || '自選2'} 數量</label><input type="number" value={editForm.inputs.qty_custom_2} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, qty_custom_2: e.target.value}})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 font-black outline-none font-black font-black" /></div>
-                                                        <div className="col-span-2 space-y-1 font-black"><label className="text-[11px] font-black text-slate-400 uppercase text-left font-black">現金餘額</label><input type="number" value={editForm.inputs.cash_balance} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, cash_balance: e.target.value}})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 font-black outline-none font-black" /></div>
-                                                        <div className="col-span-2 space-y-1 text-left font-black font-black font-black"><label className="text-[11px] font-black text-slate-400 tracking-widest uppercase font-black font-black">修改備註</label><textarea value={editForm.memo} onChange={e => setEditForm({...editForm, memo: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 font-black outline-none text-left" rows="2" /></div>
-                                                    </div>
-                                                    <button onClick={() => updateRecord(rec.id)} className="w-full bg-indigo-600 text-white py-5 rounded-3xl font-black text-lg shadow-xl btn-active font-bold text-center font-black">保存重算</button>
-                                                </div>
-                                            ) : (
+
+                                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
+                                    <button onClick={() => setHistoryTab('list')} className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${historyTab === 'list' ? 'bg-white dark:bg-slate-700 shadow text-indigo-600' : 'text-slate-400'}`}>📜 交易明細</button>
+                                    <button onClick={() => setHistoryTab('report')} className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${historyTab === 'report' ? 'bg-white dark:bg-slate-700 shadow text-indigo-600' : 'text-slate-400'}`}>📊 週期報表 (年/月)</button>
+                                </div>
+
+                                {historyTab === 'list' ? (
+                                    <div className="space-y-4 pb-28 font-black text-left font-black">
+                                        {(() => {
+                                            const filteredRecords = records.filter(r => { const d = new Date(r.date); const now = new Date(); if (filterMode === 'year') return d.getFullYear() === now.getFullYear(); if (filterMode === 'month') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); return true; });
+                                            const displayedRecords = filteredRecords.slice(0, visibleCount);
+                                            
+                                            return (
                                                 <>
-                                                    <div className="flex justify-between items-start font-black text-left font-black font-black font-black">
-                                                        <div className="space-y-1 font-black"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{new Date(rec.date).toLocaleDateString()}</p><p className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">${rec.total_equity?.toLocaleString()}</p></div>
-                                                        <div className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 rounded-full text-[10px] border border-indigo-100 font-black">{rec.core_pos || "CASH"}</div>
-                                                    </div>
-                                                    <div className="mt-2 grid grid-cols-4 gap-1 text-[9px] text-slate-400 border-t pt-2 dark:border-slate-800 font-black">
-                                                        <span>QQQ:${rec.prices?.QQQ?.toFixed(1)}</span><span>IBIT:${rec.prices?.IBIT?.toFixed(1)}</span>
-                                                        <span>{rec.inputs?.custom_ticker_1 || 'T1'}:${rec.prices?.[rec.inputs?.custom_ticker_1]?.toFixed(1) || '0'}</span>
-                                                        <span>{rec.inputs?.custom_ticker_2 || 'T2'}:${rec.prices?.[rec.inputs?.custom_ticker_2]?.toFixed(1) || '0'}</span>
-                                                    </div>
-                                                    {rec.memo && <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border-l-4 border-indigo-200 text-left font-black"><p className="text-[12px] italic text-slate-600 dark:text-slate-300 font-black">「 {rec.memo} 」</p></div>}
-                                                    <div className="mt-6 flex justify-end gap-3 items-center">
-                                                        {deletingId === rec.id ? (
-                                                            <div className="flex gap-2 animate-in slide-in-from-right-2 text-left font-black font-black"><button onClick={() => confirmDelete(rec.id)} className="bg-red-500 text-white px-6 py-2 rounded-xl text-xs font-black">是</button><button onClick={() => setDeletingId(null)} className="bg-slate-200 dark:bg-slate-700 px-6 py-2 rounded-xl text-xs font-black">否</button></div>
-                                                        ) : (
-                                                            <div className="flex gap-3"><button onClick={() => { setEditingId(rec.id); setEditForm({ ...rec, date: rec.date.split('T')[0], inputs: rec.inputs || { ...inputs } }); }} className="text-slate-300 hover:text-indigo-600 p-3 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 shadow-sm font-black"><Icon name="Edit2" size={20} /></button><button onClick={() => setDeletingId(rec.id)} className="text-slate-300 hover:text-red-600 p-3 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 shadow-sm"><Icon name="Trash2" size={20} /></button></div>
-                                                        )}
-                                                    </div>
+                                                    {displayedRecords.map(rec => (
+                                                        <Card key={rec.id} className="border-none shadow-md p-5 bg-white dark:bg-slate-800/50 text-left font-black font-black font-black animate-in fade-in slide-in-from-bottom-2">
+                                                            {editingId === rec.id ? (
+                                                                <div className="space-y-5 animate-in slide-in-from-top-1 text-left">
+                                                                    <div className="flex justify-between items-center border-b dark:border-slate-700 pb-3 text-indigo-600">
+                                                                        <span className="text-sm uppercase tracking-widest font-black">修改歷史數據</span>
+                                                                        <button onClick={() => setEditingId(null)} className="p-1"><Icon name="X" size={24} /></button>
+                                                                    </div>
+                                                                    
+                                                                    <div className="grid grid-cols-2 gap-4">
+                                                                        <div className="col-span-2 space-y-1">
+                                                                            <label className="text-[11px] text-slate-400 uppercase font-black">日期</label>
+                                                                            <input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-3 font-black outline-none" />
+                                                                        </div>
+                                                                        {['qty_qqq', 'qty_tqqq', 'qty_ibit', 'qty_sgov'].map(f => (
+                                                                            <div key={f} className="space-y-1">
+                                                                                <label className="text-[10px] text-slate-400 uppercase font-black">{f.replace('qty_', '').toUpperCase()}</label>
+                                                                                <input type="number" value={editForm.inputs?.[f] || 0} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, [f]: e.target.value}})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black" />
+                                                                            </div>
+                                                                        ))}
+                                                                        <div className="space-y-1">
+                                                                            <label className="text-[10px] text-slate-400 uppercase font-black truncate">{editForm.inputs?.custom_ticker_1 || '自選1'}</label>
+                                                                            <input type="number" value={editForm.inputs?.qty_custom_1 || 0} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, qty_custom_1: e.target.value}})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black" />
+                                                                        </div>
+                                                                        <div className="space-y-1">
+                                                                            <label className="text-[10px] text-slate-400 uppercase font-black truncate">{editForm.inputs?.custom_ticker_2 || '自選2'}</label>
+                                                                            <input type="number" value={editForm.inputs?.qty_custom_2 || 0} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, qty_custom_2: e.target.value}})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black" />
+                                                                        </div>
+                                                                        <div className="col-span-2 space-y-1">
+                                                                            <label className="text-[11px] text-slate-400 uppercase font-black">現金餘額</label>
+                                                                            <input type="number" value={editForm.inputs?.cash_balance || 0} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, cash_balance: e.target.value}})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-3 font-black text-lg text-center" />
+                                                                        </div>
+                                                                        <div className="col-span-2 space-y-1">
+                                                                            <label className="text-[11px] text-slate-400 uppercase font-black">備註</label>
+                                                                            <textarea value={editForm.memo || ''} onChange={e => setEditForm({...editForm, memo: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-sm font-medium resize-none" rows="2" />
+                                                                        </div>
+                                                                    </div>
+                                                                    <button onClick={() => updateRecord(rec.id)} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black shadow-xl btn-active">保存修正</button>
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <div className="flex justify-between items-start font-black text-left font-black font-black font-black">
+                                                                        <div className="space-y-1 font-black"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{new Date(rec.date).toLocaleDateString()}</p><p className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">${rec.total_equity?.toLocaleString()}</p></div>
+                                                                        <div className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 rounded-full text-[10px] border border-indigo-100 font-black">{rec.core_pos || "CASH"}</div>
+                                                                    </div>
+                                                                    <div className="mt-2 grid grid-cols-4 gap-1 text-[9px] text-slate-400 border-t pt-2 dark:border-slate-800 font-black">
+                                                                        <span>QQQ:${rec.prices?.QQQ?.toFixed(1)}</span><span>IBIT:${rec.prices?.IBIT?.toFixed(1)}</span>
+                                                                        <span>{rec.inputs?.custom_ticker_1 || 'T1'}:${rec.prices?.[rec.inputs?.custom_ticker_1]?.toFixed(1) || '0'}</span>
+                                                                        <span>{rec.inputs?.custom_ticker_2 || 'T2'}:${rec.prices?.[rec.inputs?.custom_ticker_2]?.toFixed(1) || '0'}</span>
+                                                                    </div>
+                                                                    {rec.memo && <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border-l-4 border-indigo-200 text-left font-black text-sm text-slate-600 dark:text-slate-400">{rec.memo}</div>}
+                                                                    <div className="mt-6 flex justify-end gap-3 items-center">
+                                                                        {deletingId === rec.id ? (
+                                                                            <div className="flex gap-2 animate-in slide-in-from-right-2 text-left font-black font-black"><button onClick={() => confirmDelete(rec.id)} className="bg-red-500 text-white px-6 py-2 rounded-xl text-xs font-black">是</button><button onClick={() => setDeletingId(null)} className="bg-slate-200 dark:bg-slate-700 px-6 py-2 rounded-xl text-xs font-black">否</button></div>
+                                                                        ) : (
+                                                                            <div className="flex gap-3"><button onClick={() => { setEditingId(rec.id); setEditForm({ ...rec, date: rec.date.split('T')[0], inputs: rec.inputs || { ...inputs } }); }} className="text-slate-300 hover:text-indigo-600 p-3 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 shadow-sm font-black"><Icon name="Edit2" size={20} /></button><button onClick={() => setDeletingId(rec.id)} className="text-slate-300 hover:text-red-600 p-3 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 shadow-sm"><Icon name="Trash2" size={20} /></button></div>
+                                                                        )}
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </Card>
+                                                    ))}
+                                                    {filteredRecords.length > 5 && (
+                                                        <button 
+                                                            onClick={() => setVisibleCount(visibleCount > 5 ? 5 : filteredRecords.length)} 
+                                                            className="w-full py-3 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-500 text-xs font-black flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                                                        >
+                                                            {visibleCount > 5 ? <><Icon name="ChevronUp" size={14} /> 收起明細</> : <><Icon name="ChevronDown" size={14} /> 查看全部 ({filteredRecords.length})</>}
+                                                        </button>
+                                                    )}
                                                 </>
+                                            );
+                                        })()}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6 pb-28 animate-in slide-in-from-right-4">
+                                        {/* Yearly Stats Table */}
+                                        <Card className="p-0 overflow-hidden border-2 border-indigo-100 dark:border-indigo-900">
+                                            <div className="p-4 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                                                <SectionTitle title="年度績效 (Yearly)" iconName="Calendar" />
+                                            </div>
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-xs font-black text-center">
+                                                    <thead className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300">
+                                                        <tr>
+                                                            <th className="p-3 text-left pl-5">年份</th>
+                                                            <th className="p-3">期初</th>
+                                                            <th className="p-3">期末</th>
+                                                            <th className="p-3">損益</th>
+                                                            <th className="p-3 pr-5 text-right">報酬率</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                                        {periodicStats.years.slice(0, visibleYears).map((y, i) => (
+                                                            <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                                                <td className="p-3 text-left pl-5 font-bold text-slate-600 dark:text-slate-300">{y.label}</td>
+                                                                <td className="p-3 text-slate-400 font-mono">${(y.start/1000).toFixed(1)}k</td>
+                                                                <td className="p-3 text-slate-400 font-mono">${(y.end/1000).toFixed(1)}k</td>
+                                                                <td className={`p-3 font-bold ${y.diff >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{y.diff >= 0 ? '+' : ''}{y.diff.toLocaleString(undefined, {maximumFractionDigits:0})}</td>
+                                                                <td className={`p-3 pr-5 text-right font-black ${y.pct >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{y.pct >= 0 ? '+' : ''}{y.pct.toFixed(2)}%</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            {periodicStats.years.length > 5 && (
+                                                <button 
+                                                    onClick={() => setVisibleYears(visibleYears > 5 ? 5 : periodicStats.years.length)} 
+                                                    className="w-full py-3 bg-slate-50 dark:bg-slate-800/50 border-t dark:border-slate-800 text-slate-400 text-[10px] font-black hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex justify-center gap-1"
+                                                >
+                                                    {visibleYears > 5 ? <><Icon name="ChevronUp" size={12} /> 收起</> : <><Icon name="ChevronDown" size={12} /> 顯示全部 ({periodicStats.years.length})</>}
+                                                </button>
                                             )}
                                         </Card>
-                                    ))}
-                                </div>
+
+                                        {/* Monthly Stats Table */}
+                                        <Card className="p-0 overflow-hidden border-2 border-indigo-100 dark:border-indigo-900">
+                                            <div className="p-4 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                                                <SectionTitle title="月度績效 (Monthly)" iconName="Calendar" />
+                                            </div>
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-xs font-black text-center">
+                                                    <thead className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300">
+                                                        <tr>
+                                                            <th className="p-3 text-left pl-5">月份</th>
+                                                            <th className="p-3">期初</th>
+                                                            <th className="p-3">期末</th>
+                                                            <th className="p-3">損益</th>
+                                                            <th className="p-3 pr-5 text-right">報酬率</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                                        {periodicStats.months.slice(0, visibleMonths).map((m, i) => (
+                                                            <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                                                <td className="p-3 text-left pl-5 font-bold text-slate-600 dark:text-slate-300">{m.label}</td>
+                                                                <td className="p-3 text-slate-400 font-mono">${(m.start/1000).toFixed(1)}k</td>
+                                                                <td className="p-3 text-slate-400 font-mono">${(m.end/1000).toFixed(1)}k</td>
+                                                                <td className={`p-3 font-bold ${m.diff >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{m.diff >= 0 ? '+' : ''}{m.diff.toLocaleString(undefined, {maximumFractionDigits:0})}</td>
+                                                                <td className={`p-3 pr-5 text-right font-black ${m.pct >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{m.pct >= 0 ? '+' : ''}{m.pct.toFixed(2)}%</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            {periodicStats.months.length > 5 && (
+                                                <button 
+                                                    onClick={() => setVisibleMonths(visibleMonths > 5 ? 5 : periodicStats.months.length)} 
+                                                    className="w-full py-3 bg-slate-50 dark:bg-slate-800/50 border-t dark:border-slate-800 text-slate-400 text-[10px] font-black hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex justify-center gap-1"
+                                                >
+                                                    {visibleMonths > 5 ? <><Icon name="ChevronUp" size={12} /> 收起</> : <><Icon name="ChevronDown" size={12} /> 顯示全部 ({periodicStats.months.length})</>}
+                                                </button>
+                                            )}
+                                        </Card>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -463,8 +1046,47 @@
 
                         {view === 'sync_settings' && (
                             <div className="space-y-6 animate-in fade-in text-left">
-                                <Card className="bg-slate-800 text-white p-6 shadow-2xl relative overflow-hidden font-black font-black font-black"><div className="absolute right-0 top-0 p-4 opacity-10 font-black"><Icon name="Fingerprint" size={100} /></div><SectionTitle title="目前同步金鑰 ID" iconName="Fingerprint" /><span className="text-lg font-black font-mono uppercase font-black">{effectiveUserId || '正在連結...'}</span></Card>
-                                <Card className="space-y-4 font-black"><SectionTitle title="切換同步 ID" iconName="CheckCircle" /><input type="text" value={tempSyncId} onChange={e => setTempSyncId(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-5 font-black text-lg focus:border-indigo-500" placeholder="輸入 ID" /><button onClick={() => { setCustomSyncId(tempSyncId.trim()); localStorage.setItem('qqq_sync_id', tempSyncId.trim()); setView('dashboard'); }} className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl active:scale-95 font-bold uppercase tracking-widest font-black">套用同步</button></Card>
+                                <CollapsibleSection title="同步金鑰 (Sync ID)" iconName="Fingerprint" defaultOpen={true}>
+                                    <div className="space-y-4 font-black">
+                                        <div className="bg-slate-800 text-white p-6 shadow-xl relative overflow-hidden font-black font-black font-black rounded-xl mb-4"><div className="absolute right-0 top-0 p-4 opacity-10 font-black"><Icon name="Fingerprint" size={80} /></div><SectionTitle title="目前 ID" iconName="Fingerprint" /><span className="text-lg font-black font-mono uppercase font-black">{effectiveUserId || '正在連結...'}</span></div>
+                                        <input type="text" value={tempSyncId} onChange={e => setTempSyncId(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-5 font-black text-lg focus:border-indigo-500" placeholder="輸入 ID" />
+                                        <button onClick={() => { setCustomSyncId(tempSyncId.trim()); localStorage.setItem('qqq_sync_id', tempSyncId.trim()); setView('dashboard'); }} className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl btn-active uppercase tracking-widest font-black">套用同步</button>
+                                    </div>
+                                </CollapsibleSection>
+
+                                <CollapsibleSection title="資料備份與還原" iconName="Save">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button onClick={handleExport} className="flex items-center justify-center gap-2 bg-slate-200 dark:bg-slate-800 py-4 rounded-xl font-bold text-sm btn-active"><Icon name="Download" size={18} /> 匯出 JSON</button>
+                                        <label className="flex items-center justify-center gap-2 bg-slate-200 dark:bg-slate-800 py-4 rounded-xl font-bold text-sm btn-active cursor-pointer">
+                                            <Icon name="Upload" size={18} /> 匯入 JSON
+                                            <input type="file" accept=".json" onChange={handleImport} className="hidden" />
+                                        </label>
+                                    </div>
+                                </CollapsibleSection>
+
+                                <CollapsibleSection title="匯率設定" iconName="DollarSign">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 uppercase block text-center">USD/TWD 匯率</label>
+                                        <input type="number" value={inputs.usdtwd_rate} onChange={e => handleInputChange('usdtwd_rate', e.target.value)} onBlur={e => syncToCloud('usdtwd_rate', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-3 font-black text-center text-lg" />
+                                    </div>
+                                </CollapsibleSection>
+
+                                <CollapsibleSection title="策略執行協議設定" iconName="BookOpen" defaultOpen={true}>
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-black"><Icon name="TrendingUp" size={16}/> <input type="text" value={inputs.title_core} onChange={e => handleInputChange('title_core', e.target.value)} onBlur={e => syncToCloud('title_core', e.target.value)} className="title-input title-input-edit" /></div>
+                                            <textarea value={inputs.strat_core} onChange={e => handleInputChange('strat_core', e.target.value)} onBlur={e => syncToCloud('strat_core', e.target.value)} className="w-full strategy-textarea resize-none" placeholder="輸入核心 QQQ 策略..." />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-black"><Icon name="Quote" size={16}/> <input type="text" value={inputs.title_custom} onChange={e => handleInputChange('title_custom', e.target.value)} onBlur={e => syncToCloud('title_custom', e.target.value)} className="title-input title-input-edit" /></div>
+                                            <textarea value={inputs.strat_custom} onChange={e => handleInputChange('strat_custom', e.target.value)} onBlur={e => syncToCloud('strat_custom', e.target.value)} className="w-full strategy-textarea resize-none" placeholder="輸入自選衛星策略..." />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2 text-amber-500 dark:text-amber-400 font-black"><Icon name="TrendingUp" size={16}/> <input type="text" value={inputs.title_ibit} onChange={e => handleInputChange('title_ibit', e.target.value)} onBlur={e => syncToCloud('title_ibit', e.target.value)} className="title-input title-input-edit" /></div>
+                                            <textarea value={inputs.strat_ibit} onChange={e => handleInputChange('strat_ibit', e.target.value)} onBlur={e => syncToCloud('strat_ibit', e.target.value)} className="w-full strategy-textarea resize-none" placeholder="輸入衛星/IBIT操作策略..." />
+                                        </div>
+                                    </div>
+                                </CollapsibleSection>
                             </div>
                         )}
                     </main>
@@ -483,4 +1105,3 @@
     </script>
 </body>
 </html>
-
