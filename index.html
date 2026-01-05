@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Alpha Horizon Dashboard V7.3 (Benchmark Mode)</title>
+    <title>Alpha Horizon Dashboard V7.3.1 (Fix Input Bug)</title>
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
@@ -418,9 +418,18 @@
                                 <div key={i} className="holding-input-group grid grid-cols-12 gap-0">
                                     <div className="col-span-3 flex flex-col justify-center px-2 bg-slate-100 dark:bg-slate-800/50">
                                         {row.editable ? (
-                                            <input type="text" value={row.t} onChange={e => handleInputChange(row.tk, e.target.value.toUpperCase())} onBlur={(e) => syncToCloud(row.tk, e.target.value.toUpperCase())} className="w-full text-xs font-black bg-transparent p-0 outline-none text-left uppercase text-slate-700 dark:text-slate-200" placeholder={row.ph} />
+                                            <input 
+                                                type="text" 
+                                                value={row.t} 
+                                                onChange={e => handleInputChange(row.tk, e.target.value.toUpperCase())} 
+                                                onBlur={(e) => syncToCloud(row.tk, e.target.value.toUpperCase())} 
+                                                className="w-full text-xs font-black bg-transparent p-0 outline-none text-left uppercase text-slate-700 dark:text-slate-200" 
+                                                placeholder={row.ph} 
+                                            />
                                         ) : (
-                                            <span className="block w-full text-xs font-black text-left uppercase text-slate-700 dark:text-slate-200">{row.t}</span>
+                                            <span className="block w-full text-xs font-black text-left uppercase text-slate-700 dark:text-slate-200">
+                                                {row.t}
+                                            </span>
                                         )}
                                         <span className="text-[9px] text-indigo-500 font-mono">${prices[(row.t||"").trim().toUpperCase()]?.toFixed(1) || '-'}</span>
                                     </div>
@@ -455,7 +464,7 @@
         const HistoryView = ({ records, darkMode, updateRecord, deleteRecord }) => {
             const [filterMode, setFilterMode] = useState('all');
             const [historyTab, setHistoryTab] = useState('list');
-            const [showBenchmark, setShowBenchmark] = useState(false); // New: Toggle Benchmark
+            const [showBenchmark, setShowBenchmark] = useState(false); 
             const [visibleCount, setVisibleCount] = useState(5);
             const [visibleYears, setVisibleYears] = useState(5);
             const [visibleMonths, setVisibleMonths] = useState(5);
@@ -708,7 +717,26 @@
             });
 
             const showToast = (txt) => { setMessage(txt); setTimeout(() => setMessage(null), 3000); };
-            const handleInputChange = (f, v) => setInputs(p => ({ ...p, [f]: v === '' ? '' : Math.max(0, (isNaN(v) ? 0 : parseFloat(v))) })); // Strict Validation
+            
+            // --- UPDATED INPUT HANDLER (FIXED BUG) ---
+            const handleInputChange = (f, v) => setInputs(p => {
+                // List of Text Fields (Allow string input)
+                const textFields = [
+                    'motto', 'record_memo', 'record_date', 
+                    'ticker_core_1', 'custom_ticker_1', 'custom_ticker_2',
+                    'title_core', 'strat_core', 
+                    'title_custom', 'strat_custom', 
+                    'title_ibit', 'strat_ibit'
+                ];
+
+                if (textFields.includes(f)) {
+                    return { ...p, [f]: v };
+                }
+
+                // For Numeric Fields (Strict Validation)
+                return { ...p, [f]: v === '' ? '' : Math.max(0, (isNaN(v) ? 0 : parseFloat(v))) };
+            });
+
             const syncToCloud = async (f, v) => { if (!effectiveUserId) return; await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ [f]: v }, { merge: true }); };
 
             const fetchPrices = useCallback(async (force = false) => {
@@ -785,3 +813,4 @@
     </script>
 </body>
 </html>
+
