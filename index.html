@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Alpha Horizon Dashboard v3.3 (Refactored)</title>
+    <title>Alpha Horizon Dashboard V7.3 (Benchmark Mode)</title>
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
@@ -34,6 +34,7 @@
         .accordion-content { transition: max-height 0.3s ease-out, opacity 0.3s ease-out; max-height: 0; opacity: 0; overflow: hidden; }
         .accordion-content.open { max-height: 1000px; opacity: 1; }
         input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .distance-badge { font-size: 10px; padding: 2px 6px; border-radius: 999px; font-weight: 900; display: inline-flex; align-items: center; gap: 4px; }
     </style>
 </head>
 <body class="light text-left font-black text-slate-900 dark:text-slate-100">
@@ -41,7 +42,7 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback, useRef } = React;
-        const { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } = Recharts;
+        const { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, ReferenceLine, ComposedChart } = Recharts;
 
         // --- CONSTANTS & CONFIG ---
         const APP_ID = "qqq-strategic-production-v1"; 
@@ -70,7 +71,7 @@
             ChevronDown: <path d="m6 9 6 6 6-6"/>,
             ChevronUp: <path d="m18 15-6-6-6 6"/>,
             PieChartIcon: <><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></>,
-            MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>,
+            MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>,
             Fingerprint: <><path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10"/><path d="M12 12v3"/><path d="M16 17.5c-2.5 1.5-5.5 1.5-8 0"/></>, 
             BarChart2: <path d="M18 20V10M12 20V4M6 20v-6"/>,
             Calculator: <g><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></g>,
@@ -82,11 +83,14 @@
             Upload: <g><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></g>,
             DollarSign: <g><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></g>,
             ArrowRight: <g><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></g>,
-            Calendar: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></>
+            Calendar: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></>,
+            Target: <g><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></g>,
+            Bear: <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />,
+            Compare: <path d="M2 13h6v8H2v-8zm14-8h6v16h-6V5zM9 21h6V9H9v12z"/>
         };
 
-        // --- HELPER FUNCTIONS (LOGIC EXTRACTION) ---
-        const getNum = (val) => val === '' ? 0 : (isNaN(val) ? 0 : parseFloat(val));
+        // --- HELPER FUNCTIONS ---
+        const getNum = (val) => { const n = parseFloat(val); return (val === '' || isNaN(n)) ? 0 : Math.max(0, n); }; 
 
         const calculateTotalCapital = (prices, inputs) => {
             const p = prices; 
@@ -118,6 +122,9 @@
             const t1 = (i.custom_ticker_1 || "").toUpperCase();
             const t2 = (i.custom_ticker_2 || "").toUpperCase();
             
+            const coreTol = getNum(i.rebalance_core_tolerance) || 15;
+            const satMax = getNum(i.rebalance_sat_max) || 15;
+
             const valQQQ = (p[tCore] || 0) * getNum(i.qty_qqq);
             const valTQQQ = (p.TQQQ || 0) * getNum(i.qty_tqqq);
             const valCustom1 = (p[t1] || 0) * getNum(i.qty_custom_1);
@@ -142,62 +149,74 @@
             const targetIbitVal = total * (getNum(i.alloc_sat) / 100);
             const sellIbitVal = valIBIT - targetIbitVal;
 
-            return { tqqqRatio, isCoreImbalanced: tqqqRatio > 65 || tqqqRatio < 35, tqqqDiffVal, qqqDiffVal, custom1Weight: custom1Weight.toFixed(1), isCustom1Overweight: custom1Weight > 15, sellCustom1Val, custom2Weight: custom2Weight.toFixed(1), isCustom2Overweight: custom2Weight > 15, sellCustom2Val, ibitWeight: ibitWeight.toFixed(1), isIbitOverweight: ibitWeight > 15, sellIbitVal, t1, t2, tCore };
+            const upperLimit = 50 + coreTol;
+            const lowerLimit = 50 - coreTol;
+
+            return { 
+                tqqqRatio, isCoreImbalanced: tqqqRatio > upperLimit || tqqqRatio < lowerLimit, 
+                tqqqDiffVal, qqqDiffVal, 
+                custom1Weight: custom1Weight.toFixed(1), isCustom1Overweight: custom1Weight > satMax, sellCustom1Val, 
+                custom2Weight: custom2Weight.toFixed(1), isCustom2Overweight: custom2Weight > satMax, sellCustom2Val, 
+                ibitWeight: ibitWeight.toFixed(1), isIbitOverweight: ibitWeight > satMax, sellIbitVal, 
+                t1, t2, tCore, upperLimit, lowerLimit, satMax
+            };
         };
 
         const generateStrategyAlerts = (prices, inputs, rebalanceStatus) => {
             const alerts = []; const p = prices; const i = inputs; 
-            const { tCore, t1, t2, tqqqRatio, isCoreImbalanced, isCustom1Overweight, isCustom2Overweight, isIbitOverweight, custom1Weight, custom2Weight, ibitWeight, tqqqDiffVal, qqqDiffVal, sellCustom1Val, sellCustom2Val, sellIbitVal } = rebalanceStatus;
+            const { tCore, t1, t2, tqqqRatio, isCoreImbalanced, isCustom1Overweight, isCustom2Overweight, isIbitOverweight, custom1Weight, custom2Weight, ibitWeight, tqqqDiffVal, qqqDiffVal, sellCustom1Val, sellCustom2Val, sellIbitVal, upperLimit, lowerLimit, satMax } = rebalanceStatus;
             
-            const ema125 = getNum(i.qqq_ema125); 
-            const customEma1 = getNum(i.custom_1_ema50);
-            const customEma2 = getNum(i.custom_2_ema50);
-            const ibitEma = getNum(i.ibit_ema50);
+            const sma200 = getNum(i.qqq_sma200); 
+            const sma20 = getNum(i.qqq_sma20);   
+            const customSma40 = getNum(i.custom_1_sma40_w); 
+            const custom2Sma40 = getNum(i.custom_2_sma40_w);
+            const ibitSma20 = getNum(i.ibit_sma20_w); 
+            
+            const priceQQQ = p.QQQ || p[tCore];
+            let isRiskOff = false;
 
-            if (ema125 > 0) {
-                const sellTrigger = ema125 * 0.97;
-                const buyTrigger = ema125 * 1.05;
-                const priceCheck = p.QQQ || p[tCore]; 
-                if (priceCheck < sellTrigger) {
-                    alerts.push({ type: 'danger', title: '🛑 熊市訊號 (Risk-Off)', msg: `動作：清倉所有資產 ➔ 全數轉入 SGOV。\n原因：${tCore}/QQQ 跌破 125 EMA (日) 下方 3% ($${sellTrigger.toFixed(2)})。` });
-                } else if (priceCheck > buyTrigger) {
-                    alerts.push({ type: 'opportunity', title: '🚀 牛市訊號 (Risk-On)', msg: `動作：賣出 SGOV ➔ 建倉進攻部位 (40% TQQQ, 40% QQQ, 20% 衛星)。\n原因：${tCore}/QQQ 突破 125 EMA (日) 上方 5% ($${buyTrigger.toFixed(2)})。` });
+            if (sma200 > 0 && priceQQQ > 0) {
+                const sellTrigger = sma200 * 0.97;
+                const buyTrigger = sma200 * 1.05;
+                
+                if (priceQQQ < sellTrigger) {
+                    isRiskOff = true;
+                    alerts.push({ type: 'danger', title: '🛑 防禦模式 (Risk-Off)', msg: `動作：核心全數轉入 SGOV。\n機制：${tCore} < 200 SMA (日) 下方 3% ($${sellTrigger.toFixed(2)})。\n對策：啟動 12 個月 DCA 定投 QQQ。` });
+                    if (sma20 > 0) {
+                        if (priceQQQ < sma20) {
+                            alerts.push({ type: 'danger', title: '☠️ 緊縮停損 (Mother-Child)', msg: `動作：立即清空所有衛星部位 (TSLA/IBIT)。\n原因：核心防禦期且 QQQ 跌破 日線 20 SMA，禁止持有任何試探倉位。` });
+                        } else {
+                            alerts.push({ type: 'warning', title: '🛡️ 縮編協議 (Mother-Child)', msg: `動作：衛星部位強制減至 30% (總資產 3%)。\n原因：核心防禦期但 QQQ > 日線 20 SMA，僅允許持有試探倉位。` });
+                        }
+                    }
+                } else if (priceQQQ > buyTrigger) {
+                    alerts.push({ type: 'opportunity', title: '🚀 進攻模式 (Risk-On)', msg: `動作：建倉 50% TQQQ + 50% QQQ。\n機制：${tCore} > 200 SMA (日) 上方 5% ($${buyTrigger.toFixed(2)})。\n對策：停止 DCA，恢復標準配置。` });
                 }
             }
 
             if (isCoreImbalanced) {
                 let msg = "";
-                if (tqqqRatio > 65) {
+                if (tqqqRatio > upperLimit) {
                     const sellAmt = Math.abs(tqqqDiffVal);
                     const shares = p.TQQQ > 0 ? Math.floor(sellAmt / p.TQQQ) : 0;
                     msg = `動作：賣出 TQQQ $${sellAmt.toFixed(0)} (約 ${shares} 股)，買入 QQQ。`;
                 } else {
                     const sellAmt = Math.abs(qqqDiffVal);
-                    const shares = (p.QQQ || p[tCore]) > 0 ? Math.floor(sellAmt / (p.QQQ || p[tCore])) : 0;
+                    const shares = priceQQQ > 0 ? Math.floor(sellAmt / priceQQQ) : 0;
                     msg = `動作：賣出 QQQ $${sellAmt.toFixed(0)} (約 ${shares} 股)，買入 TQQQ。`;
                 }
-                alerts.push({ type: 'warning', title: '⚖️ 核心再平衡觸發', msg: `${msg}\n原因：TQQQ 佔比 ${tqqqRatio.toFixed(1)}% 已偏離安全區間 (35%-65%)。` });
+                alerts.push({ type: 'warning', title: '⚖️ 核心再平衡觸發', msg: `${msg}\n原因：TQQQ 佔比 ${tqqqRatio.toFixed(1)}% 偏離 (${lowerLimit}%-${upperLimit}%)。` });
             }
             
-            if (isCustom1Overweight) {
-                const shares = (p[t1] || 0) > 0 ? Math.floor(sellCustom1Val / p[t1]) : 0;
-                alerts.push({ type: 'opportunity', title: `💰 ${t1} 獲利收割`, msg: `動作：賣出 ${t1} $${sellCustom1Val.toFixed(0)} (約 ${shares} 股)，獲利轉入核心。\n原因：${t1} 權重 ${custom1Weight}% 已超過 15% 上限。` });
-            }
-            if (isCustom2Overweight) {
-                const shares = (p[t2] || 0) > 0 ? Math.floor(sellCustom2Val / p[t2]) : 0;
-                alerts.push({ type: 'opportunity', title: `💰 ${t2} 獲利收割`, msg: `動作：賣出 ${t2} $${sellCustom2Val.toFixed(0)} (約 ${shares} 股)，獲利轉入核心。\n原因：${t2} 權重 ${custom2Weight}% 已超過 15% 上限。` });
-            }
-            if (isIbitOverweight) {
-                const shares = p.IBIT > 0 ? Math.floor(sellIbitVal / p.IBIT) : 0;
-                alerts.push({ type: 'opportunity', title: `💰 IBIT 獲利收割`, msg: `動作：賣出 IBIT $${sellIbitVal.toFixed(0)} (約 ${shares} 股)，獲利轉入核心。\n原因：IBIT 權重 ${ibitWeight}% 已超過 15% 上限。` });
-            }
+            if (isCustom1Overweight) alerts.push({ type: 'opportunity', title: `💰 ${t1} 獲利收割`, msg: `動作：賣出部分 ${t1} 回歸 10% 權重。\n原因：權重 ${custom1Weight}% 已超過 ${satMax}% 上限。` });
+            if (isCustom2Overweight) alerts.push({ type: 'opportunity', title: `💰 ${t2} 獲利收割`, msg: `動作：賣出部分 ${t2} 回歸配置。\n原因：權重 ${custom2Weight}% 已超過 ${satMax}% 上限。` });
+            if (isIbitOverweight) alerts.push({ type: 'opportunity', title: `💰 IBIT 獲利收割`, msg: `動作：賣出部分 IBIT 回歸 10% 權重。\n原因：權重 ${ibitWeight}% 已超過 ${satMax}% 上限。` });
 
-            if (ema125 > 0 && (p.QQQ || 0) >= ema125 * 0.97) {
-                if (customEma1 > 0 && (p[t1] || 0) < customEma1 * 0.97) alerts.push({ type: 'risk', title: `⚠️ 止損警示：${t1}`, msg: `動作：賣出 ${t1} ➔ 資金轉入 QQQ。\n原因：跌破 50 EMA (週) 下方 3% ($${(customEma1*0.97).toFixed(2)})。` });
-                if (customEma2 > 0 && (p[t2] || 0) < customEma2 * 0.97) alerts.push({ type: 'risk', title: `⚠️ 止損警示：${t2}`, msg: `動作：賣出 ${t2} ➔ 資金轉入 QQQ。\n原因：跌破 50 EMA (週) 下方 3% ($${(customEma2*0.97).toFixed(2)})。` });
-                if (ibitEma > 0 && p.IBIT < ibitEma * 0.97) alerts.push({ type: 'risk', title: `⚠️ 止損警示：IBIT`, msg: `動作：賣出 IBIT ➔ 資金轉入 QQQ。\n原因：跌破 50 EMA (週) 下方 3% ($${(ibitEma*0.97).toFixed(2)})。` });
-            }
-            return alerts;
+            if (customSma40 > 0 && (p[t1] || 0) < customSma40 * 0.97) alerts.push({ type: 'risk', title: `⚠️ 止損警示：${t1}`, msg: `動作：賣出 ${t1} ➔ 轉入核心。\n原因：跌破 40 SMA (週) 下方 3% ($${(customSma40*0.97).toFixed(2)})。` });
+            if (custom2Sma40 > 0 && (p[t2] || 0) < custom2Sma40 * 0.97) alerts.push({ type: 'risk', title: `⚠️ 止損警示：${t2}`, msg: `動作：賣出 ${t2} ➔ 轉入核心。\n原因：跌破 40 SMA (週) 下方 3% ($${(custom2Sma40*0.97).toFixed(2)})。` });
+            if (ibitSma20 > 0 && p.IBIT < ibitSma20 * 0.97) alerts.push({ type: 'risk', title: `⚠️ 止損警示：IBIT`, msg: `動作：賣出 IBIT ➔ 轉入核心。\n原因：跌破 20 SMA (週) 下方 3% ($${(ibitSma20*0.97).toFixed(2)})。` });
+
+            return { alerts, isRiskOff };
         };
 
         const calculatePeriodicStats = (records) => {
@@ -217,7 +236,7 @@
         };
 
         const calculateMDD = (records) => {
-            if (records.length < 2) return { mdd: 0, peak: 0, dropDate: '' };
+            if (records.length < 2) return { mdd: 0, peak: 0, dropDate: '', maxEquity: 0 };
             const sorted = [...records].sort((a, b) => new Date(a.date) - new Date(b.date));
             let peak = 0; let maxDrawdown = 0; let mddDate = '';
             sorted.forEach(r => {
@@ -225,7 +244,7 @@
                 const drawdown = peak > 0 ? (peak - r.total_equity) / peak : 0;
                 if (drawdown > maxDrawdown) { maxDrawdown = drawdown; mddDate = r.date; }
             });
-            return { mdd: (maxDrawdown * 100).toFixed(2), peak, dropDate: mddDate };
+            return { mdd: (maxDrawdown * 100).toFixed(2), peak, dropDate: mddDate, maxEquity: peak };
         };
 
         // --- COMMON COMPONENTS ---
@@ -250,9 +269,29 @@
         
         const DashboardView = ({ inputs, setInputs, prices, totalCapital, totalPL, totalROI, syncToCloud, saveRecord, isSaving, handleInputChange }) => {
             const [isAlertsView, setIsAlertsView] = useState(true);
+            const [showRebalConfig, setShowRebalConfig] = useState(false);
             const rebalanceStatus = useMemo(() => calculateRebalanceStatus(prices, inputs, totalCapital), [prices, inputs, totalCapital]);
-            const strategyAlerts = useMemo(() => generateStrategyAlerts(prices, inputs, rebalanceStatus), [prices, inputs, rebalanceStatus]);
+            const { alerts: strategyAlerts, isRiskOff } = useMemo(() => generateStrategyAlerts(prices, inputs, rebalanceStatus), [prices, inputs, rebalanceStatus]);
             
+            const bearTactics = useMemo(() => {
+                if (!isRiskOff) return null;
+                const sgovVal = (prices.SGOV || 0) * getNum(inputs.qty_sgov);
+                const cashVal = getNum(inputs.cash_balance);
+                const totalLiquid = sgovVal + cashVal;
+                const dcaMonthly = totalLiquid / 12;
+                const probeAmount = totalCapital * 0.03; 
+                const hasMotherSignal = (prices.QQQ || 0) > getNum(inputs.qqq_sma20);
+                return { dcaMonthly, probeAmount, hasMotherSignal, totalLiquid };
+            }, [isRiskOff, prices, inputs, totalCapital]);
+
+            const smaVisual = useMemo(() => {
+                const qqq = prices.QQQ || prices[rebalanceStatus.tCore] || 0;
+                const sma200 = getNum(inputs.qqq_sma200);
+                if (qqq === 0 || sma200 === 0) return null;
+                const diff = ((qqq - sma200) / sma200) * 100;
+                return { diff, label: diff >= 0 ? `+${diff.toFixed(1)}%` : `${diff.toFixed(1)}%`, isRiskOn: diff > 5, isRiskOff: diff < -3 };
+            }, [prices, inputs, rebalanceStatus]);
+
             const pieData = useMemo(() => {
                 const p = prices; const { tCore, t1, t2 } = rebalanceStatus;
                 const d = [ 
@@ -279,6 +318,15 @@
 
             return (
                 <div className="space-y-6 animate-in fade-in font-black">
+                     {smaVisual && (
+                        <div className={`p-3 rounded-2xl flex justify-between items-center shadow-lg border-2 ${smaVisual.isRiskOn ? 'bg-indigo-600 border-indigo-400 text-white' : smaVisual.isRiskOff ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
+                            <div className="flex items-center gap-2"><span className="text-[10px] font-black uppercase tracking-widest opacity-80">市場體制儀表 (QQQ vs SMA200)</span></div>
+                            <div className={`text-lg font-black ${smaVisual.isRiskOn ? 'text-white' : smaVisual.isRiskOff ? 'text-red-400' : 'text-slate-500'}`}>
+                                {smaVisual.label} {smaVisual.isRiskOn ? '🚀' : smaVisual.isRiskOff ? '🛑' : '⚖️'}
+                            </div>
+                        </div>
+                     )}
+
                      <Card className="p-4 bg-gradient-to-r from-slate-800 to-indigo-900 text-white shadow-lg border-none relative overflow-hidden transition-all duration-300">
                         <div className="flex justify-between items-start mb-2">
                             <div className="flex items-center gap-2 opacity-80"><Icon name={isAlertsView ? "ShieldAlert" : "Quote"} size={16} /><span className="text-[10px] uppercase tracking-widest font-bold">{isAlertsView ? "策略警示 (Alerts)" : "投資座右銘 (Motto)"}</span></div>
@@ -293,17 +341,44 @@
                         )}
                     </Card>
 
+                    {isRiskOff && bearTactics && (
+                        <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-100 dark:border-red-900 rounded-3xl p-4 shadow-lg animate-in slide-in-from-top-4">
+                            <div className="flex items-center gap-2 mb-3 text-xs font-black text-red-600 dark:text-red-400 uppercase tracking-widest"><Icon name="Bear" size={14} /> 🐻 熊市戰略輔助</div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-red-100 dark:border-red-900/50">
+                                    <div className="text-[10px] text-slate-500 mb-1">DCA 定投建議 (SGOV+現金)</div>
+                                    <div className="text-lg font-black text-slate-800 dark:text-slate-200">${bearTactics.dcaMonthly.toLocaleString(undefined, {maximumFractionDigits:0})} <span className="text-[10px]">/ 月</span></div>
+                                    <div className="text-[9px] text-slate-400 mt-1">基礎池: ${bearTactics.totalLiquid.toLocaleString()}</div>
+                                </div>
+                                <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-red-100 dark:border-red-900/50">
+                                    <div className="text-[10px] text-slate-500 mb-1">母子連動試探部位 (3%)</div>
+                                    <div className={`text-lg font-black ${bearTactics.hasMotherSignal ? 'text-emerald-500' : 'text-slate-400 line-through'}`}>${bearTactics.probeAmount.toLocaleString(undefined, {maximumFractionDigits:0})}</div>
+                                    <div className="text-[9px] text-slate-400 mt-1">{bearTactics.hasMotherSignal ? '🟢 QQQ > SMA20 允許持有' : '🔴 QQQ < SMA20 禁止持有'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 border-2 border-slate-200 dark:border-slate-700 shadow-lg">
-                        <div className="flex items-center gap-2 mb-3 text-xs font-black text-slate-400 uppercase tracking-widest"><Icon name="Scale" size={14} /> 再平衡健康度檢測</div>
+                        <div className="flex justify-between items-center mb-3">
+                            <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest"><Icon name="Scale" size={14} /> 再平衡健康度檢測</div>
+                            <button onClick={() => setShowRebalConfig(!showRebalConfig)} className={`text-[10px] font-bold px-2 py-1 rounded border transition-all ${showRebalConfig ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:border-slate-700'}`}>⚙️ 設定閾值</button>
+                        </div>
+                        {showRebalConfig && (
+                            <div className="mb-4 grid grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl animate-in fade-in slide-in-from-top-2">
+                                <div className="space-y-1"><label className="text-[10px] text-slate-500 block text-center">核心偏離容許值 (%)</label><input type="number" value={inputs.rebalance_core_tolerance} onChange={e => handleInputChange('rebalance_core_tolerance', e.target.value)} onBlur={e => syncToCloud('rebalance_core_tolerance', e.target.value)} className="w-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg p-1.5 text-center font-black text-sm" placeholder="15" /></div>
+                                <div className="space-y-1"><label className="text-[10px] text-slate-500 block text-center">衛星單檔上限 (%)</label><input type="number" value={inputs.rebalance_sat_max} onChange={e => handleInputChange('rebalance_sat_max', e.target.value)} onBlur={e => syncToCloud('rebalance_sat_max', e.target.value)} className="w-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg p-1.5 text-center font-black text-sm" placeholder="15" /></div>
+                            </div>
+                        )}
                         <div className="space-y-3">
                             <div className="space-y-1">
                                 <div className="flex justify-between items-center text-sm font-bold"><span className="text-slate-600 dark:text-slate-300">核心 TQQQ 佔比 (目標 50%)</span><span className={rebalanceStatus.isCoreImbalanced ? 'text-red-500 animate-pulse' : 'text-emerald-500'}>{rebalanceStatus.tqqqRatio.toFixed(1)}% {rebalanceStatus.isCoreImbalanced && '⚠️'}</span></div>
                                 <div className="h-2.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className={`h-full ${rebalanceStatus.isCoreImbalanced ? 'bg-red-500' : 'bg-indigo-500'}`} style={{ width: `${Math.min(rebalanceStatus.tqqqRatio, 100)}%` }}></div></div>
-                                <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>35% (買進)</span><span>65% (賣出)</span></div>
+                                <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>{rebalanceStatus.lowerLimit}% (買進)</span><span>{rebalanceStatus.upperLimit}% (賣出)</span></div>
                             </div>
                             <div className="pt-3 border-t dark:border-slate-800 grid grid-cols-2 gap-4">
                                 {[{l: `${rebalanceStatus.t1} 權重`, v: rebalanceStatus.custom1Weight, w: rebalanceStatus.isCustom1Overweight}, {l: `${rebalanceStatus.t2} 權重`, v: rebalanceStatus.custom2Weight, w: rebalanceStatus.isCustom2Overweight}, {l: "IBIT 權重", v: rebalanceStatus.ibitWeight, w: rebalanceStatus.isIbitOverweight}].map((item, idx) => (
-                                    <div key={idx}><div className="flex justify-between text-[10px] text-slate-500 mb-1"><span>{item.l}</span><span className={item.w ? 'text-red-500' : 'text-slate-400'}>{item.v}%</span></div>{item.w && <div className="text-[9px] text-red-500 font-bold">⚠️ 超過 15%</div>}</div>
+                                    <div key={idx}><div className="flex justify-between text-[10px] text-slate-500 mb-1"><span>{item.l}</span><span className={item.w ? 'text-red-500' : 'text-slate-400'}>{item.v}%</span></div>{item.w && <div className="text-[9px] text-red-500 font-bold">⚠️ 超過 {rebalanceStatus.satMax}%</div>}</div>
                                 ))}
                             </div>
                         </div>
@@ -337,16 +412,20 @@
                                 { t: 'TQQQ', q: 'qty_tqqq', c: 'avg_cost_tqqq', ph: 'TQQQ' },
                                 { t: 'IBIT', q: 'qty_ibit', c: 'avg_cost_ibit', ph: 'IBIT' },
                                 { t: 'SGOV', q: 'qty_sgov', c: 'avg_cost_sgov', ph: 'SGOV' },
-                                { t: inputs.custom_ticker_1, tk: 'custom_ticker_1', q: 'qty_custom_1', c: 'avg_cost_custom_1', ph: '自選1', editable: true },
+                                { t: inputs.custom_ticker_1, tk: 'custom_ticker_1', q: 'qty_custom_1', c: 'avg_cost_custom_1', ph: 'TSLA', editable: true },
                                 { t: inputs.custom_ticker_2, tk: 'custom_ticker_2', q: 'qty_custom_2', c: 'avg_cost_custom_2', ph: '自選2', editable: true }
                             ].map((row, i) => (
                                 <div key={i} className="holding-input-group grid grid-cols-12 gap-0">
                                     <div className="col-span-3 flex flex-col justify-center px-2 bg-slate-100 dark:bg-slate-800/50">
-                                        {row.editable ? <input type="text" value={row.t} onChange={e => handleInputChange(row.tk, e.target.value.toUpperCase())} onBlur={(e) => syncToCloud(row.tk, e.target.value.toUpperCase())} className="w-full text-xs font-black bg-transparent p-0 outline-none text-left" placeholder={row.ph} /> : <span className="text-xs font-black">{row.t}</span>}
+                                        {row.editable ? (
+                                            <input type="text" value={row.t} onChange={e => handleInputChange(row.tk, e.target.value.toUpperCase())} onBlur={(e) => syncToCloud(row.tk, e.target.value.toUpperCase())} className="w-full text-xs font-black bg-transparent p-0 outline-none text-left uppercase text-slate-700 dark:text-slate-200" placeholder={row.ph} />
+                                        ) : (
+                                            <span className="block w-full text-xs font-black text-left uppercase text-slate-700 dark:text-slate-200">{row.t}</span>
+                                        )}
                                         <span className="text-[9px] text-indigo-500 font-mono">${prices[(row.t||"").trim().toUpperCase()]?.toFixed(1) || '-'}</span>
                                     </div>
-                                    <input type="number" placeholder="股數" value={inputs[row.q]} onChange={e => handleInputChange(row.q, e.target.value)} onBlur={(e) => syncToCloud(row.q, e.target.value)} className="col-span-4 bg-transparent border-r border-slate-200 dark:border-slate-700 font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors" />
-                                    <input type="number" placeholder="成本" value={inputs[row.c]} onChange={e => handleInputChange(row.c, e.target.value)} onBlur={(e) => syncToCloud(row.c, e.target.value)} className="col-span-5 bg-transparent font-medium text-sm text-center text-slate-500 focus:bg-white dark:focus:bg-slate-800 transition-colors" />
+                                    <input type="number" placeholder="股數" value={inputs[row.q]} onChange={e => handleInputChange(row.q, e.target.value)} onBlur={(e) => syncToCloud(row.q, e.target.value)} className="col-span-4 bg-transparent border-r border-slate-200 dark:border-slate-700 font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors uppercase text-slate-700 dark:text-slate-200" />
+                                    <input type="number" placeholder="成本" value={inputs[row.c]} onChange={e => handleInputChange(row.c, e.target.value)} onBlur={(e) => syncToCloud(row.c, e.target.value)} className="col-span-5 bg-transparent font-medium text-sm text-center text-slate-500 focus:bg-white dark:focus:bg-slate-800 transition-colors uppercase text-slate-700 dark:text-slate-200" />
                                 </div>
                             ))}
                             <div className="pt-2"><label className="text-[11px] font-black text-slate-500 px-1 uppercase block text-center w-full mb-1">現金餘額 (USD)</label><input type="number" value={inputs.cash_balance} onChange={e => handleInputChange('cash_balance', e.target.value)} onBlur={(e) => syncToCloud('cash_balance', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-indigo-100/50 dark:border-indigo-900/50 rounded-2xl p-4 font-black text-xl text-indigo-600" /></div>
@@ -354,14 +433,15 @@
                     </Card>
                     
                     <Card className="space-y-4">
-                        <SectionTitle title="技術指標參數 (MA Settings)" iconName="Settings" />
+                        <SectionTitle title="技術指標參數 (V7 Rules)" iconName="Settings" />
                         <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1"><label className="text-[10px] text-indigo-500 uppercase block text-center">QQQ 125 EMA (日)</label><input type="number" value={inputs.qqq_ema125} onChange={e => handleInputChange('qqq_ema125', e.target.value)} onBlur={e => syncToCloud('qqq_ema125', e.target.value)} className="w-full bg-indigo-50 dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900 rounded-xl p-2.5 font-black text-center" /></div>
-                            <div className="space-y-1"><label className="text-[10px] text-amber-500 uppercase block text-center">IBIT 50 EMA (週)</label><input type="number" value={inputs.ibit_ema50} onChange={e => handleInputChange('ibit_ema50', e.target.value)} onBlur={e => syncToCloud('ibit_ema50', e.target.value)} className="w-full bg-amber-50 dark:bg-slate-800 border border-amber-100 dark:border-amber-900 rounded-xl p-2.5 font-black text-center" /></div>
+                            <div className="space-y-1"><label className="text-[10px] text-indigo-500 uppercase block text-center">QQQ 200 SMA (日)</label><input type="number" value={inputs.qqq_sma200} onChange={e => handleInputChange('qqq_sma200', e.target.value)} onBlur={e => syncToCloud('qqq_sma200', e.target.value)} className="w-full bg-indigo-50 dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900 rounded-xl p-2.5 font-black text-center" /></div>
+                            <div className="space-y-1"><label className="text-[10px] text-indigo-400 uppercase block text-center">QQQ 20 SMA (日-防禦)</label><input type="number" value={inputs.qqq_sma20} onChange={e => handleInputChange('qqq_sma20', e.target.value)} onBlur={e => syncToCloud('qqq_sma20', e.target.value)} className="w-full bg-indigo-50 dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900 rounded-xl p-2.5 font-black text-center" /></div>
                         </div>
                         <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                            <div className="space-y-1"><label className="text-[10px] text-sky-500 uppercase block text-center truncate">{inputs.custom_ticker_1 || '自選1'} 50 EMA (週)</label><input type="number" value={inputs.custom_1_ema125} onChange={e => handleInputChange('custom_1_ema125', e.target.value)} onBlur={e => syncToCloud('custom_1_ema125', e.target.value)} className="w-full bg-sky-50 dark:bg-slate-800 border border-sky-100 dark:border-sky-900/50 rounded-xl p-2.5 font-black text-center" /></div>
-                            <div className="space-y-1"><label className="text-[10px] text-sky-500 uppercase block text-center truncate">{inputs.custom_ticker_2 || '自選2'} 50 EMA (週)</label><input type="number" value={inputs.custom_2_ema50} onChange={e => handleInputChange('custom_2_ema50', e.target.value)} onBlur={e => syncToCloud('custom_2_ema50', e.target.value)} className="w-full bg-sky-50 dark:bg-slate-800 border border-sky-100 dark:border-sky-900/50 rounded-xl p-2.5 font-black text-center" /></div>
+                            <div className="space-y-1"><label className="text-[10px] text-sky-500 uppercase block text-center truncate">{inputs.custom_ticker_1 || 'TSLA'} 40 SMA (週)</label><input type="number" value={inputs.custom_1_sma40_w} onChange={e => handleInputChange('custom_1_sma40_w', e.target.value)} onBlur={e => syncToCloud('custom_1_sma40_w', e.target.value)} className="w-full bg-sky-50 dark:bg-slate-800 border border-sky-100 dark:border-sky-900/50 rounded-xl p-2.5 font-black text-center" /></div>
+                            <div className="space-y-1"><label className="text-[10px] text-sky-500 uppercase block text-center truncate">{inputs.custom_ticker_2 || '自選2'} 40 SMA (週)</label><input type="number" value={inputs.custom_2_sma40_w} onChange={e => handleInputChange('custom_2_sma40_w', e.target.value)} onBlur={e => syncToCloud('custom_2_sma40_w', e.target.value)} className="w-full bg-sky-50 dark:bg-slate-800 border border-sky-100 dark:border-sky-900/50 rounded-xl p-2.5 font-black text-center" /></div>
+                            <div className="col-span-2 space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800"><label className="text-[10px] text-amber-500 uppercase block text-center truncate">IBIT 20 SMA (週)</label><input type="number" value={inputs.ibit_sma20_w} onChange={e => handleInputChange('ibit_sma20_w', e.target.value)} onBlur={e => syncToCloud('ibit_sma20_w', e.target.value)} className="w-full bg-amber-50 dark:bg-slate-800 border border-amber-100 dark:border-amber-900 rounded-xl p-2.5 font-black text-center" /></div>
                         </div>
                     </Card>
 
@@ -375,6 +455,7 @@
         const HistoryView = ({ records, darkMode, updateRecord, deleteRecord }) => {
             const [filterMode, setFilterMode] = useState('all');
             const [historyTab, setHistoryTab] = useState('list');
+            const [showBenchmark, setShowBenchmark] = useState(false); // New: Toggle Benchmark
             const [visibleCount, setVisibleCount] = useState(5);
             const [visibleYears, setVisibleYears] = useState(5);
             const [visibleMonths, setVisibleMonths] = useState(5);
@@ -383,7 +464,26 @@
             const [deletingId, setDeletingId] = useState(null);
 
             const filteredRecords = useMemo(() => records.filter(r => { const d = new Date(r.date); const now = new Date(); if (filterMode === 'year') return d.getFullYear() === now.getFullYear(); if (filterMode === 'month') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); return true; }), [records, filterMode]);
-            const stats = useMemo(() => { if (filteredRecords.length < 1) return { chartData: [] }; const sorted = [...filteredRecords].sort((a,b) => new Date(a.date) - new Date(b.date)); return { chartData: sorted }; }, [filteredRecords]);
+            
+            // --- BENCHMARK LOGIC (V7.3) ---
+            const benchmarkData = useMemo(() => {
+                if (filteredRecords.length < 1) return [];
+                const sorted = [...filteredRecords].sort((a,b) => new Date(a.date) - new Date(b.date));
+                const firstRecord = sorted[0];
+                const baseEquity = firstRecord.total_equity || 1;
+                const baseQQQ = firstRecord.prices?.QQQ || 1;
+
+                return sorted.map(r => {
+                    const currentQQQ = r.prices?.QQQ || baseQQQ;
+                    return {
+                        date: r.date,
+                        equityRaw: r.total_equity,
+                        equityPct: ((r.total_equity - baseEquity) / baseEquity) * 100,
+                        qqqPct: ((currentQQQ - baseQQQ) / baseQQQ) * 100
+                    };
+                });
+            }, [filteredRecords]);
+
             const mddStats = useMemo(() => calculateMDD(records), [records]);
             const periodicStats = useMemo(() => calculatePeriodicStats(records), [records]);
 
@@ -392,9 +492,29 @@
                     <div className="flex gap-2 p-1.5 bg-slate-200 dark:bg-slate-800 rounded-3xl shadow-inner text-left font-black font-black font-black">
                         {['all', 'year', 'month'].map(m => <button key={m} onClick={() => { setFilterMode(m); setVisibleCount(5); }} className={`flex-1 py-4 rounded-2xl text-xs font-black uppercase transition-all ${filterMode === m ? 'bg-white shadow text-indigo-600 scale-[1.02]' : 'text-slate-500 font-black font-black'}`}>{m === 'all' ? '全部' : m === 'year' ? '年度' : '本月'}</button>)}
                     </div>
-                    <Card className="h-72 p-2 shadow-xl border-none overflow-hidden bg-white dark:bg-slate-900 font-black font-black">
-                        <div className="flex justify-between items-center mb-2"><SectionTitle title="資產成長趨勢" iconName="TrendingUp" /><span className="text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded-lg font-bold">Max Drawdown: -{mddStats.mdd}%</span></div>
-                        <ResponsiveContainer width="100%" height="100%" key={filterMode + stats.chartData.length}><AreaChart data={stats.chartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}><defs><linearGradient id="colorEq" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" vertical={false} stroke={darkMode ? "#1e293b" : "#e2e8f0"} /><XAxis dataKey="date" tickFormatter={v => new Date(v).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })} tick={{ fontSize: 10, fontWeight: '900', fill: darkMode ? '#64748b' : '#94a3b8' }} /><YAxis tickFormatter={v => `$${(v/1000).toFixed(0)}k`} tick={{ fontSize: 10, fontWeight: '900', fill: darkMode ? '#64748b' : '#94a3b8' }} /><Tooltip labelFormatter={v => new Date(v).toLocaleDateString()} /><Area type="monotone" dataKey="total_equity" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorEq)" dot={{ r: 3, fill: '#6366f1' }} /></AreaChart></ResponsiveContainer>
+                    <Card className="h-72 p-2 shadow-xl border-none overflow-hidden bg-white dark:bg-slate-900 font-black font-black relative">
+                        <div className="flex justify-between items-center mb-2">
+                            <SectionTitle title={showBenchmark ? "策略 vs QQQ 累積報酬 (%)" : "資產成長趨勢 ($)"} iconName="TrendingUp" />
+                            <div className="flex gap-2">
+                                <button onClick={() => setShowBenchmark(!showBenchmark)} className={`text-[10px] font-bold px-2 py-1 rounded border transition-all ${showBenchmark ? 'bg-orange-100 text-orange-600 border-orange-200' : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:border-slate-700'}`}>
+                                    {showBenchmark ? '🆚 關閉比較' : '🆚 大盤對決'}
+                                </button>
+                                <span className="text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded-lg font-bold">Max DD: -{mddStats.mdd}%</span>
+                            </div>
+                        </div>
+                        <ResponsiveContainer width="100%" height="100%" key={filterMode + benchmarkData.length + showBenchmark}>
+                            <ComposedChart data={benchmarkData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                                <defs><linearGradient id="colorEq" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={darkMode ? "#1e293b" : "#e2e8f0"} />
+                                <XAxis dataKey="date" tickFormatter={v => new Date(v).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })} tick={{ fontSize: 10, fontWeight: '900', fill: darkMode ? '#64748b' : '#94a3b8' }} />
+                                <YAxis tickFormatter={v => showBenchmark ? `${v.toFixed(0)}%` : `$${(v/1000).toFixed(0)}k`} tick={{ fontSize: 10, fontWeight: '900', fill: darkMode ? '#64748b' : '#94a3b8' }} />
+                                <Tooltip labelFormatter={v => new Date(v).toLocaleDateString()} formatter={(value) => showBenchmark ? `${value.toFixed(2)}%` : `$${value.toLocaleString()}`} />
+                                <Area type="monotone" dataKey={showBenchmark ? "equityPct" : "equityRaw"} name="我的策略" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorEq)" dot={{ r: 3, fill: '#6366f1' }} />
+                                {showBenchmark && <Line type="monotone" dataKey="qqqPct" name="QQQ (Benchmark)" stroke="#f97316" strokeWidth={2} strokeDasharray="5 5" dot={false} />}
+                                {!showBenchmark && mddStats.maxEquity > 0 && <ReferenceLine y={mddStats.maxEquity} stroke="#10b981" strokeDasharray="3 3" label={{ position: 'insideTopRight', value: 'ATH', fill: '#10b981', fontSize: 10, fontWeight: 900 }} />}
+                                {showBenchmark && <Legend verticalAlign="bottom" align="center" iconType="circle" />}
+                            </ComposedChart>
+                        </ResponsiveContainer>
                     </Card>
 
                     <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
@@ -412,25 +532,16 @@
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="col-span-2 space-y-1"><label className="text-[11px] text-slate-400 uppercase font-black">日期</label><input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-3 font-black outline-none" /></div>
                                                 {['qty_qqq', 'qty_tqqq', 'qty_ibit', 'qty_sgov'].map(f => (<div key={f} className="space-y-1"><label className="text-[10px] text-slate-400 uppercase font-black">{f.replace('qty_', '').toUpperCase()}</label><input type="number" value={editForm.inputs?.[f] || 0} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, [f]: e.target.value}})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black" /></div>))}
-                                                
-                                                {/* FIXED: Custom Stocks Inputs */}
                                                 <div className="col-span-2 grid grid-cols-2 gap-4">
                                                     <div className="space-y-1">
                                                         <label className="text-[10px] text-slate-400 uppercase font-black">自選 1 ({editForm.inputs?.custom_ticker_1 || 'T1'})</label>
-                                                        <div className="flex gap-1">
-                                                            <input type="text" value={editForm.inputs?.custom_ticker_1 || ''} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, custom_ticker_1: e.target.value.toUpperCase()}})} className="w-1/3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black text-[10px]" placeholder="代號" />
-                                                            <input type="number" value={editForm.inputs?.qty_custom_1 || 0} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, qty_custom_1: e.target.value}})} className="w-2/3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black" placeholder="股數" />
-                                                        </div>
+                                                        <div className="flex gap-1"><input type="text" value={editForm.inputs?.custom_ticker_1 || ''} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, custom_ticker_1: e.target.value.toUpperCase()}})} className="w-1/3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black text-[10px]" placeholder="代號" /><input type="number" value={editForm.inputs?.qty_custom_1 || 0} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, qty_custom_1: e.target.value}})} className="w-2/3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black" placeholder="股數" /></div>
                                                     </div>
                                                      <div className="space-y-1">
                                                         <label className="text-[10px] text-slate-400 uppercase font-black">自選 2 ({editForm.inputs?.custom_ticker_2 || 'T2'})</label>
-                                                        <div className="flex gap-1">
-                                                            <input type="text" value={editForm.inputs?.custom_ticker_2 || ''} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, custom_ticker_2: e.target.value.toUpperCase()}})} className="w-1/3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black text-[10px]" placeholder="代號" />
-                                                            <input type="number" value={editForm.inputs?.qty_custom_2 || 0} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, qty_custom_2: e.target.value}})} className="w-2/3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black" placeholder="股數" />
-                                                        </div>
+                                                        <div className="flex gap-1"><input type="text" value={editForm.inputs?.custom_ticker_2 || ''} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, custom_ticker_2: e.target.value.toUpperCase()}})} className="w-1/3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black text-[10px]" placeholder="代號" /><input type="number" value={editForm.inputs?.qty_custom_2 || 0} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, qty_custom_2: e.target.value}})} className="w-2/3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black" placeholder="股數" /></div>
                                                     </div>
                                                 </div>
-
                                                 <div className="col-span-2 space-y-1"><label className="text-[11px] text-slate-400 uppercase font-black">現金餘額</label><input type="number" value={editForm.inputs?.cash_balance || 0} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, cash_balance: e.target.value}})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-3 font-black text-lg text-center" /></div>
                                                 <div className="col-span-2 space-y-1"><label className="text-[11px] text-slate-400 uppercase font-black">備註</label><textarea value={editForm.memo || ''} onChange={e => setEditForm({...editForm, memo: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-sm font-medium resize-none" rows="2" /></div>
                                             </div>
@@ -442,7 +553,6 @@
                                                 <div className="space-y-1 font-black"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{new Date(rec.date).toLocaleDateString()}</p><p className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">${rec.total_equity?.toLocaleString()}</p></div>
                                                 <div className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 rounded-full text-[10px] border border-indigo-100 font-black">{rec.core_pos || "CASH"}</div>
                                             </div>
-                                            {/* FIXED: Display actual ticker names */}
                                             <div className="mt-2 grid grid-cols-4 gap-1 text-[9px] text-slate-400 border-t pt-2 dark:border-slate-800 font-black"><span>QQQ:${rec.prices?.QQQ?.toFixed(1)}</span><span>IBIT:${rec.prices?.IBIT?.toFixed(1)}</span><span>{rec.inputs?.custom_ticker_1 || '自選1'}:${rec.prices?.[rec.inputs?.custom_ticker_1]?.toFixed(1)||'0'}</span><span>{rec.inputs?.custom_ticker_2 || '自選2'}:${rec.prices?.[rec.inputs?.custom_ticker_2]?.toFixed(1)||'0'}</span></div>
                                             {rec.memo && <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border-l-4 border-indigo-200 text-left font-black text-sm text-slate-600 dark:text-slate-400">{rec.memo}</div>}
                                             <div className="mt-6 flex justify-end gap-3 items-center">
@@ -566,7 +676,18 @@
             const effectiveUserId = customSyncId || (user ? user.uid : null);
 
             const [inputs, setInputs] = useState({
-                qqq_ema125: 0, ibit_ema50: 0, custom_1_ema50: 0, custom_2_ema50: 0, 
+                // V7 Indicators
+                qqq_sma200: 0, 
+                qqq_sma20: 0,  
+                custom_1_sma40_w: 0, 
+                custom_2_sma40_w: 0, 
+                ibit_sma20_w: 0, 
+                
+                // V7.1 Rebalance Thresholds
+                rebalance_core_tolerance: 15,
+                rebalance_sat_max: 15,
+
+                // Positions
                 ticker_core_1: 'QQQ', qty_qqq: 0, avg_cost_qqq: 0, qty_tqqq: 0, avg_cost_tqqq: 0,
                 qty_ibit: 0, avg_cost_ibit: 0, qty_sgov: 0, avg_cost_sgov: 0, 
                 custom_ticker_1: 'TSLA', qty_custom_1: 0, avg_cost_custom_1: 0,
@@ -576,13 +697,18 @@
                 loan_amount: 0, loan_rate: 2.0, loan_years: 7, loan_repay_target: 20, 
                 loan_entry_valuation: 0, loan_monthly_repay: 0, motto: '', record_memo: '',
                 usdtwd_rate: 32.5,
-                title_core: "核心策略 (80%) - QQQ/TQQQ", strat_core: "進攻模式：40% QQQ + 40% TQQQ。\n防禦模式 (SGOV)：當 QQQ < 125 EMA (日線 -3%) 時全數轉入 SGOV。\n\n★ 核心再平衡機制：\n1. 季度檢查 (1/4/7/10月首日)：\n   若 TQQQ 佔核心比例超出 45%~55% 區間，調整回 50%/50%。\n\n2. 強制閾值 (隨時監控)：\n   若 TQQQ 佔核心比例 > 65% 或 < 35%，無視日期立即強制調整回 50%/50%。", 
-                title_custom: "自選衛星 (10%) - TSLA", strat_custom: "止損：價格 < 50 EMA (週線 -3%) 轉入 QQQ。\n歸隊：價格 > 50 EMA (週線 +5%) 買回。\n\n★ 衛星再平衡 (獲利收割)：\n若單一衛星資產價值 > 總資產 15%，賣出超額部分，獲利按 50/50 轉入核心 (QQQ+TQQQ)。", 
-                title_ibit: "衛星配置 (10%) - IBIT", strat_ibit: "止損：價格 < 50 EMA (週線 -3%) 轉入 QQQ。\n特殊：週一開盤前比特幣崩盤，直接市價賣出。\n\n★ 衛星再平衡 (獲利收割)：\n若 IBIT 價值 > 總資產 15%，賣出超額部分，獲利按 50/50 轉入核心。"
+                
+                // Strategy Text
+                title_core: "核心策略 (80%) - QQQ/TQQQ", 
+                strat_core: "進攻模式：QQQ > 200 SMA (+5%) ➔ 50% TQQQ + 50% QQQ。\n防禦模式：QQQ < 200 SMA (-3%) ➔ 全轉 SGOV，啟動12個月定投。\n\n★ 核心再平衡：\n偏離 ±15% (TQQQ > 65% 或 < 35%) 時校正回 50/50。", 
+                title_custom: "衛星配置 (20%) - TSLA / IBIT", 
+                strat_custom: "TSLA (10%)：週線 40 SMA (+5% 入 / -3% 出)。\nIBIT (10%)：週線 20 SMA (+5% 入 / -3% 出)。\n\n★ 非對稱母子連動 (防禦期)：\n若 QQQ < 200 SMA 且跌破 日線 20 SMA ➔ 衛星強制清倉 (緊縮停損)。\n若 QQQ 站穩 日線 20 SMA ➔ 允許持有 30% 試探倉位。", 
+                title_ibit: "操作備忘錄", 
+                strat_ibit: "歷史大底特許令：\n若 IBIT/BTC 觸及 200 週 SMA，視為極限價值區，不執行止損，改為分批建倉買滿衛星額度。\n\n跨資產再平衡：\n衛星總市值偏離 ±15% (總量 > 23% 或 < 17%) 時，強制回歸 80:20。"
             });
 
             const showToast = (txt) => { setMessage(txt); setTimeout(() => setMessage(null), 3000); };
-            const handleInputChange = (f, v) => setInputs(p => ({ ...p, [f]: v === '' ? '' : (isNaN(v) ? v : parseFloat(v)) }));
+            const handleInputChange = (f, v) => setInputs(p => ({ ...p, [f]: v === '' ? '' : Math.max(0, (isNaN(v) ? 0 : parseFloat(v))) })); // Strict Validation
             const syncToCloud = async (f, v) => { if (!effectiveUserId) return; await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ [f]: v }, { merge: true }); };
 
             const fetchPrices = useCallback(async (force = false) => {
