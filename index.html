@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Alpha Horizon Dashboard V7.3.1 (Fix Input Bug)</title>
+    <title>Alpha Horizon Dashboard V7.4.1 (Fix Runtime Error)</title>
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
@@ -71,7 +71,7 @@
             ChevronDown: <path d="m6 9 6 6 6-6"/>,
             ChevronUp: <path d="m18 15-6-6-6 6"/>,
             PieChartIcon: <><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></>,
-            MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>,
+            MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>,
             Fingerprint: <><path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10"/><path d="M12 12v3"/><path d="M16 17.5c-2.5 1.5-5.5 1.5-8 0"/></>, 
             BarChart2: <path d="M18 20V10M12 20V4M6 20v-6"/>,
             Calculator: <g><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></g>,
@@ -86,7 +86,9 @@
             Calendar: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></>,
             Target: <g><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></g>,
             Bear: <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />,
-            Compare: <path d="M2 13h6v8H2v-8zm14-8h6v16h-6V5zM9 21h6V9H9v12z"/>
+            Compare: <path d="M2 13h6v8H2v-8zm14-8h6v16h-6V5zM9 21h6V9H9v12z"/>,
+            Lock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></g>,
+            Unlock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" /></g>
         };
 
         // --- HELPER FUNCTIONS ---
@@ -269,7 +271,9 @@
         
         const DashboardView = ({ inputs, setInputs, prices, totalCapital, totalPL, totalROI, syncToCloud, saveRecord, isSaving, handleInputChange }) => {
             const [isAlertsView, setIsAlertsView] = useState(true);
+            const [isMottoLocked, setIsMottoLocked] = useState(true); // Default Locked
             const [showRebalConfig, setShowRebalConfig] = useState(false);
+            
             const rebalanceStatus = useMemo(() => calculateRebalanceStatus(prices, inputs, totalCapital), [prices, inputs, totalCapital]);
             const { alerts: strategyAlerts, isRiskOff } = useMemo(() => generateStrategyAlerts(prices, inputs, rebalanceStatus), [prices, inputs, rebalanceStatus]);
             
@@ -318,29 +322,42 @@
 
             return (
                 <div className="space-y-6 animate-in fade-in font-black">
-                     {smaVisual && (
-                        <div className={`p-3 rounded-2xl flex justify-between items-center shadow-lg border-2 ${smaVisual.isRiskOn ? 'bg-indigo-600 border-indigo-400 text-white' : smaVisual.isRiskOff ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
-                            <div className="flex items-center gap-2"><span className="text-[10px] font-black uppercase tracking-widest opacity-80">市場體制儀表 (QQQ vs SMA200)</span></div>
-                            <div className={`text-lg font-black ${smaVisual.isRiskOn ? 'text-white' : smaVisual.isRiskOff ? 'text-red-400' : 'text-slate-500'}`}>
-                                {smaVisual.label} {smaVisual.isRiskOn ? '🚀' : smaVisual.isRiskOff ? '🛑' : '⚖️'}
-                            </div>
-                        </div>
-                     )}
-
+                     {/* 1. Motto Section (Moved Top & Enlarged & Locked) */}
                      <Card className="p-4 bg-gradient-to-r from-slate-800 to-indigo-900 text-white shadow-lg border-none relative overflow-hidden transition-all duration-300">
                         <div className="flex justify-between items-start mb-2">
-                            <div className="flex items-center gap-2 opacity-80"><Icon name={isAlertsView ? "ShieldAlert" : "Quote"} size={16} /><span className="text-[10px] uppercase tracking-widest font-bold">{isAlertsView ? "策略警示 (Alerts)" : "投資座右銘 (Motto)"}</span></div>
-                            <button onClick={() => setIsAlertsView(!isAlertsView)} className={`p-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-all ${strategyAlerts.length > 0 ? 'alert-btn-pulse bg-red-500/80 hover:bg-red-500' : ''}`}><Icon name="AlertCircle" size={18} className="text-white" /></button>
+                            <div className="flex items-center gap-2 opacity-80">
+                                <Icon name={isAlertsView ? "ShieldAlert" : "Quote"} size={16} />
+                                <span className="text-[10px] uppercase tracking-widest font-bold">{isAlertsView ? "策略警示 (Alerts)" : "投資座右銘 (Motto)"}</span>
+                            </div>
+                            <div className="flex gap-2">
+                                {!isAlertsView && (
+                                    <button onClick={() => setIsMottoLocked(!isMottoLocked)} className={`p-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-all`}>
+                                        <Icon name={isMottoLocked ? "Lock" : "Unlock"} size={16} className="text-white" />
+                                    </button>
+                                )}
+                                <button onClick={() => setIsAlertsView(!isAlertsView)} className={`p-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-all ${strategyAlerts.length > 0 ? 'alert-btn-pulse bg-red-500/80 hover:bg-red-500' : ''}`}>
+                                    <Icon name="AlertCircle" size={18} className="text-white" />
+                                </button>
+                            </div>
                         </div>
                         {isAlertsView ? (
                             <div className="space-y-2 min-h-[60px] animate-in fade-in slide-in-from-right-4">
                                 {strategyAlerts.length > 0 ? (strategyAlerts.map((alert, idx) => (<div key={idx} className="bg-white/10 p-2 rounded-lg border border-white/20 backdrop-blur-sm"><div className="font-bold text-sm mb-1 flex items-center gap-1">{alert.type === 'danger' && '🔴'}{alert.type === 'risk' && '🟠'}{alert.type === 'opportunity' && '🔵'}{alert.type === 'warning' && '🟡'}{alert.title}</div><div className="text-xs opacity-90 leading-snug mb-2 whitespace-pre-line">{alert.msg}</div><button onClick={() => copyToMemo(alert.msg)} className="flex items-center gap-1 bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-[9px] transition-colors ml-auto w-fit"><Icon name="Save" size={10} /> 存入備註</button></div>))) : (<div className="flex flex-col items-center justify-center h-full py-4 opacity-70"><Icon name="CheckCircle" size={32} className="mb-1" /><span className="text-xs">目前無觸發警示，策略運行正常。</span></div>)}
                             </div>
                         ) : (
-                            <textarea value={inputs.motto} onChange={e => handleInputChange('motto', e.target.value)} onBlur={e => syncToCloud('motto', e.target.value)} className="w-full bg-transparent text-lg font-black text-center placeholder-white/50 outline-none resize-none animate-in fade-in slide-in-from-left-4" rows="2" placeholder="在此輸入您的投資心法..." />
+                            <textarea 
+                                value={inputs.motto} 
+                                onChange={e => handleInputChange('motto', e.target.value)} 
+                                onBlur={e => syncToCloud('motto', e.target.value)} 
+                                readOnly={isMottoLocked}
+                                className={`w-full bg-transparent text-lg font-black text-center placeholder-white/50 outline-none resize-none animate-in fade-in slide-in-from-left-4 transition-all ${isMottoLocked ? 'opacity-80 cursor-default' : 'opacity-100 cursor-text'}`}
+                                rows="5" 
+                                placeholder="在此輸入您的投資心法..." 
+                            />
                         )}
                     </Card>
 
+                    {/* V7.2 Bear Market Tactics (Conditional) */}
                     {isRiskOff && bearTactics && (
                         <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-100 dark:border-red-900 rounded-3xl p-4 shadow-lg animate-in slide-in-from-top-4">
                             <div className="flex items-center gap-2 mb-3 text-xs font-black text-red-600 dark:text-red-400 uppercase tracking-widest"><Icon name="Bear" size={14} /> 🐻 熊市戰略輔助</div>
@@ -384,7 +401,27 @@
                         </div>
                     </div>
 
-                    <div className="w-full"><Card className="py-4 px-1 flex flex-col items-center justify-center min-h-[85px] font-black"><span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">紀錄日期</span><input type="date" value={inputs.record_date} onChange={e => handleInputChange('record_date', e.target.value)} className="font-black dark:text-white py-1 text-[13px] h-auto font-black" /></Card></div>
+                    {/* Date and Market Regime (Moved to same row) */}
+                    <div className="w-full grid grid-cols-2 gap-4">
+                        <Card className="py-4 px-1 flex flex-col items-center justify-center min-h-[85px] font-black">
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">紀錄日期</span>
+                            <input type="date" value={inputs.record_date} onChange={e => handleInputChange('record_date', e.target.value)} className="font-black dark:text-white py-1 text-[13px] h-auto font-black" />
+                        </Card>
+                        
+                        {smaVisual ? (
+                            <Card className={`py-4 px-1 flex flex-col items-center justify-center min-h-[85px] font-black border-2 ${smaVisual.isRiskOn ? 'bg-indigo-600 border-indigo-400 text-white' : smaVisual.isRiskOff ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
+                                <span className={`text-[10px] uppercase tracking-widest mb-1 ${smaVisual.isRiskOn || smaVisual.isRiskOff ? 'text-white/80' : 'text-slate-400'}`}>體制儀表 (SMA200)</span>
+                                <div className={`text-lg font-black ${smaVisual.isRiskOn || smaVisual.isRiskOff ? 'text-white' : 'text-slate-600 dark:text-slate-200'}`}>
+                                    {smaVisual.label} {smaVisual.isRiskOn ? '🚀' : smaVisual.isRiskOff ? '🛑' : '⚖️'}
+                                </div>
+                            </Card>
+                        ) : (
+                            <Card className="py-4 px-1 flex flex-col items-center justify-center min-h-[85px] font-black opacity-50">
+                                <span className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">體制儀表</span>
+                                <div className="text-xs text-slate-400">數據不足</div>
+                            </Card>
+                        )}
+                    </div>
 
                     <Card className="bg-gradient-to-br from-slate-900 via-indigo-950 to-indigo-900 text-white border-none shadow-2xl p-7 relative overflow-hidden text-left font-black">
                         <div className="absolute -right-4 -bottom-4 opacity-10 rotate-12 font-black font-black"><Icon name="TrendingUp" size={160} /></div>
@@ -541,16 +578,25 @@
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="col-span-2 space-y-1"><label className="text-[11px] text-slate-400 uppercase font-black">日期</label><input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-3 font-black outline-none" /></div>
                                                 {['qty_qqq', 'qty_tqqq', 'qty_ibit', 'qty_sgov'].map(f => (<div key={f} className="space-y-1"><label className="text-[10px] text-slate-400 uppercase font-black">{f.replace('qty_', '').toUpperCase()}</label><input type="number" value={editForm.inputs?.[f] || 0} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, [f]: e.target.value}})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black" /></div>))}
+                                                
+                                                {/* FIXED: Custom Stocks Inputs */}
                                                 <div className="col-span-2 grid grid-cols-2 gap-4">
                                                     <div className="space-y-1">
                                                         <label className="text-[10px] text-slate-400 uppercase font-black">自選 1 ({editForm.inputs?.custom_ticker_1 || 'T1'})</label>
-                                                        <div className="flex gap-1"><input type="text" value={editForm.inputs?.custom_ticker_1 || ''} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, custom_ticker_1: e.target.value.toUpperCase()}})} className="w-1/3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black text-[10px]" placeholder="代號" /><input type="number" value={editForm.inputs?.qty_custom_1 || 0} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, qty_custom_1: e.target.value}})} className="w-2/3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black" placeholder="股數" /></div>
+                                                        <div className="flex gap-1">
+                                                            <input type="text" value={editForm.inputs?.custom_ticker_1 || ''} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, custom_ticker_1: e.target.value.toUpperCase()}})} className="w-1/3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black text-[10px]" placeholder="代號" />
+                                                            <input type="number" value={editForm.inputs?.qty_custom_1 || 0} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, qty_custom_1: e.target.value}})} className="w-2/3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black" placeholder="股數" />
+                                                        </div>
                                                     </div>
                                                      <div className="space-y-1">
                                                         <label className="text-[10px] text-slate-400 uppercase font-black">自選 2 ({editForm.inputs?.custom_ticker_2 || 'T2'})</label>
-                                                        <div className="flex gap-1"><input type="text" value={editForm.inputs?.custom_ticker_2 || ''} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, custom_ticker_2: e.target.value.toUpperCase()}})} className="w-1/3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black text-[10px]" placeholder="代號" /><input type="number" value={editForm.inputs?.qty_custom_2 || 0} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, qty_custom_2: e.target.value}})} className="w-2/3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black" placeholder="股數" /></div>
+                                                        <div className="flex gap-1">
+                                                            <input type="text" value={editForm.inputs?.custom_ticker_2 || ''} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, custom_ticker_2: e.target.value.toUpperCase()}})} className="w-1/3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black text-[10px]" placeholder="代號" />
+                                                            <input type="number" value={editForm.inputs?.qty_custom_2 || 0} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, qty_custom_2: e.target.value}})} className="w-2/3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center font-black" placeholder="股數" />
+                                                        </div>
                                                     </div>
                                                 </div>
+
                                                 <div className="col-span-2 space-y-1"><label className="text-[11px] text-slate-400 uppercase font-black">現金餘額</label><input type="number" value={editForm.inputs?.cash_balance || 0} onChange={e => setEditForm({...editForm, inputs: {...editForm.inputs, cash_balance: e.target.value}})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-3 font-black text-lg text-center" /></div>
                                                 <div className="col-span-2 space-y-1"><label className="text-[11px] text-slate-400 uppercase font-black">備註</label><textarea value={editForm.memo || ''} onChange={e => setEditForm({...editForm, memo: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-sm font-medium resize-none" rows="2" /></div>
                                             </div>
@@ -562,6 +608,7 @@
                                                 <div className="space-y-1 font-black"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{new Date(rec.date).toLocaleDateString()}</p><p className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">${rec.total_equity?.toLocaleString()}</p></div>
                                                 <div className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 rounded-full text-[10px] border border-indigo-100 font-black">{rec.core_pos || "CASH"}</div>
                                             </div>
+                                            {/* FIXED: Display actual ticker names */}
                                             <div className="mt-2 grid grid-cols-4 gap-1 text-[9px] text-slate-400 border-t pt-2 dark:border-slate-800 font-black"><span>QQQ:${rec.prices?.QQQ?.toFixed(1)}</span><span>IBIT:${rec.prices?.IBIT?.toFixed(1)}</span><span>{rec.inputs?.custom_ticker_1 || '自選1'}:${rec.prices?.[rec.inputs?.custom_ticker_1]?.toFixed(1)||'0'}</span><span>{rec.inputs?.custom_ticker_2 || '自選2'}:${rec.prices?.[rec.inputs?.custom_ticker_2]?.toFixed(1)||'0'}</span></div>
                                             {rec.memo && <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border-l-4 border-indigo-200 text-left font-black text-sm text-slate-600 dark:text-slate-400">{rec.memo}</div>}
                                             <div className="mt-6 flex justify-end gap-3 items-center">
@@ -720,7 +767,6 @@
             
             // --- UPDATED INPUT HANDLER (FIXED BUG) ---
             const handleInputChange = (f, v) => setInputs(p => {
-                // List of Text Fields (Allow string input)
                 const textFields = [
                     'motto', 'record_memo', 'record_date', 
                     'ticker_core_1', 'custom_ticker_1', 'custom_ticker_2',
@@ -728,12 +774,9 @@
                     'title_custom', 'strat_custom', 
                     'title_ibit', 'strat_ibit'
                 ];
-
                 if (textFields.includes(f)) {
                     return { ...p, [f]: v };
                 }
-
-                // For Numeric Fields (Strict Validation)
                 return { ...p, [f]: v === '' ? '' : Math.max(0, (isNaN(v) ? 0 : parseFloat(v))) };
             });
 
@@ -813,4 +856,5 @@
     </script>
 </body>
 </html>
+
 
