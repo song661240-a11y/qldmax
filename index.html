@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Alpha Horizon">
-    <title>Alpha Horizon Dashboard v4.7</title>
+    <title>Alpha Horizon Dashboard v5.1.1</title>
     
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
 
@@ -105,7 +105,8 @@
             Shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>,
             Download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>,
             Upload: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></>,
-            Flag: <><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></>
+            Flag: <><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></>,
+            Activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
         };
 
         const Icon = ({ name, size = 20, className = "" }) => {
@@ -302,23 +303,7 @@
             const allocationBase = useMemo(() => simulatedTotal ? parseFloat(simulatedTotal) : totalCapital, [simulatedTotal, totalCapital]);
             const loanSellThreshold = useMemo(() => (getNum(inputs.loan_entry_valuation)) * (1 + (getNum(inputs.loan_repay_target)) / 100), [inputs.loan_entry_valuation, inputs.loan_repay_target]);
             const isTargetReached = totalCapital >= loanSellThreshold && inputs.loan_entry_valuation > 0;
-            
-            const fireProgress = useMemo(() => {
-                const target = getNum(inputs.fire_target) || 1000000;
-                const progress = (totalCapital / target) * 100;
-                return Math.min(progress, 100);
-            }, [totalCapital, inputs.fire_target]);
-
-            // ATH Calculation
-            const athData = useMemo(() => {
-                if (!records || records.length === 0) return { ath: totalCapital, dd: 0 };
-                let maxEquity = totalCapital; // Start with current
-                records.forEach(r => {
-                    if (r.total_equity > maxEquity) maxEquity = r.total_equity;
-                });
-                const dd = maxEquity > 0 ? ((totalCapital - maxEquity) / maxEquity) * 100 : 0;
-                return { ath: maxEquity, dd };
-            }, [records, totalCapital]);
+            const ltv = inputs.loan_amount > 0 && totalCapital > 0 ? (inputs.loan_amount / totalCapital) * 100 : 0;
 
             const pieData = useMemo(() => {
                 const p = prices; 
@@ -439,6 +424,25 @@
                 if (isCustom2Overweight) alerts.push({ type: 'opportunity', title: `💰 ${inputs.custom_ticker_2} 獲利收割`, msg: `原因：權重超過 ${maxSatCap}%。` });
                 if (isIbitOverweight) alerts.push({ type: 'opportunity', title: `💰 IBIT 獲利收割`, msg: `原因：權重超過 ${maxSatCap}%。` });
 
+                // Individual Stock Alerts
+                const c1Price = p[t1] || 0;
+                const c1Sma = getNum(i.custom_1_sma40);
+                if (c1Sma > 0 && c1Price > 0 && c1Price < c1Sma * 0.97) {
+                    alerts.push({ type: 'danger', title: `⚠️ ${inputs.custom_ticker_1} 跌破週線`, msg: `現價 $${c1Price} 已跌破 40週均線 ($${c1Sma}) 下方 3%。\n動作：請立即執行止損/減倉。` });
+                }
+
+                const c2Price = p[t2] || 0;
+                const c2Sma = getNum(i.custom_2_sma20);
+                if (c2Sma > 0 && c2Price > 0 && c2Price < c2Sma * 0.97) {
+                    alerts.push({ type: 'danger', title: `⚠️ ${inputs.custom_ticker_2} 跌破週線`, msg: `現價 $${c2Price} 已跌破 20週均線 ($${c2Sma}) 下方 3%。\n動作：請立即執行止損/減倉。` });
+                }
+
+                const ibitPrice = p.IBIT || 0;
+                const ibitSma = getNum(i.ibit_sma20);
+                if (ibitSma > 0 && ibitPrice > 0 && ibitPrice < ibitSma * 0.97) {
+                     alerts.push({ type: 'danger', title: `⚠️ IBIT 跌破週線`, msg: `現價 $${ibitPrice} 已跌破 20週均線 ($${ibitSma}) 下方 3%。\n動作：請立即執行止損/減倉。` });
+                }
+
                 return alerts;
             }, [prices, inputs, rebalanceStatus]);
 
@@ -446,7 +450,30 @@
             useEffect(() => { auth.signInAnonymously().catch(console.error); const unsub = auth.onAuthStateChanged(setUser); return () => unsub(); }, []);
             useEffect(() => { if (!effectiveUserId) return; const userPath = db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId); userPath.collection('trading_records').onSnapshot(snap => setRecords(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.date) - new Date(a.date)))); userPath.collection('config').doc('current').onSnapshot(snap => { if (snap.exists) setInputs(prev => ({ ...prev, ...snap.data(), record_date: new Date().toISOString().split('T')[0] })); }); fetchPrices(); }, [effectiveUserId]);
             useEffect(() => { const root = window.document.documentElement; if (darkMode) root.classList.add('dark'); else root.classList.remove('dark'); }, [darkMode]);
-            const save = async () => { if (!effectiveUserId || isSaving) return; setIsSaving(true); const d = new Date(inputs.record_date); d.setHours(12, 0, 0, 0); try { await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('trading_records').add({ date: d.toISOString(), total_equity: totalCapital, prices: { ...prices }, inputs: { ...inputs }, memo: inputs.record_memo || '' }); await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('config').doc('current').set(inputs, { merge: true }); showToast("同步成功！"); setInputs(p => ({ ...p, record_memo: '' })); } catch (e) { showToast("儲存失敗"); } finally { setIsSaving(false); } };
+            
+            const save = async () => { 
+                if (!effectiveUserId || isSaving) return; 
+                setIsSaving(true); 
+                const d = new Date(inputs.record_date); 
+                d.setHours(12, 0, 0, 0); 
+                try { 
+                    // Crucial: Save the current PRICES alongside inputs to lock them in time
+                    await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('trading_records').add({ 
+                        date: d.toISOString(), 
+                        total_equity: totalCapital, 
+                        prices: { ...prices }, // Snapshot current prices
+                        inputs: { ...inputs }, 
+                        memo: inputs.record_memo || '' 
+                    }); 
+                    await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('config').doc('current').set(inputs, { merge: true }); 
+                    showToast("同步成功！"); 
+                    setInputs(p => ({ ...p, record_memo: '' })); 
+                } catch (e) { 
+                    showToast("儲存失敗"); 
+                } finally { 
+                    setIsSaving(false); 
+                } 
+            };
             const confirmDelete = async (id) => { try { await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('trading_records').doc(id).delete(); setDeletingId(null); showToast("已刪除"); } catch (e) {} };
             
             // Backup & Restore
@@ -490,7 +517,8 @@
                         ticker_core_1: record.inputs?.ticker_core_1 || "QQQ",
                         custom_ticker_1: record.inputs?.custom_ticker_1 || "自選1",
                         custom_ticker_2: record.inputs?.custom_ticker_2 || "自選2"
-                    }
+                    },
+                    prices: record.prices || {} // Also pass prices for display
                 }); 
             };
 
@@ -513,6 +541,22 @@
                 }
             };
 
+            const fireProgress = useMemo(() => {
+                const target = getNum(inputs.fire_target) || 1000000;
+                const progress = (totalCapital / target) * 100;
+                return Math.min(progress, 100);
+            }, [totalCapital, inputs.fire_target]);
+
+            const athData = useMemo(() => {
+                if (!records || records.length === 0) return { ath: totalCapital, dd: 0 };
+                let maxEquity = totalCapital; // Start with current
+                records.forEach(r => {
+                    if (r.total_equity > maxEquity) maxEquity = r.total_equity;
+                });
+                const dd = maxEquity > 0 ? ((totalCapital - maxEquity) / maxEquity) * 100 : 0;
+                return { ath: maxEquity, dd };
+            }, [records, totalCapital]);
+
             const stats = useMemo(() => {
                 if (!records || records.length < 1) return { chartData: [], maxDrawdown: 0 };
                 const now = new Date();
@@ -530,26 +574,34 @@
                 // Enhanced Logic to find QQQ price
                 const getHistPrice = (rec, ticker) => rec.prices?.[ticker] || rec.prices?.[ticker.toUpperCase()] || 0;
                 
-                // Fallback logic for base QQQ: Try 'QQQ', then user's core ticker, then 1 (to prevent division by zero)
-                const baseQQQ = getHistPrice(baseRecord, 'QQQ') || getHistPrice(baseRecord, inputs.ticker_core_1) || 1;
+                // Fallback logic for base QQQ: Try 'QQQ', then 'QQQM', then user's core ticker, then 1 (to prevent division by zero)
+                const baseQQQ = getHistPrice(baseRecord, 'QQQ') || getHistPrice(baseRecord, 'QQQM') || getHistPrice(baseRecord, inputs.ticker_core_1) || 1;
                 
                 let runningMaxEquity = 0;
                 let globalMaxDrawdown = 0;
 
                 const chartData = sorted.map(r => {
                     const currentEquity = r.total_equity || 0;
-                    const currentQQQ = getHistPrice(r, 'QQQ') || getHistPrice(r, inputs.ticker_core_1) || 0;
+                    // For each record, find historical QQQ price. If missing, line will be broken (null)
+                    let currentQQQ = getHistPrice(r, 'QQQ') || getHistPrice(r, 'QQQM');
+                    
+                    // If absolutely no QQQ/QQQM found in record, fallback to the core ticker user typed at that time
+                    if (!currentQQQ && r.inputs?.ticker_core_1) {
+                         currentQQQ = getHistPrice(r, r.inputs.ticker_core_1);
+                    }
                     
                     if (currentEquity > runningMaxEquity) runningMaxEquity = currentEquity;
                     const drawdown = runningMaxEquity > 0 ? ((currentEquity - runningMaxEquity) / runningMaxEquity) * 100 : 0;
                     if (drawdown < globalMaxDrawdown) globalMaxDrawdown = drawdown;
 
+                    // Only calculate qqqReturn if both base and current exist
+                    const qqqReturn = (baseQQQ > 0 && currentQQQ > 0) ? ((currentQQQ - baseQQQ) / baseQQQ) * 100 : null;
+
                     return {
                         date: r.date,
                         equity: currentEquity,
                         portfolioReturn: ((currentEquity - baseEquity) / baseEquity) * 100,
-                        // If baseQQQ is valid, calculate return, else 0
-                        qqqReturn: baseQQQ > 0 ? ((currentQQQ - baseQQQ) / baseQQQ) * 100 : 0,
+                        qqqReturn: qqqReturn,
                         drawdown: drawdown
                     };
                 });
@@ -579,27 +631,42 @@
                                     
                                     <div className="space-y-3">
                                         <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
-                                            <span className="font-bold text-indigo-500">{editForm.inputs.ticker_core_1 || "QQQ"}</span>
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-indigo-500 text-xs">{editForm.inputs.ticker_core_1 || "QQQ"}</span>
+                                                <span className="text-[10px] text-slate-400">當時: ${editForm.prices?.[editForm.inputs.ticker_core_1] || editForm.prices?.QQQ || '-'}</span>
+                                            </div>
                                             <input type="number" value={editForm.inputs.qty_qqq} onChange={e => handleEditFormChange('qty_qqq', e.target.value)} className="w-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-right font-mono font-black" placeholder="股數" />
                                         </div>
                                         <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
-                                            <span className="font-bold text-purple-500">TQQQ</span>
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-purple-500 text-xs">TQQQ</span>
+                                                <span className="text-[10px] text-slate-400">當時: ${editForm.prices?.TQQQ || '-'}</span>
+                                            </div>
                                             <input type="number" value={editForm.inputs.qty_tqqq} onChange={e => handleEditFormChange('qty_tqqq', e.target.value)} className="w-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-right font-mono font-black" placeholder="股數" />
                                         </div>
                                         <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
-                                            <span className="font-bold text-emerald-500">{editForm.inputs.custom_ticker_1 || "自選1"}</span>
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-emerald-500 text-xs">{editForm.inputs.custom_ticker_1 || "自選1"}</span>
+                                                <span className="text-[10px] text-slate-400">當時: ${editForm.prices?.[editForm.inputs.custom_ticker_1] || '-'}</span>
+                                            </div>
                                             <input type="number" value={editForm.inputs.qty_custom_1} onChange={e => handleEditFormChange('qty_custom_1', e.target.value)} className="w-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-right font-mono font-black" placeholder="股數" />
                                         </div>
                                         <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
-                                            <span className="font-bold text-amber-500">{editForm.inputs.custom_ticker_2 || "自選2"}</span>
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-amber-500 text-xs">{editForm.inputs.custom_ticker_2 || "自選2"}</span>
+                                                <span className="text-[10px] text-slate-400">當時: ${editForm.prices?.[editForm.inputs.custom_ticker_2] || '-'}</span>
+                                            </div>
                                             <input type="number" value={editForm.inputs.qty_custom_2} onChange={e => handleEditFormChange('qty_custom_2', e.target.value)} className="w-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-right font-mono font-black" placeholder="股數" />
                                         </div>
                                         <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
-                                            <span className="font-bold text-orange-500">IBIT</span>
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-orange-500 text-xs">IBIT</span>
+                                                <span className="text-[10px] text-slate-400">當時: ${editForm.prices?.IBIT || '-'}</span>
+                                            </div>
                                             <input type="number" value={editForm.inputs.qty_ibit} onChange={e => handleEditFormChange('qty_ibit', e.target.value)} className="w-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-right font-mono font-black" placeholder="股數" />
                                         </div>
                                         <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
-                                            <span className="font-bold text-slate-500">現金 (USD)</span>
+                                            <span className="font-bold text-slate-500 text-xs">現金 (USD)</span>
                                             <input type="number" value={editForm.inputs.cash_balance} onChange={e => handleEditFormChange('cash_balance', e.target.value)} className="w-28 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-right font-mono font-black" />
                                         </div>
                                     </div>
@@ -889,14 +956,14 @@
                                                     <ReferenceLine yAxisId="right" y={stats.maxDrawdown} stroke="red" strokeDasharray="3 3" label={{ position: 'insideBottomRight', value: `MDD: ${stats.maxDrawdown.toFixed(1)}%`, fill: 'red', fontSize: 10, fontWeight: 'bold' }} />
                                                 </ComposedChart>
                                             ) : (
-                                                <AreaChart data={stats.chartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                                                <ComposedChart data={stats.chartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={darkMode ? "#1e293b" : "#e2e8f0"} />
                                                     <XAxis dataKey="date" tickFormatter={v => new Date(v).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })} tick={{ fontSize: 10, fontWeight: '900', fill: darkMode ? '#64748b' : '#94a3b8' }} />
                                                     <YAxis tickFormatter={v => `${v.toFixed(0)}%`} tick={{ fontSize: 10, fontWeight: '900', fill: darkMode ? '#64748b' : '#94a3b8' }} />
                                                     <Tooltip labelFormatter={v => new Date(v).toLocaleDateString()} formatter={(val) => `${val.toFixed(2)}%`} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'}} />
                                                     <Area type="monotone" dataKey="portfolioReturn" stroke="#6366f1" strokeWidth={3} fillOpacity={0.1} fill="#6366f1" name="我的策略" />
-                                                    <Line type="monotone" dataKey="qqqReturn" stroke="#10b981" strokeWidth={3} dot={true} strokeDasharray="0" name="QQQ (大盤)" />
-                                                </AreaChart>
+                                                    <Line type="monotone" dataKey="qqqReturn" stroke="#10b981" strokeWidth={3} dot={{r: 2}} strokeDasharray="0" name="QQQ (大盤)" connectNulls={true} />
+                                                </ComposedChart>
                                             )}
                                         </ResponsiveContainer>
                                     </Card>
@@ -908,24 +975,38 @@
 
                                 <div className="space-y-4 pb-28 font-black text-left font-black">
                                     {records.filter(r => { const d = new Date(r.date); const now = new Date(); if (filterMode === 'year') return d.getFullYear() === now.getFullYear(); if (filterMode === 'month') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); return true; }).slice(0, visibleCount).map(rec => (
-                                        <Card key={rec.id} className="border-none shadow-md p-5 bg-white dark:bg-slate-800/50 text-left font-black font-black font-black hover:scale-[1.02] transition-transform cursor-pointer" onClick={() => startEditing(rec)}>
+                                        <Card key={rec.id} className="border-none shadow-md p-5 bg-white dark:bg-slate-800/50 text-left font-black font-black font-black hover:scale-[1.02] transition-transform cursor-pointer relative" onClick={() => startEditing(rec)}>
                                             <div className="flex justify-between items-start font-black text-left font-black font-black font-black">
                                                 <div className="space-y-1 font-black"><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{new Date(rec.date).toLocaleDateString()}</p><p className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tighter font-mono">${rec.total_equity?.toLocaleString()}</p></div>
                                                 <div className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 rounded-full text-[10px] border border-indigo-100 font-black">{rec.inputs?.ticker_core_1 || "QQQ"}</div>
                                             </div>
+                                            
+                                            {/* Explicit Edit Button */}
                                             <div className="mt-6 flex justify-end gap-3 items-center" onClick={e => e.stopPropagation()}>
-                                                {deletingId === rec.id ? (
-                                                    <div className="flex gap-2 animate-in slide-in-from-right-2 text-left font-black font-black"><button onClick={() => confirmDelete(rec.id)} className="bg-red-500 text-white px-6 py-2 rounded-xl text-xs font-black">是</button><button onClick={() => setDeletingId(null)} className="bg-slate-200 dark:bg-slate-700 px-6 py-2 rounded-xl text-xs font-black">否</button></div>
-                                                ) : (
-                                                    <div className="flex gap-3"><button onClick={() => setDeletingId(rec.id)} className="text-slate-300 hover:text-red-600 p-3 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 shadow-sm"><Icon name="Trash2" size={20} /></button></div>
-                                                )}
+                                                <button onClick={(e) => { e.stopPropagation(); startEditing(rec); }} className="flex items-center gap-1 text-blue-500 hover:text-blue-600 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 font-bold text-xs transition-colors"><Icon name="Edit2" size={14} /> 編輯</button>
+                                                <button onClick={(e) => { e.stopPropagation(); confirmDelete(rec.id); }} className="flex items-center gap-1 text-slate-400 hover:text-red-500 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-red-50 dark:hover:bg-red-900/30 font-bold text-xs transition-colors"><Icon name="Trash2" size={14} /></button>
                                             </div>
                                         </Card>
                                     ))}
                                 </div>
                             </div>
                         )}
-                        
+
+                        {view === 'loan' && (
+                            <div className="space-y-6 animate-in fade-in text-left font-black">
+                                <Card className="space-y-6 border-2 border-amber-100 dark:border-amber-900/30 shadow-xl p-6 text-left font-black font-black font-black">
+                                    <div className="p-5 bg-amber-50 dark:bg-amber-900/20 rounded-3xl flex items-start gap-4 border border-amber-100 font-medium font-black font-black font-black"><Icon name="Landmark" size={28} className="text-amber-600 flex-shrink-0" /><p className="text-[14px] text-amber-800 dark:text-amber-300 leading-relaxed font-black">還款邏輯：以「買入市值」為固定基準，獲利達標建議撤退。</p></div>
+                                    <div className="grid grid-cols-1 gap-6 font-black font-black font-black">{[{ l: "貸款買入時市值 (USD基準)", f: "loan_entry_valuation" }, { l: "貸款總額 (USD)", f: "loan_amount" }, { l: "每月還款金額 (USD)", f: "loan_monthly_repay" }, { l: "年化利率 (%)", f: "loan_rate" }, { l: "還款獲利目標 (%)", f: "loan_repay_target" }].map(it => (
+                                        <div key={it.f} className="space-y-2 text-left text-amber-900 dark:text-amber-500 font-black font-black"><label className="text-[11px] uppercase tracking-widest px-1 text-amber-600">{it.l}</label><input type="number" value={inputs[it.f]} onChange={e => handleInputChange(it.f, e.target.value)} onBlur={(e) => syncToCloud(it.f, e.target.value)} className="w-full bg-amber-50 dark:bg-slate-800 border-2 border-amber-100 dark:border-amber-900 rounded-[1.5rem] p-5 font-black text-xl text-center" /></div>
+                                    ))}</div>
+                                    <Card className={`${isTargetReached ? 'repay-alert' : 'bg-amber-900 dark:bg-amber-950'} text-white border-none p-6 text-center shadow-lg transition-colors duration-500 font-black`}>
+                                        <h4 className="text-xs opacity-60 uppercase mb-1 tracking-widest text-center font-black">賣出還款門檻 (依基準市值)</h4>
+                                        <p className="text-xl font-mono tracking-tight text-center font-black font-black font-black">${ loanSellThreshold.toLocaleString(undefined, { maximumFractionDigits: 0 }) }</p>
+                                    </Card>
+                                </Card>
+                            </div>
+                        )}
+
                         {view === 'sync_settings' && (
                             <div className="space-y-6 animate-in fade-in text-left">
                                 {/* 1. Account Sync */}
