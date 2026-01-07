@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Alpha Horizon">
-    <title>Alpha Horizon Dashboard v5.0</title>
+    <title>Alpha Horizon Dashboard v5.8</title>
     
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
 
@@ -36,7 +36,7 @@
         
         .dark body { background-color: #0f172a; }
         .light body { background-color: #f1f5f9; }
-        input, select, textarea { font-size: 16px !important; line-height: 1.4 !important; padding: 8px 4px !important; width: 100%; background-color: transparent; border: none; outline: none; text-align: center; }
+        input, select, textarea { font-size: 16px !important; line-height: 1.4 !important; padding: 8px 2px !important; width: 100%; background-color: transparent; border: none; outline: none; text-align: center; }
         .strategy-textarea { text-align: left !important; padding: 12px !important; min-height: 100px; font-size: 14px !important; border-radius: 12px; background-color: rgba(255,255,255,0.5); border: 1px dashed #cbd5e1; transition: all 0.3s ease; }
         .dark .strategy-textarea { background-color: rgba(30, 41, 59, 0.5); border-color: #334155; color: #e2e8f0; }
         .strategy-read-only { border: 1px solid transparent !important; background-color: transparent !important; cursor: default; }
@@ -62,7 +62,7 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback, useRef } = React;
-        const { ComposedChart, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Line, ReferenceLine, Label } = Recharts;
+        const { ComposedChart, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Line, ReferenceLine } = Recharts;
 
         const appId = "qqq-strategic-production-v1"; 
         const FINNHUB_API_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
@@ -175,7 +175,6 @@
                 rebalance_sat_cap: 15,
                 rebalance_core_target: 50, 
                 rebalance_core_tolerance: 15, 
-                // Removed fire_target
                 
                 // Calculator Allocations
                 calc_alloc_qqq: 40,
@@ -193,6 +192,14 @@
                 loan_amount: 0, loan_rate: 2.0, loan_years: 7, loan_repay_target: 20, 
                 loan_entry_valuation: 0, loan_monthly_repay: 0, motto: '', record_memo: '',
                 
+                // Target Prices
+                target_qqq: '',
+                target_tqqq: '',
+                target_ibit: '',
+                target_sgov: '',
+                target_custom_1: '',
+                target_custom_2: '',
+
                 title_core: "核心策略 (80%) - QQQ/TQQQ (NRA V7)", 
                 strat_core: "【核心部位執行規則】\n1. 趨勢濾網：QQQ 日線 200 SMA (緩衝區 +5% / -3%)。\n2. 進攻模式 (Risk-On)：QQQ > 200 SMA x 1.05 ➔ 持有 50% TQQQ + 50% QQQ。\n3. 防禦模式 (Risk-Off)：QQQ < 200 SMA x 0.97 ➔ 全數轉入 SGOV。\n4. 熊市 DCA：防禦期啟動 12 個月定投 QQQ (非槓桿)，進攻信號出現即停止。\n\n【再平衡】\nTQQQ 佔核心 > 65% 或 < 35% 強制校正回 50/50。", 
                 title_custom: "自選衛星 1 (10%) - TSLA (週線 40)", 
@@ -214,7 +221,6 @@
                 const tCore = (inputs.ticker_core_1 || "QQQ").trim().toUpperCase();
                 const t1 = (inputs.custom_ticker_1 || "").trim().toUpperCase(); 
                 const t2 = (inputs.custom_ticker_2 || "").trim().toUpperCase();
-                // Add QQQ, QQQM explicitly for benchmarking
                 const syms = [...new Set(['QQQ', 'QQQM', tCore, 'TQQQ', 'IBIT', 'SGOV', t1, t2].filter(Boolean))];
 
                 if (!force) {
@@ -255,6 +261,14 @@
                 if (val === undefined || val === null || val === '') return 0;
                 const n = parseFloat(val);
                 return isNaN(n) ? 0 : n;
+            };
+
+            // Helper to calculate % diff
+            const getDiff = (current, target) => {
+                const c = parseFloat(current);
+                const t = parseFloat(target);
+                if (!c || !t) return null;
+                return ((t - c) / c) * 100;
             };
 
             const totalCapital = useMemo(() => {
@@ -313,17 +327,6 @@
             const loanSellThreshold = useMemo(() => (getNum(inputs.loan_entry_valuation)) * (1 + (getNum(inputs.loan_repay_target)) / 100), [inputs.loan_entry_valuation, inputs.loan_repay_target]);
             const isTargetReached = totalCapital >= loanSellThreshold && inputs.loan_entry_valuation > 0;
             const ltv = inputs.loan_amount > 0 && totalCapital > 0 ? (inputs.loan_amount / totalCapital) * 100 : 0;
-            
-            // ATH Calculation
-            const athData = useMemo(() => {
-                if (!records || records.length === 0) return { ath: totalCapital, dd: 0 };
-                let maxEquity = totalCapital; // Start with current
-                records.forEach(r => {
-                    if (r.total_equity > maxEquity) maxEquity = r.total_equity;
-                });
-                const dd = maxEquity > 0 ? ((totalCapital - maxEquity) / maxEquity) * 100 : 0;
-                return { ath: maxEquity, dd };
-            }, [records, totalCapital]);
 
             const pieData = useMemo(() => {
                 const p = prices; 
@@ -768,15 +771,21 @@
                                 </div>
 
                                 <div className="w-full">
-                                    <Card className="py-4 px-3 flex items-center justify-between min-h-[70px] font-black">
-                                        <div className="flex flex-col">
-                                            <div className="flex items-center gap-1.5 mb-1"><Icon name="Calendar" size={14} className="text-slate-400" /><span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest">紀錄日期</span></div>
-                                            <input type="date" value={inputs.record_date} onChange={e => handleInputChange('record_date', e.target.value)} className="font-black dark:text-white text-sm bg-transparent outline-none p-0 w-32" />
+                                    <Card className="py-3 px-4 flex items-center justify-between min-h-[60px]">
+                                        <div className="flex items-center gap-2">
+                                            <Icon name="Calendar" size={16} className="text-slate-400" />
+                                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">紀錄日期</span>
                                         </div>
+                                        <input 
+                                            type="date" 
+                                            value={inputs.record_date} 
+                                            onChange={e => handleInputChange('record_date', e.target.value)} 
+                                            className="font-bold dark:text-white text-xs bg-transparent outline-none text-right w-auto min-w-[120px]" 
+                                        />
                                         {qqqDistance !== null && (
-                                            <div className={`flex flex-col items-end ${qqqDistance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                <span className="text-[9px] uppercase opacity-70 font-bold">距離 200 SMA</span>
-                                                <span className="text-lg font-black font-mono">{qqqDistance > 0 ? '+' : ''}{qqqDistance.toFixed(2)}%</span>
+                                            <div className={`flex items-center gap-1 ml-4 text-xs font-black font-mono ${qqqDistance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                <span className="opacity-60 text-[9px] uppercase">MA200</span>
+                                                <span>{qqqDistance > 0 ? '+' : ''}{qqqDistance.toFixed(2)}%</span>
                                             </div>
                                         )}
                                     </Card>
@@ -824,62 +833,115 @@
 
                                 <Card className="space-y-4 text-left font-black font-black border-2 border-indigo-500 dark:border-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.2)]">
                                     <SectionTitle title="持倉數量 (Holdings)" iconName="Edit2" />
+                                    
+                                    <div className="grid grid-cols-12 gap-1 text-[10px] text-slate-400 uppercase tracking-widest text-center px-1 mb-1">
+                                        <div className="col-span-3 text-left pl-2">標的/現價</div>
+                                        <div className="col-span-3">股數</div>
+                                        <div className="col-span-3 text-indigo-400">目標價</div>
+                                        <div className="col-span-3">距目標</div>
+                                    </div>
+
                                     <div className="space-y-2">
-                                        <div className="grid grid-cols-12 gap-2 text-[10px] text-slate-400 uppercase tracking-widest text-center px-1 mb-1">
-                                            <div className="col-span-5 text-left pl-2">標的</div><div className="col-span-7 pr-2">股數 (Qty)</div>
-                                        </div>
                                         {/* Core 1: QQQ */}
-                                        <div className="holding-input-group grid grid-cols-12 gap-0 items-center p-1">
-                                            <div className="col-span-5 flex flex-col justify-center px-3 border-r border-slate-200 dark:border-slate-700">
-                                                <input type="text" value={inputs.ticker_core_1} onChange={e => handleInputChange('ticker_core_1', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('ticker_core_1', e.target.value.toUpperCase())} className="w-full text-sm font-black bg-transparent p-0 outline-none text-left font-mono tracking-tight text-indigo-600 dark:text-indigo-400 uppercase" placeholder="QQQ" />
+                                        <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
+                                            <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
+                                                <input type="text" value={inputs.ticker_core_1} onChange={e => handleInputChange('ticker_core_1', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('ticker_core_1', e.target.value.toUpperCase())} className="w-full text-xs font-black bg-transparent p-0 outline-none text-left font-mono tracking-tight text-indigo-600 dark:text-indigo-400 uppercase" placeholder="QQQ" />
                                                 <span className="text-[9px] text-slate-400 font-mono">${prices[(inputs.ticker_core_1 || "QQQ").toUpperCase()]?.toFixed(1)}</span>
                                             </div>
-                                            <input type="number" placeholder="0" value={inputs.qty_qqq} onChange={e => handleInputChange('qty_qqq', e.target.value)} onBlur={(e) => syncToCloud('qty_qqq', e.target.value)} className="col-span-7 bg-transparent font-black text-lg text-right pr-4 focus:bg-white dark:focus:bg-slate-800 transition-colors h-12 font-mono" />
+                                            <input type="number" placeholder="0" value={inputs.qty_qqq} onChange={e => handleInputChange('qty_qqq', e.target.value)} onBlur={(e) => syncToCloud('qty_qqq', e.target.value)} className="col-span-3 bg-transparent font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                            <input type="number" placeholder="-" value={inputs.target_qqq} onChange={e => handleInputChange('target_qqq', e.target.value)} onBlur={(e) => syncToCloud('target_qqq', e.target.value)} className="col-span-3 bg-transparent font-bold text-xs text-center text-indigo-500 focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                            <div className={`col-span-3 text-center text-xs font-black font-mono ${getDiff(prices[(inputs.ticker_core_1 || "QQQ").toUpperCase()], inputs.target_qqq) > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                {(() => {
+                                                    const diff = getDiff(prices[(inputs.ticker_core_1 || "QQQ").toUpperCase()], inputs.target_qqq);
+                                                    if (diff === null) return '-';
+                                                    return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
+                                                })()}
+                                            </div>
                                         </div>
                                         
                                         {/* Core 2: TQQQ */}
-                                        <div className="holding-input-group grid grid-cols-12 gap-0 items-center p-1">
-                                            <div className="col-span-5 flex flex-col justify-center px-3 border-r border-slate-200 dark:border-slate-700">
-                                                <span className="text-sm font-black font-mono tracking-tight text-slate-700 dark:text-slate-200">TQQQ</span>
+                                        <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
+                                            <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
+                                                <span className="text-xs font-black font-mono tracking-tight text-slate-700 dark:text-slate-200">TQQQ</span>
                                                 <span className="text-[9px] text-indigo-500 font-mono">${prices.TQQQ?.toFixed(1)}</span>
                                             </div>
-                                            <input type="number" placeholder="0" value={inputs.qty_tqqq} onChange={e => handleInputChange('qty_tqqq', e.target.value)} onBlur={(e) => syncToCloud('qty_tqqq', e.target.value)} className="col-span-7 bg-transparent font-black text-lg text-right pr-4 focus:bg-white dark:focus:bg-slate-800 transition-colors h-12 font-mono" />
+                                            <input type="number" placeholder="0" value={inputs.qty_tqqq} onChange={e => handleInputChange('qty_tqqq', e.target.value)} onBlur={(e) => syncToCloud('qty_tqqq', e.target.value)} className="col-span-3 bg-transparent font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                            <input type="number" placeholder="-" value={inputs.target_tqqq} onChange={e => handleInputChange('target_tqqq', e.target.value)} onBlur={(e) => syncToCloud('target_tqqq', e.target.value)} className="col-span-3 bg-transparent font-bold text-xs text-center text-indigo-500 focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                            <div className={`col-span-3 text-center text-xs font-black font-mono ${getDiff(prices.TQQQ, inputs.target_tqqq) > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                {(() => {
+                                                    const diff = getDiff(prices.TQQQ, inputs.target_tqqq);
+                                                    if (diff === null) return '-';
+                                                    return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
+                                                })()}
+                                            </div>
                                         </div>
 
                                         {/* IBIT */}
-                                        <div className="holding-input-group grid grid-cols-12 gap-0 items-center p-1">
-                                            <div className="col-span-5 flex flex-col justify-center px-3 border-r border-slate-200 dark:border-slate-700">
-                                                <span className="text-sm font-black font-mono tracking-tight text-slate-700 dark:text-slate-200">IBIT</span>
+                                        <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
+                                            <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
+                                                <span className="text-xs font-black font-mono tracking-tight text-slate-700 dark:text-slate-200">IBIT</span>
                                                 <span className="text-[9px] text-indigo-500 font-mono">${prices.IBIT?.toFixed(1)}</span>
                                             </div>
-                                            <input type="number" placeholder="0" value={inputs.qty_ibit} onChange={e => handleInputChange('qty_ibit', e.target.value)} onBlur={(e) => syncToCloud('qty_ibit', e.target.value)} className="col-span-7 bg-transparent font-black text-lg text-right pr-4 focus:bg-white dark:focus:bg-slate-800 transition-colors h-12 font-mono" />
+                                            <input type="number" placeholder="0" value={inputs.qty_ibit} onChange={e => handleInputChange('qty_ibit', e.target.value)} onBlur={(e) => syncToCloud('qty_ibit', e.target.value)} className="col-span-3 bg-transparent font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                            <input type="number" placeholder="-" value={inputs.target_ibit} onChange={e => handleInputChange('target_ibit', e.target.value)} onBlur={(e) => syncToCloud('target_ibit', e.target.value)} className="col-span-3 bg-transparent font-bold text-xs text-center text-indigo-500 focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                            <div className={`col-span-3 text-center text-xs font-black font-mono ${getDiff(prices.IBIT, inputs.target_ibit) > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                {(() => {
+                                                    const diff = getDiff(prices.IBIT, inputs.target_ibit);
+                                                    if (diff === null) return '-';
+                                                    return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
+                                                })()}
+                                            </div>
                                         </div>
 
                                         {/* SGOV */}
-                                        <div className="holding-input-group grid grid-cols-12 gap-0 items-center p-1">
-                                            <div className="col-span-5 flex flex-col justify-center px-3 border-r border-slate-200 dark:border-slate-700">
-                                                <span className="text-sm font-black font-mono tracking-tight text-slate-700 dark:text-slate-200">SGOV</span>
+                                        <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
+                                            <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
+                                                <span className="text-xs font-black font-mono tracking-tight text-slate-700 dark:text-slate-200">SGOV</span>
                                                 <span className="text-[9px] text-indigo-500 font-mono">${prices.SGOV?.toFixed(1)}</span>
                                             </div>
-                                            <input type="number" placeholder="0" value={inputs.qty_sgov} onChange={e => handleInputChange('qty_sgov', e.target.value)} onBlur={(e) => syncToCloud('qty_sgov', e.target.value)} className="col-span-7 bg-transparent font-black text-lg text-right pr-4 focus:bg-white dark:focus:bg-slate-800 transition-colors h-12 font-mono" />
+                                            <input type="number" placeholder="0" value={inputs.qty_sgov} onChange={e => handleInputChange('qty_sgov', e.target.value)} onBlur={(e) => syncToCloud('qty_sgov', e.target.value)} className="col-span-3 bg-transparent font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                            <input type="number" placeholder="-" value={inputs.target_sgov} onChange={e => handleInputChange('target_sgov', e.target.value)} onBlur={(e) => syncToCloud('target_sgov', e.target.value)} className="col-span-3 bg-transparent font-bold text-xs text-center text-indigo-500 focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                            <div className={`col-span-3 text-center text-xs font-black font-mono ${getDiff(prices.SGOV, inputs.target_sgov) > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                {(() => {
+                                                    const diff = getDiff(prices.SGOV, inputs.target_sgov);
+                                                    if (diff === null) return '-';
+                                                    return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
+                                                })()}
+                                            </div>
                                         </div>
 
                                         {/* Custom 1 */}
-                                        <div className="holding-input-group grid grid-cols-12 gap-0 items-center p-1">
-                                            <div className="col-span-5 flex flex-col justify-center px-3 border-r border-slate-200 dark:border-slate-700">
-                                                <input type="text" value={inputs.custom_ticker_1} onChange={e => handleInputChange('custom_ticker_1', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_1', e.target.value.toUpperCase())} className="w-full text-sm font-black bg-transparent p-0 outline-none text-left font-mono tracking-tight uppercase" placeholder="自選1" />
+                                        <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
+                                            <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
+                                                <input type="text" value={inputs.custom_ticker_1} onChange={e => handleInputChange('custom_ticker_1', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_1', e.target.value.toUpperCase())} className="w-full text-xs font-black bg-transparent p-0 outline-none text-left font-mono tracking-tight uppercase" placeholder="自選1" />
                                                 <span className="text-[9px] text-indigo-500 font-mono">${prices[(inputs.custom_ticker_1 || "").trim().toUpperCase()]?.toFixed(1) || '-'}</span>
                                             </div>
-                                            <input type="number" placeholder="0" value={inputs.qty_custom_1} onChange={e => handleInputChange('qty_custom_1', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_1', e.target.value)} className="col-span-7 bg-transparent font-black text-lg text-right pr-4 focus:bg-white dark:focus:bg-slate-800 transition-colors h-12 font-mono" />
+                                            <input type="number" placeholder="0" value={inputs.qty_custom_1} onChange={e => handleInputChange('qty_custom_1', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_1', e.target.value)} className="col-span-3 bg-transparent font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                            <input type="number" placeholder="-" value={inputs.target_custom_1} onChange={e => handleInputChange('target_custom_1', e.target.value)} onBlur={(e) => syncToCloud('target_custom_1', e.target.value)} className="col-span-3 bg-transparent font-bold text-xs text-center text-indigo-500 focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                            <div className={`col-span-3 text-center text-xs font-black font-mono ${getDiff(prices[(inputs.custom_ticker_1 || "").trim().toUpperCase()], inputs.target_custom_1) > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                {(() => {
+                                                    const diff = getDiff(prices[(inputs.custom_ticker_1 || "").trim().toUpperCase()], inputs.target_custom_1);
+                                                    if (diff === null) return '-';
+                                                    return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
+                                                })()}
+                                            </div>
                                         </div>
 
                                         {/* Custom 2 */}
-                                        <div className="holding-input-group grid grid-cols-12 gap-0 items-center p-1">
-                                            <div className="col-span-5 flex flex-col justify-center px-3 border-r border-slate-200 dark:border-slate-700">
-                                                <input type="text" value={inputs.custom_ticker_2} onChange={e => handleInputChange('custom_ticker_2', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_2', e.target.value.toUpperCase())} className="w-full text-sm font-black bg-transparent p-0 outline-none text-left font-mono tracking-tight uppercase" placeholder="自選2" />
+                                        <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
+                                            <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
+                                                <input type="text" value={inputs.custom_ticker_2} onChange={e => handleInputChange('custom_ticker_2', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_2', e.target.value.toUpperCase())} className="w-full text-xs font-black bg-transparent p-0 outline-none text-left font-mono tracking-tight uppercase" placeholder="自選2" />
                                                 <span className="text-[9px] text-indigo-500 font-mono">${prices[(inputs.custom_ticker_2 || "").trim().toUpperCase()]?.toFixed(1) || '-'}</span>
                                             </div>
-                                            <input type="number" placeholder="0" value={inputs.qty_custom_2} onChange={e => handleInputChange('qty_custom_2', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_2', e.target.value)} className="col-span-7 bg-transparent font-black text-lg text-right pr-4 focus:bg-white dark:focus:bg-slate-800 transition-colors h-12 font-mono" />
+                                            <input type="number" placeholder="0" value={inputs.qty_custom_2} onChange={e => handleInputChange('qty_custom_2', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_2', e.target.value)} className="col-span-3 bg-transparent font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                            <input type="number" placeholder="-" value={inputs.target_custom_2} onChange={e => handleInputChange('target_custom_2', e.target.value)} onBlur={(e) => syncToCloud('target_custom_2', e.target.value)} className="col-span-3 bg-transparent font-bold text-xs text-center text-indigo-500 focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                            <div className={`col-span-3 text-center text-xs font-black font-mono ${getDiff(prices[(inputs.custom_ticker_2 || "").trim().toUpperCase()], inputs.target_custom_2) > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                {(() => {
+                                                    const diff = getDiff(prices[(inputs.custom_ticker_2 || "").trim().toUpperCase()], inputs.target_custom_2);
+                                                    if (diff === null) return '-';
+                                                    return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
+                                                })()}
+                                            </div>
                                         </div>
 
                                         <div className="pt-2"><label className="text-[11px] font-black text-slate-500 px-1 uppercase block text-center w-full mb-1">現金餘額 (USD)</label><input type="number" value={inputs.cash_balance} onChange={e => handleInputChange('cash_balance', e.target.value)} onBlur={(e) => syncToCloud('cash_balance', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-indigo-100/50 dark:border-indigo-900/50 rounded-2xl p-4 font-black text-xl text-indigo-600 font-mono" /></div>
@@ -1146,4 +1208,6 @@
     </script>
 </body>
 </html>
+                
+
 
