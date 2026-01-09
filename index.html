@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Alpha Horizon">
-    <title>Alpha Horizon Dashboard v5.8</title>
+    <title>Alpha Horizon Dashboard v6.1</title>
     
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
 
@@ -36,7 +36,7 @@
         
         .dark body { background-color: #0f172a; }
         .light body { background-color: #f1f5f9; }
-        input, select, textarea { font-size: 16px !important; line-height: 1.4 !important; padding: 8px 2px !important; width: 100%; background-color: transparent; border: none; outline: none; text-align: center; }
+        input, select, textarea { font-size: 14px !important; line-height: 1.4 !important; padding: 8px 2px !important; width: 100%; background-color: transparent; border: none; outline: none; text-align: center; }
         .strategy-textarea { text-align: left !important; padding: 12px !important; min-height: 100px; font-size: 14px !important; border-radius: 12px; background-color: rgba(255,255,255,0.5); border: 1px dashed #cbd5e1; transition: all 0.3s ease; }
         .dark .strategy-textarea { background-color: rgba(30, 41, 59, 0.5); border-color: #334155; color: #e2e8f0; }
         .strategy-read-only { border: 1px solid transparent !important; background-color: transparent !important; cursor: default; }
@@ -62,7 +62,7 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback, useRef } = React;
-        const { ComposedChart, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Line, ReferenceLine } = Recharts;
+        const { ComposedChart, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Line, ReferenceLine, Label } = Recharts;
 
         const appId = "qqq-strategic-production-v1"; 
         const FINNHUB_API_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
@@ -73,7 +73,7 @@
 
         const ICON_MAP = {
             TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>,
-            Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>,
+            Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 1-2 2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>,
             RefreshCcw: <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 4a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16m-18-8h5V3m13 18h-5v5"/>,
             LayoutDashboard: <><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></>,
             History: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 0V3m0 5h5M12 7v5l4 2"/>,
@@ -105,7 +105,10 @@
             Download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>,
             Upload: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></>,
             Flag: <><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></>,
-            Activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            Activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>,
+            Target: <><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></>,
+            Zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>,
+            AlertTriangle: <><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></>
         };
 
         const Icon = ({ name, size = 20, className = "" }) => {
@@ -115,7 +118,7 @@
         const Card = ({ children, className = "" }) => <div className={`rounded-[2rem] shadow-xl border p-5 transition-all bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 ${className}`}>{children}</div>;
         const SectionTitle = ({ title, iconName }) => <h2 className="text-[11px] font-black mb-3 flex items-center gap-2 uppercase tracking-widest text-slate-500 dark:text-slate-400 font-black font-black"><Icon name={iconName} size={14} /> {title}</h2>;
 
-        // Custom Tooltip for PieChart - Defined OUTSIDE App to prevent ReferenceError
+        // Custom Tooltip for PieChart
         const CustomTooltip = ({ active, payload }) => {
             if (active && payload && payload.length) {
                 const d = payload[0].payload;
@@ -144,6 +147,16 @@
             const [deletingId, setDeletingId] = useState(null);
             const [filterMode, setFilterMode] = useState('all');
             const [visibleCount, setVisibleCount] = useState(20);
+            
+            // Collapsible States for Dashboard Sections
+            const [dashboardSections, setDashboardSections] = useState({
+                pie: true,
+                simulator: true,
+                holdings: true,
+                indicators: true,
+                memo: true
+            });
+            const toggleDashboardSection = (sec) => setDashboardSections(p => ({...p, [sec]: !p[sec]}));
             
             // Collapsible States for Settings
             const [openSections, setOpenSections] = useState({ account: true, system: false, strategy: false });
@@ -327,6 +340,17 @@
             const loanSellThreshold = useMemo(() => (getNum(inputs.loan_entry_valuation)) * (1 + (getNum(inputs.loan_repay_target)) / 100), [inputs.loan_entry_valuation, inputs.loan_repay_target]);
             const isTargetReached = totalCapital >= loanSellThreshold && inputs.loan_entry_valuation > 0;
             const ltv = inputs.loan_amount > 0 && totalCapital > 0 ? (inputs.loan_amount / totalCapital) * 100 : 0;
+            
+            // ATH Calculation
+            const athData = useMemo(() => {
+                if (!records || records.length === 0) return { ath: totalCapital, dd: 0 };
+                let maxEquity = totalCapital; // Start with current
+                records.forEach(r => {
+                    if (r.total_equity > maxEquity) maxEquity = r.total_equity;
+                });
+                const dd = maxEquity > 0 ? ((totalCapital - maxEquity) / maxEquity) * 100 : 0;
+                return { ath: maxEquity, dd };
+            }, [records, totalCapital]);
 
             const pieData = useMemo(() => {
                 const p = prices; 
@@ -403,11 +427,79 @@
                 return null;
             }, [prices, inputs]);
 
-            // Bear Market Defense Calculation
+            // Scenario Simulator Calculations
+            const scenarioData = useMemo(() => {
+                const p = prices; const i = inputs;
+                const tCore = (i.ticker_core_1 || "QQQ").toUpperCase();
+                const currentQQQ = p.QQQ || p['QQQM'] || p[tCore] || 0;
+                const sma200 = getNum(i.qqq_sma200);
+                
+                // 1. Bear Defense Scenario
+                const triggerPrice = sma200 * 0.97;
+                let bearDropPct = 0;
+                let estCoreVal = 0;
+                let estSatVal = 0;
+                
+                if (currentQQQ > 0 && triggerPrice > 0) {
+                    bearDropPct = (triggerPrice - currentQQQ) / currentQQQ;
+                    const valQQQ = (p[tCore] || 0) * getNum(i.qty_qqq);
+                    const valTQQQ = (p.TQQQ || 0) * getNum(i.qty_tqqq);
+                    const tqqqDrop = Math.max(bearDropPct * 3, -1);
+                    estCoreVal = (valQQQ * (1 + bearDropPct)) + (valTQQQ * (1 + tqqqDrop));
+                    
+                    const valSat1 = (p[(i.custom_ticker_1||'').toUpperCase()] || 0) * getNum(i.qty_custom_1);
+                    const valSat2 = (p[(i.custom_ticker_2||'').toUpperCase()] || 0) * getNum(i.qty_custom_2);
+                    const valIbit = (p.IBIT || 0) * getNum(i.qty_ibit);
+                    
+                    estSatVal = (valSat1 + valSat2 + valIbit) * (1 + bearDropPct);
+                }
+
+                // 2. Upside Rebalance Scenario
+                let upsidePct = 0;
+                let estUpsideTotal = 0;
+                let projectedQQQ = 0;
+                
+                const targetRatio = (getNum(i.rebalance_core_target) + getNum(i.rebalance_core_tolerance)) / 100;
+                const valTQQQ_now = (p.TQQQ || 0) * getNum(i.qty_tqqq);
+                const valOther_now = totalCapital - valTQQQ_now - getNum(i.cash_balance) - ((p.SGOV||0)*getNum(i.qty_sgov));
+                const valStable = getNum(i.cash_balance) + ((p.SGOV||0)*getNum(i.qty_sgov));
+                
+                if (valTQQQ_now > 0 && totalCapital > 0 && targetRatio < 1) {
+                    const num = valTQQQ_now - (targetRatio * totalCapital);
+                    const den = (3 * targetRatio * valTQQQ_now) + (targetRatio * valOther_now) - (3 * valTQQQ_now);
+                    
+                    if (den !== 0) {
+                        upsidePct = num / den * -1;
+                        if (upsidePct > 0 && upsidePct < 5) {
+                             estUpsideTotal = (valTQQQ_now * (1 + 3*upsidePct)) + (valOther_now * (1 + upsidePct)) + valStable;
+                             projectedQQQ = currentQQQ * (1 + upsidePct);
+                        }
+                    }
+                }
+
+                return {
+                    bear: {
+                        triggerPrice,
+                        dropPct: bearDropPct * 100,
+                        estCore: estCoreVal,
+                        estSat: estSatVal,
+                        estTotal: estCoreVal + estSatVal + getNum(i.cash_balance) + ((p.SGOV||0)*getNum(i.qty_sgov)),
+                        maxLoss: (estCoreVal + estSatVal + getNum(i.cash_balance) + ((p.SGOV||0)*getNum(i.qty_sgov))) - totalCapital
+                    },
+                    bull: {
+                        reqRise: upsidePct * 100,
+                        projQQQ: projectedQQQ,
+                        projTotal: estUpsideTotal
+                    }
+                };
+            }, [prices, inputs, totalCapital]);
+
+            // Bear Market Defense Calculation (Restored)
             const bearDefense = useMemo(() => {
                 const p = prices; const i = inputs;
                 const sma200 = getNum(i.qqq_sma200);
-                const qqqPrice = p.QQQ || p[(inputs.ticker_core_1 || "QQQ").toUpperCase()] || 0;
+                // Smart fallback for QQQ price
+                const qqqPrice = p.QQQ || p['QQQM'] || p[(inputs.ticker_core_1 || "QQQ").toUpperCase()] || 0;
                 const riskOffTrigger = sma200 * 0.97;
                 
                 if (sma200 > 0 && qqqPrice > 0 && qqqPrice < riskOffTrigger) {
@@ -480,11 +572,10 @@
                 const d = new Date(inputs.record_date); 
                 d.setHours(12, 0, 0, 0); 
                 try { 
-                    // Crucial: Save the current PRICES alongside inputs to lock them in time
                     await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('trading_records').add({ 
                         date: d.toISOString(), 
                         total_equity: totalCapital, 
-                        prices: { ...prices }, // Snapshot current prices
+                        prices: { ...prices }, 
                         inputs: { ...inputs }, 
                         memo: inputs.record_memo || '' 
                     }); 
@@ -532,7 +623,6 @@
             // Edit Record Function
             const startEditing = (record) => {
                 setEditingId(record.id);
-                // Ensure inputs object structure is complete for editing
                 setEditForm({ 
                     ...record, 
                     inputs: { 
@@ -541,19 +631,16 @@
                         custom_ticker_1: record.inputs?.custom_ticker_1 || "自選1",
                         custom_ticker_2: record.inputs?.custom_ticker_2 || "自選2"
                     },
-                    prices: record.prices || {} // Also pass prices for display
+                    prices: record.prices || {} 
                 }); 
             };
 
             const saveEdit = async () => {
                 if (!editingId || !editForm) return;
                 try {
-                    // Update specific fields in the inputs of the record
-                    // Note: In a real app, you might want to recalculate totals here based on new qty/prices
-                    // For simplicity, we update inputs and memo.
                     await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('trading_records').doc(editingId).update({
                         inputs: editForm.inputs,
-                        memo: editForm.memo || '' // Ensure memo exists
+                        memo: editForm.memo || ''
                     });
                     setEditingId(null);
                     setEditForm(null);
@@ -578,10 +665,8 @@
                 
                 const baseRecord = sorted[0];
                 const baseEquity = baseRecord.total_equity || 1;
-                // Enhanced Logic to find QQQ price
                 const getHistPrice = (rec, ticker) => rec.prices?.[ticker] || rec.prices?.[ticker.toUpperCase()] || 0;
                 
-                // Fallback logic for base QQQ: Try 'QQQ', then 'QQQM', then user's core ticker, then 1 (to prevent division by zero)
                 const baseQQQ = getHistPrice(baseRecord, 'QQQ') || getHistPrice(baseRecord, 'QQQM') || getHistPrice(baseRecord, inputs.ticker_core_1) || 1;
                 
                 let runningMaxEquity = 0;
@@ -589,10 +674,7 @@
 
                 const chartData = sorted.map(r => {
                     const currentEquity = r.total_equity || 0;
-                    // For each record, find historical QQQ price. If missing, line will be broken (null)
                     let currentQQQ = getHistPrice(r, 'QQQ') || getHistPrice(r, 'QQQM');
-                    
-                    // If absolutely no QQQ/QQQM found in record, fallback to the core ticker user typed at that time
                     if (!currentQQQ && r.inputs?.ticker_core_1) {
                          currentQQQ = getHistPrice(r, r.inputs.ticker_core_1);
                     }
@@ -601,7 +683,6 @@
                     const drawdown = runningMaxEquity > 0 ? ((currentEquity - runningMaxEquity) / runningMaxEquity) * 100 : 0;
                     if (drawdown < globalMaxDrawdown) globalMaxDrawdown = drawdown;
 
-                    // Only calculate qqqReturn if both base and current exist
                     const qqqReturn = (baseQQQ > 0 && currentQQQ > 0) ? ((currentQQQ - baseQQQ) / baseQQQ) * 100 : null;
 
                     return {
@@ -711,7 +792,7 @@
                                     )}
                                 </Card>
                                 
-                                {/* BEAR MARKET DEFENSE CARD */}
+                                {/* BEAR MARKET DEFENSE CARD - ONLY SHOW IF ACTIVE */}
                                 {bearDefense.isActive && (
                                     <div className="bg-red-500 text-white rounded-[2rem] p-5 shadow-xl border-4 border-red-400 animate-in slide-in-from-top-4 duration-500 flex flex-col items-center text-center relative overflow-hidden">
                                         <div className="absolute top-0 right-0 p-4 opacity-20"><Icon name="Shield" size={80} /></div>
@@ -797,7 +878,7 @@
                                         <label className="text-[10px] opacity-50 uppercase tracking-widest block mb-1">Portfolio Valuation</label>
                                         <button onClick={cyclePerformanceView} className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition-all active:scale-95 active:rotate-180 duration-500 z-20"><Icon name="Repeat" size={14} className="text-white/80" /></button>
                                     </div>
-                                    <div className="flex flex-col items-start gap-1">
+                                    <div className="flex flex-col items-start gap-1 mt-2">
                                         <div className="flex items-baseline gap-3 flex-wrap font-black">
                                             <div className="text-4xl font-black font-mono tracking-tight">${totalCapital.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
                                         </div>
@@ -817,153 +898,254 @@
                                 </Card>
 
                                 <Card className="p-4 overflow-hidden text-center relative font-black font-black">
-                                    <div className="flex justify-between items-center mb-2"><SectionTitle title="資產分配圓餅圖" iconName="PieChartIcon" /><span className="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200 px-2 py-1 rounded-lg font-bold">槓桿: {currentLeverage}x</span></div>
-                                    <div className="h-64 w-full mt-2 font-black">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value" label={({ percentage }) => `${percentage}%`}>
-                                                    {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />)}
-                                                </Pie>
-                                                <Tooltip content={<CustomTooltip />} />
-                                                <Legend verticalAlign="bottom" align="center" iconType="circle" />
-                                            </PieChart>
-                                        </ResponsiveContainer>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <SectionTitle title="資產分配圓餅圖" iconName="PieChartIcon" />
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200 px-2 py-1 rounded-lg font-bold">槓桿: {currentLeverage}x</span>
+                                            <button onClick={() => toggleDashboardSection('pie')}><Icon name={dashboardSections.pie ? "ChevronUp" : "ChevronDown"} size={16} className="text-slate-400" /></button>
+                                        </div>
                                     </div>
+                                    {dashboardSections.pie && (
+                                        <div className="h-64 w-full mt-2 font-black animate-in fade-in slide-in-from-top-2">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <PieChart>
+                                                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value" label={({ percentage }) => `${percentage}%`}>
+                                                        {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />)}
+                                                    </Pie>
+                                                    <Tooltip content={<CustomTooltip />} />
+                                                    <Legend verticalAlign="bottom" align="center" iconType="circle" />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    )}
+                                </Card>
+
+                                {/* SCENARIO SIMULATOR CARD */}
+                                <Card className="p-5 bg-gradient-to-br from-slate-800 to-indigo-900 text-white border-none shadow-2xl relative overflow-hidden">
+                                     <div className="flex justify-between items-center mb-4 relative z-10">
+                                        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest opacity-80"><Icon name="Activity" size={16} /> 壓力測試與再平衡預演</div>
+                                        <div className="text-[10px] bg-white/10 px-2 py-1 rounded">Based on Current</div>
+                                     </div>
+                                     <button onClick={() => toggleDashboardSection('simulator')} className="absolute top-5 right-5 z-20 text-white/50 hover:text-white"><Icon name={dashboardSections.simulator ? "ChevronUp" : "ChevronDown"} size={16} /></button>
+
+                                     {dashboardSections.simulator && (
+                                         <div className="animate-in fade-in slide-in-from-top-2">
+                                             {/* 1. Bear Defense Scenario */}
+                                             <div className="mb-4 relative z-10">
+                                                <div className="flex justify-between items-end mb-1">
+                                                    <span className="text-xs font-bold text-red-300 flex items-center gap-1"><Icon name="ShieldAlert" size={14}/> 熊市防禦 (SGOV Trigger)</span>
+                                                    <span className="text-[10px] opacity-60 font-mono">@{scenarioData.bear.triggerPrice.toFixed(1)} ({scenarioData.bear.dropPct.toFixed(1)}%)</span>
+                                                </div>
+                                                <div className="bg-black/30 rounded-xl p-3 space-y-2 border border-white/5">
+                                                    <div className="flex justify-between text-xs">
+                                                        <span className="opacity-70">核心剩餘價值 (1x/3x)</span>
+                                                        <span className="font-mono font-bold">${scenarioData.bear.estCore.toLocaleString(undefined,{maximumFractionDigits:0})}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-xs">
+                                                        <span className="opacity-70">個股剩餘價值 (1x)</span>
+                                                        <span className="font-mono font-bold">${scenarioData.bear.estSat.toLocaleString(undefined,{maximumFractionDigits:0})}</span>
+                                                    </div>
+                                                    <div className="border-t border-white/10 pt-1 flex justify-between text-sm">
+                                                        <span className="font-bold text-red-300">預估最大虧損</span>
+                                                        <span className="font-mono font-black text-red-400">-${Math.abs(scenarioData.bear.maxLoss).toLocaleString(undefined,{maximumFractionDigits:0})}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-sm mt-1">
+                                                         <span className="font-bold text-slate-300">災後剩餘總資產</span>
+                                                         <span className="font-mono font-black text-white">${scenarioData.bear.estTotal.toLocaleString(undefined,{maximumFractionDigits:0})}</span>
+                                                    </div>
+                                                </div>
+                                             </div>
+
+                                             {/* 2. Bull Rebalance Scenario */}
+                                             <div className="relative z-10">
+                                                 <div className="flex justify-between items-end mb-1">
+                                                    <span className="text-xs font-bold text-emerald-300 flex items-center gap-1"><Icon name="TrendingUp" size={14}/> 智能再平衡 (Sell Signal)</span>
+                                                    <span className="text-[10px] opacity-60 font-mono">TQQQ &gt; {rebalanceStatus.coreTqqqTarget + rebalanceStatus.coreTolerance}%</span>
+                                                </div>
+                                                <div className="bg-black/30 rounded-xl p-3 space-y-2 border border-white/5">
+                                                     {scenarioData.bull.reqRise > 0 && scenarioData.bull.reqRise < 500 ? (
+                                                        <>
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="opacity-70">大盤需上漲</span>
+                                                                <span className="font-mono font-bold text-emerald-400">+{scenarioData.bull.reqRise.toFixed(1)}%</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="opacity-70">預估屆時 QQQ</span>
+                                                                <span className="font-mono font-bold">${scenarioData.bull.projQQQ.toFixed(1)}</span>
+                                                            </div>
+                                                            <div className="border-t border-white/10 pt-1 flex justify-between text-sm">
+                                                                <span className="font-bold text-emerald-200">預估屆時總資產</span>
+                                                                <span className="font-mono font-black text-emerald-300">${scenarioData.bull.projTotal.toLocaleString(undefined,{maximumFractionDigits:0})}</span>
+                                                            </div>
+                                                        </>
+                                                     ) : (
+                                                         <div className="text-center text-xs opacity-50 py-2">目前比例差距過大或計算異常</div>
+                                                     )}
+                                                </div>
+                                             </div>
+                                         </div>
+                                     )}
+                                     
+                                     {/* Decorative BG */}
+                                     <div className="absolute -right-6 -top-6 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none"></div>
+                                     <div className="absolute -left-6 -bottom-6 w-32 h-32 bg-blue-500/20 rounded-full blur-2xl pointer-events-none"></div>
                                 </Card>
 
                                 <Card className="space-y-4 text-left font-black font-black border-2 border-indigo-500 dark:border-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.2)]">
-                                    <SectionTitle title="持倉數量 (Holdings)" iconName="Edit2" />
+                                    <div className="flex justify-between items-center">
+                                        <SectionTitle title="持倉數量 (Holdings)" iconName="Edit2" />
+                                        <button onClick={() => toggleDashboardSection('holdings')}><Icon name={dashboardSections.holdings ? "ChevronUp" : "ChevronDown"} size={16} className="text-slate-400" /></button>
+                                    </div>
                                     
-                                    <div className="grid grid-cols-12 gap-1 text-[10px] text-slate-400 uppercase tracking-widest text-center px-1 mb-1">
-                                        <div className="col-span-3 text-left pl-2">標的/現價</div>
-                                        <div className="col-span-3">股數</div>
-                                        <div className="col-span-3 text-indigo-400">目標價</div>
-                                        <div className="col-span-3">距目標</div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        {/* Core 1: QQQ */}
-                                        <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
-                                            <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
-                                                <input type="text" value={inputs.ticker_core_1} onChange={e => handleInputChange('ticker_core_1', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('ticker_core_1', e.target.value.toUpperCase())} className="w-full text-xs font-black bg-transparent p-0 outline-none text-left font-mono tracking-tight text-indigo-600 dark:text-indigo-400 uppercase" placeholder="QQQ" />
-                                                <span className="text-[9px] text-slate-400 font-mono">${prices[(inputs.ticker_core_1 || "QQQ").toUpperCase()]?.toFixed(1)}</span>
+                                    {dashboardSections.holdings && (
+                                        <div className="animate-in fade-in slide-in-from-top-2">
+                                            <div className="grid grid-cols-12 gap-1 text-[10px] text-slate-400 uppercase tracking-widest text-center px-1 mb-1">
+                                                <div className="col-span-3 text-left pl-2">標的/現價</div>
+                                                <div className="col-span-3">股數</div>
+                                                <div className="col-span-3 text-indigo-400">目標價</div>
+                                                <div className="col-span-3">距目標</div>
                                             </div>
-                                            <input type="number" placeholder="0" value={inputs.qty_qqq} onChange={e => handleInputChange('qty_qqq', e.target.value)} onBlur={(e) => syncToCloud('qty_qqq', e.target.value)} className="col-span-3 bg-transparent font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
-                                            <input type="number" placeholder="-" value={inputs.target_qqq} onChange={e => handleInputChange('target_qqq', e.target.value)} onBlur={(e) => syncToCloud('target_qqq', e.target.value)} className="col-span-3 bg-transparent font-bold text-xs text-center text-indigo-500 focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
-                                            <div className={`col-span-3 text-center text-xs font-black font-mono ${getDiff(prices[(inputs.ticker_core_1 || "QQQ").toUpperCase()], inputs.target_qqq) > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                                                {(() => {
-                                                    const diff = getDiff(prices[(inputs.ticker_core_1 || "QQQ").toUpperCase()], inputs.target_qqq);
-                                                    if (diff === null) return '-';
-                                                    return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
-                                                })()}
+
+                                            <div className="space-y-2">
+                                                {/* Core 1: QQQ */}
+                                                <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
+                                                    <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
+                                                        <input type="text" value={inputs.ticker_core_1} onChange={e => handleInputChange('ticker_core_1', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('ticker_core_1', e.target.value.toUpperCase())} className="w-full text-xs font-black bg-transparent p-0 outline-none text-left font-mono tracking-tight text-indigo-600 dark:text-indigo-400 uppercase" placeholder="QQQ" />
+                                                        <span className="text-[9px] text-slate-400 font-mono">${prices[(inputs.ticker_core_1 || "QQQ").toUpperCase()]?.toFixed(1)}</span>
+                                                    </div>
+                                                    <input type="number" placeholder="0" value={inputs.qty_qqq} onChange={e => handleInputChange('qty_qqq', e.target.value)} onBlur={(e) => syncToCloud('qty_qqq', e.target.value)} className="col-span-3 bg-transparent font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                                    <input type="number" placeholder="-" value={inputs.target_qqq} onChange={e => handleInputChange('target_qqq', e.target.value)} onBlur={(e) => syncToCloud('target_qqq', e.target.value)} className="col-span-3 bg-transparent font-bold text-xs text-center text-indigo-500 focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                                    <div className={`col-span-3 text-center text-xs font-black font-mono ${getDiff(prices[(inputs.ticker_core_1 || "QQQ").toUpperCase()], inputs.target_qqq) > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                        {(() => {
+                                                            const diff = getDiff(prices[(inputs.ticker_core_1 || "QQQ").toUpperCase()], inputs.target_qqq);
+                                                            if (diff === null) return '-';
+                                                            return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
+                                                        })()}
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Core 2: TQQQ */}
+                                                <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
+                                                    <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
+                                                        <span className="text-xs font-black font-mono tracking-tight text-slate-700 dark:text-slate-200">TQQQ</span>
+                                                        <span className="text-[9px] text-indigo-500 font-mono">${prices.TQQQ?.toFixed(1)}</span>
+                                                    </div>
+                                                    <input type="number" placeholder="0" value={inputs.qty_tqqq} onChange={e => handleInputChange('qty_tqqq', e.target.value)} onBlur={(e) => syncToCloud('qty_tqqq', e.target.value)} className="col-span-3 bg-transparent font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                                    <input type="number" placeholder="-" value={inputs.target_tqqq} onChange={e => handleInputChange('target_tqqq', e.target.value)} onBlur={(e) => syncToCloud('target_tqqq', e.target.value)} className="col-span-3 bg-transparent font-bold text-xs text-center text-indigo-500 focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                                    <div className={`col-span-3 text-center text-xs font-black font-mono ${getDiff(prices.TQQQ, inputs.target_tqqq) > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                        {(() => {
+                                                            const diff = getDiff(prices.TQQQ, inputs.target_tqqq);
+                                                            if (diff === null) return '-';
+                                                            return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
+                                                        })()}
+                                                    </div>
+                                                </div>
+
+                                                {/* IBIT */}
+                                                <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
+                                                    <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
+                                                        <span className="text-xs font-black font-mono tracking-tight text-slate-700 dark:text-slate-200">IBIT</span>
+                                                        <span className="text-[9px] text-indigo-500 font-mono">${prices.IBIT?.toFixed(1)}</span>
+                                                    </div>
+                                                    <input type="number" placeholder="0" value={inputs.qty_ibit} onChange={e => handleInputChange('qty_ibit', e.target.value)} onBlur={(e) => syncToCloud('qty_ibit', e.target.value)} className="col-span-3 bg-transparent font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                                    <input type="number" placeholder="-" value={inputs.target_ibit} onChange={e => handleInputChange('target_ibit', e.target.value)} onBlur={(e) => syncToCloud('target_ibit', e.target.value)} className="col-span-3 bg-transparent font-bold text-xs text-center text-indigo-500 focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                                    <div className={`col-span-3 text-center text-xs font-black font-mono ${getDiff(prices.IBIT, inputs.target_ibit) > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                        {(() => {
+                                                            const diff = getDiff(prices.IBIT, inputs.target_ibit);
+                                                            if (diff === null) return '-';
+                                                            return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
+                                                        })()}
+                                                    </div>
+                                                </div>
+
+                                                {/* SGOV */}
+                                                <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
+                                                    <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
+                                                        <span className="text-xs font-black font-mono tracking-tight text-slate-700 dark:text-slate-200">SGOV</span>
+                                                        <span className="text-[9px] text-indigo-500 font-mono">${prices.SGOV?.toFixed(1)}</span>
+                                                    </div>
+                                                    <input type="number" placeholder="0" value={inputs.qty_sgov} onChange={e => handleInputChange('qty_sgov', e.target.value)} onBlur={(e) => syncToCloud('qty_sgov', e.target.value)} className="col-span-3 bg-transparent font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                                    <input type="number" placeholder="-" value={inputs.target_sgov} onChange={e => handleInputChange('target_sgov', e.target.value)} onBlur={(e) => syncToCloud('target_sgov', e.target.value)} className="col-span-3 bg-transparent font-bold text-xs text-center text-indigo-500 focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                                    <div className={`col-span-3 text-center text-xs font-black font-mono ${getDiff(prices.SGOV, inputs.target_sgov) > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                        {(() => {
+                                                            const diff = getDiff(prices.SGOV, inputs.target_sgov);
+                                                            if (diff === null) return '-';
+                                                            return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
+                                                        })()}
+                                                    </div>
+                                                </div>
+
+                                                {/* Custom 1 */}
+                                                <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
+                                                    <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
+                                                        <input type="text" value={inputs.custom_ticker_1} onChange={e => handleInputChange('custom_ticker_1', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_1', e.target.value.toUpperCase())} className="w-full text-xs font-black bg-transparent p-0 outline-none text-left font-mono tracking-tight uppercase" placeholder="自選1" />
+                                                        <span className="text-[9px] text-indigo-500 font-mono">${prices[(inputs.custom_ticker_1 || "").trim().toUpperCase()]?.toFixed(1) || '-'}</span>
+                                                    </div>
+                                                    <input type="number" placeholder="0" value={inputs.qty_custom_1} onChange={e => handleInputChange('qty_custom_1', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_1', e.target.value)} className="col-span-3 bg-transparent font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                                    <input type="number" placeholder="-" value={inputs.target_custom_1} onChange={e => handleInputChange('target_custom_1', e.target.value)} onBlur={(e) => syncToCloud('target_custom_1', e.target.value)} className="col-span-3 bg-transparent font-bold text-xs text-center text-indigo-500 focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                                    <div className={`col-span-3 text-center text-xs font-black font-mono ${getDiff(prices[(inputs.custom_ticker_1 || "").trim().toUpperCase()], inputs.target_custom_1) > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                        {(() => {
+                                                            const diff = getDiff(prices[(inputs.custom_ticker_1 || "").trim().toUpperCase()], inputs.target_custom_1);
+                                                            if (diff === null) return '-';
+                                                            return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
+                                                        })()}
+                                                    </div>
+                                                </div>
+
+                                                {/* Custom 2 */}
+                                                <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
+                                                    <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
+                                                        <input type="text" value={inputs.custom_ticker_2} onChange={e => handleInputChange('custom_ticker_2', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_2', e.target.value.toUpperCase())} className="w-full text-xs font-black bg-transparent p-0 outline-none text-left font-mono tracking-tight uppercase" placeholder="自選2" />
+                                                        <span className="text-[9px] text-indigo-500 font-mono">${prices[(inputs.custom_ticker_2 || "").trim().toUpperCase()]?.toFixed(1) || '-'}</span>
+                                                    </div>
+                                                    <input type="number" placeholder="0" value={inputs.qty_custom_2} onChange={e => handleInputChange('qty_custom_2', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_2', e.target.value)} className="col-span-3 bg-transparent font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                                    <input type="number" placeholder="-" value={inputs.target_custom_2} onChange={e => handleInputChange('target_custom_2', e.target.value)} onBlur={(e) => syncToCloud('target_custom_2', e.target.value)} className="col-span-3 bg-transparent font-bold text-xs text-center text-indigo-500 focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
+                                                    <div className={`col-span-3 text-center text-xs font-black font-mono ${getDiff(prices[(inputs.custom_ticker_2 || "").trim().toUpperCase()], inputs.target_custom_2) > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                        {(() => {
+                                                            const diff = getDiff(prices[(inputs.custom_ticker_2 || "").trim().toUpperCase()], inputs.target_custom_2);
+                                                            if (diff === null) return '-';
+                                                            return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
+                                                        })()}
+                                                    </div>
+                                                </div>
+
+                                                <div className="pt-2"><label className="text-[11px] font-black text-slate-500 px-1 uppercase block text-center w-full mb-1">現金餘額 (USD)</label><input type="number" value={inputs.cash_balance} onChange={e => handleInputChange('cash_balance', e.target.value)} onBlur={(e) => syncToCloud('cash_balance', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-indigo-100/50 dark:border-indigo-900/50 rounded-2xl p-4 font-black text-xl text-indigo-600 font-mono" /></div>
                                             </div>
                                         </div>
-                                        
-                                        {/* Core 2: TQQQ */}
-                                        <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
-                                            <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
-                                                <span className="text-xs font-black font-mono tracking-tight text-slate-700 dark:text-slate-200">TQQQ</span>
-                                                <span className="text-[9px] text-indigo-500 font-mono">${prices.TQQQ?.toFixed(1)}</span>
-                                            </div>
-                                            <input type="number" placeholder="0" value={inputs.qty_tqqq} onChange={e => handleInputChange('qty_tqqq', e.target.value)} onBlur={(e) => syncToCloud('qty_tqqq', e.target.value)} className="col-span-3 bg-transparent font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
-                                            <input type="number" placeholder="-" value={inputs.target_tqqq} onChange={e => handleInputChange('target_tqqq', e.target.value)} onBlur={(e) => syncToCloud('target_tqqq', e.target.value)} className="col-span-3 bg-transparent font-bold text-xs text-center text-indigo-500 focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
-                                            <div className={`col-span-3 text-center text-xs font-black font-mono ${getDiff(prices.TQQQ, inputs.target_tqqq) > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                                                {(() => {
-                                                    const diff = getDiff(prices.TQQQ, inputs.target_tqqq);
-                                                    if (diff === null) return '-';
-                                                    return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
-                                                })()}
-                                            </div>
-                                        </div>
-
-                                        {/* IBIT */}
-                                        <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
-                                            <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
-                                                <span className="text-xs font-black font-mono tracking-tight text-slate-700 dark:text-slate-200">IBIT</span>
-                                                <span className="text-[9px] text-indigo-500 font-mono">${prices.IBIT?.toFixed(1)}</span>
-                                            </div>
-                                            <input type="number" placeholder="0" value={inputs.qty_ibit} onChange={e => handleInputChange('qty_ibit', e.target.value)} onBlur={(e) => syncToCloud('qty_ibit', e.target.value)} className="col-span-3 bg-transparent font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
-                                            <input type="number" placeholder="-" value={inputs.target_ibit} onChange={e => handleInputChange('target_ibit', e.target.value)} onBlur={(e) => syncToCloud('target_ibit', e.target.value)} className="col-span-3 bg-transparent font-bold text-xs text-center text-indigo-500 focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
-                                            <div className={`col-span-3 text-center text-xs font-black font-mono ${getDiff(prices.IBIT, inputs.target_ibit) > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                                                {(() => {
-                                                    const diff = getDiff(prices.IBIT, inputs.target_ibit);
-                                                    if (diff === null) return '-';
-                                                    return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
-                                                })()}
-                                            </div>
-                                        </div>
-
-                                        {/* SGOV */}
-                                        <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
-                                            <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
-                                                <span className="text-xs font-black font-mono tracking-tight text-slate-700 dark:text-slate-200">SGOV</span>
-                                                <span className="text-[9px] text-indigo-500 font-mono">${prices.SGOV?.toFixed(1)}</span>
-                                            </div>
-                                            <input type="number" placeholder="0" value={inputs.qty_sgov} onChange={e => handleInputChange('qty_sgov', e.target.value)} onBlur={(e) => syncToCloud('qty_sgov', e.target.value)} className="col-span-3 bg-transparent font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
-                                            <input type="number" placeholder="-" value={inputs.target_sgov} onChange={e => handleInputChange('target_sgov', e.target.value)} onBlur={(e) => syncToCloud('target_sgov', e.target.value)} className="col-span-3 bg-transparent font-bold text-xs text-center text-indigo-500 focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
-                                            <div className={`col-span-3 text-center text-xs font-black font-mono ${getDiff(prices.SGOV, inputs.target_sgov) > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                                                {(() => {
-                                                    const diff = getDiff(prices.SGOV, inputs.target_sgov);
-                                                    if (diff === null) return '-';
-                                                    return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
-                                                })()}
-                                            </div>
-                                        </div>
-
-                                        {/* Custom 1 */}
-                                        <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
-                                            <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
-                                                <input type="text" value={inputs.custom_ticker_1} onChange={e => handleInputChange('custom_ticker_1', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_1', e.target.value.toUpperCase())} className="w-full text-xs font-black bg-transparent p-0 outline-none text-left font-mono tracking-tight uppercase" placeholder="自選1" />
-                                                <span className="text-[9px] text-indigo-500 font-mono">${prices[(inputs.custom_ticker_1 || "").trim().toUpperCase()]?.toFixed(1) || '-'}</span>
-                                            </div>
-                                            <input type="number" placeholder="0" value={inputs.qty_custom_1} onChange={e => handleInputChange('qty_custom_1', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_1', e.target.value)} className="col-span-3 bg-transparent font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
-                                            <input type="number" placeholder="-" value={inputs.target_custom_1} onChange={e => handleInputChange('target_custom_1', e.target.value)} onBlur={(e) => syncToCloud('target_custom_1', e.target.value)} className="col-span-3 bg-transparent font-bold text-xs text-center text-indigo-500 focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
-                                            <div className={`col-span-3 text-center text-xs font-black font-mono ${getDiff(prices[(inputs.custom_ticker_1 || "").trim().toUpperCase()], inputs.target_custom_1) > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                                                {(() => {
-                                                    const diff = getDiff(prices[(inputs.custom_ticker_1 || "").trim().toUpperCase()], inputs.target_custom_1);
-                                                    if (diff === null) return '-';
-                                                    return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
-                                                })()}
-                                            </div>
-                                        </div>
-
-                                        {/* Custom 2 */}
-                                        <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
-                                            <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
-                                                <input type="text" value={inputs.custom_ticker_2} onChange={e => handleInputChange('custom_ticker_2', e.target.value.toUpperCase())} onBlur={(e) => syncToCloud('custom_ticker_2', e.target.value.toUpperCase())} className="w-full text-xs font-black bg-transparent p-0 outline-none text-left font-mono tracking-tight uppercase" placeholder="自選2" />
-                                                <span className="text-[9px] text-indigo-500 font-mono">${prices[(inputs.custom_ticker_2 || "").trim().toUpperCase()]?.toFixed(1) || '-'}</span>
-                                            </div>
-                                            <input type="number" placeholder="0" value={inputs.qty_custom_2} onChange={e => handleInputChange('qty_custom_2', e.target.value)} onBlur={(e) => syncToCloud('qty_custom_2', e.target.value)} className="col-span-3 bg-transparent font-black text-sm text-center focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
-                                            <input type="number" placeholder="-" value={inputs.target_custom_2} onChange={e => handleInputChange('target_custom_2', e.target.value)} onBlur={(e) => syncToCloud('target_custom_2', e.target.value)} className="col-span-3 bg-transparent font-bold text-xs text-center text-indigo-500 focus:bg-white dark:focus:bg-slate-800 transition-colors h-10 font-mono" />
-                                            <div className={`col-span-3 text-center text-xs font-black font-mono ${getDiff(prices[(inputs.custom_ticker_2 || "").trim().toUpperCase()], inputs.target_custom_2) > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                                                {(() => {
-                                                    const diff = getDiff(prices[(inputs.custom_ticker_2 || "").trim().toUpperCase()], inputs.target_custom_2);
-                                                    if (diff === null) return '-';
-                                                    return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
-                                                })()}
-                                            </div>
-                                        </div>
-
-                                        <div className="pt-2"><label className="text-[11px] font-black text-slate-500 px-1 uppercase block text-center w-full mb-1">現金餘額 (USD)</label><input type="number" value={inputs.cash_balance} onChange={e => handleInputChange('cash_balance', e.target.value)} onBlur={(e) => syncToCloud('cash_balance', e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-indigo-100/50 dark:border-indigo-900/50 rounded-2xl p-4 font-black text-xl text-indigo-600 font-mono" /></div>
-                                    </div>
+                                    )}
                                 </Card>
 
                                 <Card className="space-y-4">
-                                    <SectionTitle title="NRA V7 技術指標參數 (MA Settings)" iconName="Settings" />
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="space-y-1"><label className="text-[10px] text-indigo-500 uppercase block text-center">QQQ 200 SMA (日線)</label><input type="number" value={inputs.qqq_sma200} onChange={e => handleInputChange('qqq_sma200', e.target.value)} onBlur={e => syncToCloud('qqq_sma200', e.target.value)} className="w-full bg-indigo-50 dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900 rounded-xl p-2.5 font-black text-center" /></div>
-                                        <div className="space-y-1"><label className="text-[10px] text-indigo-400 uppercase block text-center">QQQ 20 SMA (日線)</label><input type="number" value={inputs.qqq_sma20} onChange={e => handleInputChange('qqq_sma20', e.target.value)} onBlur={e => syncToCloud('qqq_sma20', e.target.value)} className="w-full bg-indigo-50 dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900 rounded-xl p-2.5 font-black text-center" /></div>
+                                    <div className="flex justify-between items-center">
+                                        <SectionTitle title="NRA V7 技術指標參數" iconName="Settings" />
+                                        <button onClick={() => toggleDashboardSection('indicators')}><Icon name={dashboardSections.indicators ? "ChevronUp" : "ChevronDown"} size={16} className="text-slate-400" /></button>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                        <div className="space-y-1"><label className="text-[10px] text-sky-500 uppercase block text-center truncate">{inputs.custom_ticker_1 || '自選1'} 40 SMA (週線)</label><input type="number" value={inputs.custom_1_sma40} onChange={e => handleInputChange('custom_1_sma40', e.target.value)} onBlur={e => syncToCloud('custom_1_sma40', e.target.value)} className="w-full bg-sky-50 dark:bg-slate-800 border border-sky-100 dark:border-sky-900/50 rounded-xl p-2.5 font-black text-center" /></div>
-                                        <div className="space-y-1"><label className="text-[10px] text-amber-500 uppercase block text-center truncate">{inputs.custom_ticker_2 || '自選2'} 20 SMA (週線)</label><input type="number" value={inputs.custom_2_sma20} onChange={e => handleInputChange('custom_2_sma20', e.target.value)} onBlur={e => syncToCloud('custom_2_sma20', e.target.value)} className="w-full bg-amber-50 dark:bg-slate-800 border border-amber-100 dark:border-amber-900/50 rounded-xl p-2.5 font-black text-center" /></div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                        <div className="space-y-1"><label className="text-[10px] text-orange-500 uppercase block text-center">IBIT 20 SMA (週線)</label><input type="number" value={inputs.ibit_sma20} onChange={e => handleInputChange('ibit_sma20', e.target.value)} onBlur={e => syncToCloud('ibit_sma20', e.target.value)} className="w-full bg-orange-50 dark:bg-slate-800 border border-orange-100 dark:border-orange-900/50 rounded-xl p-2.5 font-black text-center" /></div>
-                                    </div>
+                                    {dashboardSections.indicators && (
+                                        <div className="animate-in fade-in slide-in-from-top-2">
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="space-y-1"><label className="text-[10px] text-indigo-500 uppercase block text-center">QQQ 200 SMA (日線)</label><input type="number" value={inputs.qqq_sma200} onChange={e => handleInputChange('qqq_sma200', e.target.value)} onBlur={e => syncToCloud('qqq_sma200', e.target.value)} className="w-full bg-indigo-50 dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900 rounded-xl p-2.5 font-black text-center" /></div>
+                                                <div className="space-y-1"><label className="text-[10px] text-indigo-400 uppercase block text-center">QQQ 20 SMA (日線)</label><input type="number" value={inputs.qqq_sma20} onChange={e => handleInputChange('qqq_sma20', e.target.value)} onBlur={e => syncToCloud('qqq_sma20', e.target.value)} className="w-full bg-indigo-50 dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900 rounded-xl p-2.5 font-black text-center" /></div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                                <div className="space-y-1"><label className="text-[10px] text-sky-500 uppercase block text-center truncate">{inputs.custom_ticker_1 || '自選1'} 40 SMA (週線)</label><input type="number" value={inputs.custom_1_sma40} onChange={e => handleInputChange('custom_1_sma40', e.target.value)} onBlur={e => syncToCloud('custom_1_sma40', e.target.value)} className="w-full bg-sky-50 dark:bg-slate-800 border border-sky-100 dark:border-sky-900/50 rounded-xl p-2.5 font-black text-center" /></div>
+                                                <div className="space-y-1"><label className="text-[10px] text-amber-500 uppercase block text-center truncate">{inputs.custom_ticker_2 || '自選2'} 20 SMA (週線)</label><input type="number" value={inputs.custom_2_sma20} onChange={e => handleInputChange('custom_2_sma20', e.target.value)} onBlur={e => syncToCloud('custom_2_sma20', e.target.value)} className="w-full bg-amber-50 dark:bg-slate-800 border border-amber-100 dark:border-amber-900/50 rounded-xl p-2.5 font-black text-center" /></div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                                <div className="space-y-1"><label className="text-[10px] text-orange-500 uppercase block text-center">IBIT 20 SMA (週線)</label><input type="number" value={inputs.ibit_sma20} onChange={e => handleInputChange('ibit_sma20', e.target.value)} onBlur={e => syncToCloud('ibit_sma20', e.target.value)} className="w-full bg-orange-50 dark:bg-slate-800 border border-orange-100 dark:border-orange-900/50 rounded-xl p-2.5 font-black text-center" /></div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </Card>
 
-                                <Card className="p-4 space-y-2 border-dashed border-2 border-slate-300 text-left font-black"><SectionTitle title="決策紀錄備註" iconName="MessageSquare" /><textarea rows="3" placeholder="在此輸入本次決策心得..." value={inputs.record_memo} onChange={e => setInputs(p => ({ ...p, record_memo: e.target.value }))} className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 text-[14px] font-medium resize-none text-left" /></Card>
+                                <Card className="p-4 space-y-2 border-dashed border-2 border-slate-300 text-left font-black">
+                                    <div className="flex justify-between items-center">
+                                        <SectionTitle title="決策紀錄備註" iconName="MessageSquare" />
+                                        <button onClick={() => toggleDashboardSection('memo')}><Icon name={dashboardSections.memo ? "ChevronUp" : "ChevronDown"} size={16} className="text-slate-400" /></button>
+                                    </div>
+                                    {dashboardSections.memo && (
+                                        <textarea rows="3" placeholder="在此輸入本次決策心得..." value={inputs.record_memo} onChange={e => setInputs(p => ({ ...p, record_memo: e.target.value }))} className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 text-[14px] font-medium resize-none text-left w-full animate-in fade-in slide-in-from-top-2" />
+                                    )}
+                                </Card>
 
                                 <button onClick={save} disabled={isSaving} className={`w-full ${isSaving ? 'bg-slate-400' : 'bg-slate-900 dark:bg-indigo-600'} text-white py-6 rounded-[2rem] font-black text-xl shadow-2xl active:scale-95 mb-12 flex items-center justify-center gap-3 font-black font-black`}><Icon name={isSaving ? "RefreshCcw" : "Save"} size={24} className={isSaving ? "animate-spin" : ""} /> {isSaving ? "正在同步..." : "儲存目前紀錄"}</button>
                             </div>
@@ -989,8 +1171,8 @@
                                         <div className="flex justify-center gap-4 mb-2 text-[10px] font-bold">
                                             {chartMode === 'ALPHA' ? (
                                                 <>
-                                                    <div className="flex items-center gap-1 cursor-pointer opacity-80 hover:opacity-100"><div className="w-2 h-2 rounded-full bg-indigo-500"></div><span>我的策略 (紫線)</span></div>
-                                                    <div className="flex items-center gap-1 cursor-pointer opacity-80 hover:opacity-100"><div className="w-2 h-2 rounded-full bg-emerald-500"></div><span>QQQ 大盤 (綠線)</span></div>
+                                                    <div className="flex items-center gap-1 cursor-pointer opacity-80 hover:opacity-100"><div className="w-2 h-2 rounded-full bg-indigo-500"></div><span>我的策略</span></div>
+                                                    <div className="flex items-center gap-1 cursor-pointer opacity-80 hover:opacity-100"><div className="w-2 h-2 rounded-full bg-emerald-500"></div><span>QQQ (大盤)</span></div>
                                                 </>
                                             ) : (
                                                 <>
@@ -1208,6 +1390,3 @@
     </script>
 </body>
 </html>
-                
-
-
