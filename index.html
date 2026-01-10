@@ -73,7 +73,7 @@
 
         const ICON_MAP = {
             TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>,
-            Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 1-2 2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>,
+            Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>,
             RefreshCcw: <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 4a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16m-18-8h5V3m13 18h-5v5"/>,
             LayoutDashboard: <><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></>,
             History: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 0V3m0 5h5M12 7v5l4 2"/>,
@@ -152,6 +152,7 @@
             const [dashboardSections, setDashboardSections] = useState({
                 pie: true,
                 simulator: true,
+                rebalance: true,
                 holdings: true,
                 indicators: true,
                 memo: true
@@ -188,6 +189,10 @@
                 rebalance_sat_cap: 15,
                 rebalance_core_target: 50, 
                 rebalance_core_tolerance: 15, 
+                // Satellite Targets
+                target_sat_1: 10,
+                target_sat_2: 10,
+                target_sat_ibit: 10,
                 
                 // Calculator Allocations
                 calc_alloc_qqq: 40,
@@ -413,7 +418,10 @@
                     custom1Weight: custom1Weight.toFixed(1), isCustom1Overweight: custom1Weight > maxSatCap,
                     custom2Weight: custom2Weight.toFixed(1), isCustom2Overweight: custom2Weight > maxSatCap,
                     ibitWeight: ibitWeight.toFixed(1), isIbitOverweight: ibitWeight > maxSatCap,
-                    t1: t1Key, t2: t2Key, tCore, maxSatCap
+                    t1: t1Key, t2: t2Key, tCore, maxSatCap,
+                    tSat1: getNum(i.target_sat_1) || 10,
+                    tSat2: getNum(i.target_sat_2) || 10,
+                    tSatIbit: getNum(i.target_sat_ibit) || 10
                 };
             }, [prices, inputs, totalCapital]);
 
@@ -425,6 +433,24 @@
                     return ((currentPrice - sma200) / sma200) * 100;
                 }
                 return null;
+            }, [prices, inputs]);
+
+            // Bear Market Defense Calculation (Restored)
+            const bearDefense = useMemo(() => {
+                const p = prices; const i = inputs;
+                const sma200 = getNum(i.qqq_sma200);
+                // Smart fallback for QQQ price
+                const qqqPrice = p.QQQ || p['QQQM'] || p[(inputs.ticker_core_1 || "QQQ").toUpperCase()] || 0;
+                const riskOffTrigger = sma200 * 0.97;
+                
+                if (sma200 > 0 && qqqPrice > 0 && qqqPrice < riskOffTrigger) {
+                    const cashVal = getNum(i.cash_balance);
+                    const sgovVal = (p.SGOV || 0) * getNum(i.qty_sgov);
+                    const totalDefensive = cashVal + sgovVal;
+                    const monthlyBuy = totalDefensive / 12;
+                    return { isActive: true, totalDefensive, monthlyBuy };
+                }
+                return { isActive: false, totalDefensive: 0, monthlyBuy: 0 };
             }, [prices, inputs]);
 
             // Scenario Simulator Calculations
@@ -494,24 +520,6 @@
                 };
             }, [prices, inputs, totalCapital]);
 
-            // Bear Market Defense Calculation (Restored)
-            const bearDefense = useMemo(() => {
-                const p = prices; const i = inputs;
-                const sma200 = getNum(i.qqq_sma200);
-                // Smart fallback for QQQ price
-                const qqqPrice = p.QQQ || p['QQQM'] || p[(inputs.ticker_core_1 || "QQQ").toUpperCase()] || 0;
-                const riskOffTrigger = sma200 * 0.97;
-                
-                if (sma200 > 0 && qqqPrice > 0 && qqqPrice < riskOffTrigger) {
-                    const cashVal = getNum(i.cash_balance);
-                    const sgovVal = (p.SGOV || 0) * getNum(i.qty_sgov);
-                    const totalDefensive = cashVal + sgovVal;
-                    const monthlyBuy = totalDefensive / 12;
-                    return { isActive: true, totalDefensive, monthlyBuy };
-                }
-                return { isActive: false, totalDefensive: 0, monthlyBuy: 0 };
-            }, [prices, inputs]);
-
             const strategyAlerts = useMemo(() => {
                 const alerts = []; const p = prices; const i = inputs; 
                 const { tCore, t1, t2, tqqqRatio, isCoreImbalanced, coreTqqqTarget, coreTolerance, isCustom1Overweight, isCustom2Overweight, isIbitOverweight, maxSatCap } = rebalanceStatus;
@@ -535,28 +543,33 @@
                 if (isCoreImbalanced) {
                     alerts.push({ type: 'warning', title: '⚖️ 核心再平衡觸發', msg: `動作：調整 TQQQ/QQQ 比例。\n原因：TQQQ 佔比 ${tqqqRatio.toFixed(1)}% 偏離目標 ${coreTqqqTarget}% 超過 ${coreTolerance}%。` });
                 }
-                if (isCustom1Overweight) alerts.push({ type: 'opportunity', title: `💰 ${inputs.custom_ticker_1} 獲利收割`, msg: `原因：權重超過 ${maxSatCap}%。` });
-                if (isCustom2Overweight) alerts.push({ type: 'opportunity', title: `💰 ${inputs.custom_ticker_2} 獲利收割`, msg: `原因：權重超過 ${maxSatCap}%。` });
-                if (isIbitOverweight) alerts.push({ type: 'opportunity', title: `💰 IBIT 獲利收割`, msg: `原因：權重超過 ${maxSatCap}%。` });
+                
+                // Satellite Rebalancing Logic
+                const checkSatRebalance = (ticker, weight, smaWeek, targetPercent) => {
+                     const price = p[ticker] || 0;
+                     const sma = getNum(smaWeek);
+                     // Dynamic thresholds based on configured target
+                     const upperLimit = targetPercent * 1.5; // e.g. 10% * 1.5 = 15%
+                     const lowerLimit = targetPercent * 0.75; // e.g. 10% * 0.75 = 7.5%
+                     
+                     if (parseFloat(weight) > upperLimit) {
+                         alerts.push({ type: 'opportunity', title: `💰 ${ticker} 獲利收割`, msg: `權重 ${weight}% (>${upperLimit}%)。動作：賣出多餘部位，降回 ${targetPercent}%。` });
+                     } else if (parseFloat(weight) < lowerLimit) {
+                         if (price > sma) {
+                             alerts.push({ type: 'opportunity', title: `🔵 ${ticker} 低檔補血`, msg: `權重 ${weight}% (<${lowerLimit}%) 且股價在週線之上。動作：買進補回 ${targetPercent}%。` });
+                         } else if (price < sma * 0.97) {
+                              alerts.push({ type: 'danger', title: `⚠️ ${ticker} 跌破週線`, msg: `現價 $${price} 跌破週線 $${sma} (-3%)。動作：止損/清倉。` });
+                         }
+                     } else {
+                          if (price > 0 && sma > 0 && price < sma * 0.97) {
+                             alerts.push({ type: 'danger', title: `⚠️ ${ticker} 跌破週線`, msg: `現價 $${price} 跌破週線 $${sma} (-3%)。動作：止損/清倉。` });
+                          }
+                     }
+                };
 
-                // Individual Stock Alerts
-                const c1Price = p[t1] || 0;
-                const c1Sma = getNum(i.custom_1_sma40);
-                if (c1Sma > 0 && c1Price > 0 && c1Price < c1Sma * 0.97) {
-                    alerts.push({ type: 'danger', title: `⚠️ ${inputs.custom_ticker_1} 跌破週線`, msg: `現價 $${c1Price} 已跌破 40週均線 ($${c1Sma}) 下方 3%。\n動作：請立即執行止損/減倉。` });
-                }
-
-                const c2Price = p[t2] || 0;
-                const c2Sma = getNum(i.custom_2_sma20);
-                if (c2Sma > 0 && c2Price > 0 && c2Price < c2Sma * 0.97) {
-                    alerts.push({ type: 'danger', title: `⚠️ ${inputs.custom_ticker_2} 跌破週線`, msg: `現價 $${c2Price} 已跌破 20週均線 ($${c2Sma}) 下方 3%。\n動作：請立即執行止損/減倉。` });
-                }
-
-                const ibitPrice = p.IBIT || 0;
-                const ibitSma = getNum(i.ibit_sma20);
-                if (ibitSma > 0 && ibitPrice > 0 && ibitPrice < ibitSma * 0.97) {
-                     alerts.push({ type: 'danger', title: `⚠️ IBIT 跌破週線`, msg: `現價 $${ibitPrice} 已跌破 20週均線 ($${ibitSma}) 下方 3%。\n動作：請立即執行止損/減倉。` });
-                }
+                checkSatRebalance((inputs.custom_ticker_1 || 'TSLA').toUpperCase(), rebalanceStatus.custom1Weight, i.custom_1_sma40, rebalanceStatus.tSat1);
+                checkSatRebalance((inputs.custom_ticker_2 || 'IBIT').toUpperCase(), rebalanceStatus.custom2Weight, i.custom_2_sma20, rebalanceStatus.tSat2);
+                checkSatRebalance('IBIT', rebalanceStatus.ibitWeight, i.ibit_sma20, rebalanceStatus.tSatIbit);
 
                 return alerts;
             }, [prices, inputs, rebalanceStatus]);
@@ -667,6 +680,7 @@
                 const baseEquity = baseRecord.total_equity || 1;
                 const getHistPrice = (rec, ticker) => rec.prices?.[ticker] || rec.prices?.[ticker.toUpperCase()] || 0;
                 
+                // Smart Benchmark: Try QQQ > QQQM > Core
                 const baseQQQ = getHistPrice(baseRecord, 'QQQ') || getHistPrice(baseRecord, 'QQQM') || getHistPrice(baseRecord, inputs.ticker_core_1) || 1;
                 
                 let runningMaxEquity = 0;
@@ -792,7 +806,7 @@
                                     )}
                                 </Card>
                                 
-                                {/* BEAR MARKET DEFENSE CARD - ONLY SHOW IF ACTIVE */}
+                                {/* BEAR MARKET DEFENSE CARD */}
                                 {bearDefense.isActive && (
                                     <div className="bg-red-500 text-white rounded-[2rem] p-5 shadow-xl border-4 border-red-400 animate-in slide-in-from-top-4 duration-500 flex flex-col items-center text-center relative overflow-hidden">
                                         <div className="absolute top-0 right-0 p-4 opacity-20"><Icon name="Shield" size={80} /></div>
@@ -815,40 +829,58 @@
                                 <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 border-2 border-slate-200 dark:border-slate-700 shadow-lg transition-all">
                                     <div className="flex justify-between items-start mb-3">
                                         <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest"><Icon name="Scale" size={14} /> 再平衡健康度檢測</div>
+                                        <button onClick={() => toggleDashboardSection('rebalance')}><Icon name={dashboardSections.rebalance ? "ChevronUp" : "ChevronDown"} size={16} className="text-slate-400" /></button>
                                     </div>
                                     
-                                    <div className="space-y-3">
-                                        <div className="space-y-1">
-                                            <div className="flex justify-between items-center text-sm font-bold">
-                                                <span className="text-slate-600 dark:text-slate-300">核心 TQQQ (目標 {getNum(inputs.rebalance_core_target)}%)</span>
-                                                <span className={rebalanceStatus.isCoreImbalanced ? 'text-red-500 animate-pulse' : 'text-emerald-500'}>{rebalanceStatus.tqqqRatio.toFixed(1)}%</span>
+                                    {dashboardSections.rebalance && (
+                                        <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                                            {/* Core TQQQ Bar */}
+                                            <div className="space-y-1">
+                                                <div className="flex justify-between items-center text-sm font-bold">
+                                                    <span className="text-slate-600 dark:text-slate-300 text-xs">核心 TQQQ (目標 {rebalanceStatus.coreTqqqTarget}%)</span>
+                                                    <span className={`${rebalanceStatus.isCoreImbalanced ? 'text-red-500 animate-pulse' : 'text-emerald-500'} text-xs`}>{rebalanceStatus.tqqqRatio.toFixed(1)}%</span>
+                                                </div>
+                                                <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden relative">
+                                                    <div className={`h-full ${rebalanceStatus.isCoreImbalanced ? 'bg-red-500' : 'bg-indigo-500'}`} style={{ width: `${Math.min(rebalanceStatus.tqqqRatio, 100)}%` }}></div>
+                                                    <div className="absolute top-0 h-full w-0.5 bg-black/20 dark:bg-white/30" style={{ left: `${rebalanceStatus.coreTqqqTarget}%` }}></div>
+                                                </div>
                                             </div>
-                                            <div className="h-2.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden relative">
-                                                <div className={`h-full ${rebalanceStatus.isCoreImbalanced ? 'bg-red-500' : 'bg-indigo-500'}`} style={{ width: `${Math.min(rebalanceStatus.tqqqRatio, 100)}%` }}></div>
-                                                <div className="absolute top-0 h-full w-0.5 bg-black/20 dark:bg-white/30" style={{ left: `${getNum(inputs.rebalance_core_target) - getNum(inputs.rebalance_core_tolerance)}%` }}></div>
-                                                <div className="absolute top-0 h-full w-0.5 bg-black/20 dark:bg-white/30" style={{ left: `${getNum(inputs.rebalance_core_target) + getNum(inputs.rebalance_core_tolerance)}%` }}></div>
+
+                                            {/* Sat 1 Bar */}
+                                            <div className="space-y-1">
+                                                <div className="flex justify-between items-center text-sm font-bold">
+                                                    <span className="text-slate-600 dark:text-slate-300 text-xs">{rebalanceStatus.t1} (目標 {rebalanceStatus.tSat1}%)</span>
+                                                    <span className={`${rebalanceStatus.isCustom1Overweight || parseFloat(rebalanceStatus.custom1Weight) < rebalanceStatus.tSat1 * 0.75 ? 'text-red-500' : 'text-emerald-500'} text-xs`}>{rebalanceStatus.custom1Weight}%</span>
+                                                </div>
+                                                <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden relative">
+                                                    <div className={`h-full ${rebalanceStatus.isCustom1Overweight || parseFloat(rebalanceStatus.custom1Weight) < rebalanceStatus.tSat1 * 0.75 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(parseFloat(rebalanceStatus.custom1Weight) * 2, 100)}%` }}></div>
+                                                    <div className="absolute top-0 h-full w-0.5 bg-black/20 dark:bg-white/30" style={{ left: '20%' }}></div> {/* Visual center for 10% on a 0-50 scale if we scaled it, simplified here */}
+                                                </div>
                                             </div>
-                                            <div className="flex justify-between text-[10px] text-slate-400 font-mono">
-                                                <span>{getNum(inputs.rebalance_core_target) - getNum(inputs.rebalance_core_tolerance)}% (買進)</span>
-                                                <span>{getNum(inputs.rebalance_core_target) + getNum(inputs.rebalance_core_tolerance)}% (賣出)</span>
+
+                                             {/* Sat 2 Bar */}
+                                             <div className="space-y-1">
+                                                <div className="flex justify-between items-center text-sm font-bold">
+                                                    <span className="text-slate-600 dark:text-slate-300 text-xs">{rebalanceStatus.t2} (目標 {rebalanceStatus.tSat2}%)</span>
+                                                    <span className={`${rebalanceStatus.isCustom2Overweight || parseFloat(rebalanceStatus.custom2Weight) < rebalanceStatus.tSat2 * 0.75 ? 'text-red-500' : 'text-emerald-500'} text-xs`}>{rebalanceStatus.custom2Weight}%</span>
+                                                </div>
+                                                <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden relative">
+                                                    <div className={`h-full ${rebalanceStatus.isCustom2Overweight || parseFloat(rebalanceStatus.custom2Weight) < rebalanceStatus.tSat2 * 0.75 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(parseFloat(rebalanceStatus.custom2Weight) * 2, 100)}%` }}></div>
+                                                </div>
+                                            </div>
+
+                                             {/* IBIT Bar */}
+                                             <div className="space-y-1">
+                                                <div className="flex justify-between items-center text-sm font-bold">
+                                                    <span className="text-slate-600 dark:text-slate-300 text-xs">IBIT (目標 {rebalanceStatus.tSatIbit}%)</span>
+                                                    <span className={`${rebalanceStatus.isIbitOverweight || parseFloat(rebalanceStatus.ibitWeight) < rebalanceStatus.tSatIbit * 0.75 ? 'text-red-500' : 'text-emerald-500'} text-xs`}>{rebalanceStatus.ibitWeight}%</span>
+                                                </div>
+                                                <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden relative">
+                                                    <div className={`h-full ${rebalanceStatus.isIbitOverweight || parseFloat(rebalanceStatus.ibitWeight) < rebalanceStatus.tSatIbit * 0.75 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(parseFloat(rebalanceStatus.ibitWeight) * 2, 100)}%` }}></div>
+                                                </div>
                                             </div>
                                         </div>
-                                        
-                                        <div className="pt-3 border-t dark:border-slate-800 grid grid-cols-2 gap-4">
-                                            <div>
-                                                <div className="flex justify-between text-[10px] text-slate-500 mb-1"><span>{inputs.custom_ticker_1 || '自選1'} 權重</span><span className={rebalanceStatus.isCustom1Overweight ? 'text-red-500 font-bold' : 'text-slate-400'}>{rebalanceStatus.custom1Weight}%</span></div>
-                                                {rebalanceStatus.isCustom1Overweight && <div className="text-[9px] text-red-500 font-bold">⚠️ 超過 {inputs.rebalance_sat_cap}%</div>}
-                                            </div>
-                                            <div>
-                                                <div className="flex justify-between text-[10px] text-slate-500 mb-1"><span>{inputs.custom_ticker_2 || '自選2'} 權重</span><span className={rebalanceStatus.isCustom2Overweight ? 'text-red-500 font-bold' : 'text-slate-400'}>{rebalanceStatus.custom2Weight}%</span></div>
-                                                {rebalanceStatus.isCustom2Overweight && <div className="text-[9px] text-red-500 font-bold">⚠️ 超過 {inputs.rebalance_sat_cap}%</div>}
-                                            </div>
-                                            <div>
-                                                <div className="flex justify-between text-[10px] text-slate-500 mb-1"><span>IBIT 權重</span><span className={rebalanceStatus.isIbitOverweight ? 'text-red-500 font-bold' : 'text-slate-400'}>{rebalanceStatus.ibitWeight}%</span></div>
-                                                {rebalanceStatus.isIbitOverweight && <div className="text-[9px] text-red-500 font-bold">⚠️ 超過 {inputs.rebalance_sat_cap}%</div>}
-                                            </div>
-                                        </div>
-                                    </div>
+                                    )}
                                 </div>
 
                                 <div className="w-full">
@@ -875,7 +907,7 @@
                                 <Card className="bg-gradient-to-br from-slate-900 via-indigo-950 to-indigo-900 text-white border-none shadow-2xl p-7 relative overflow-hidden text-left font-black group">
                                     <div className="absolute -right-4 -bottom-4 opacity-10 rotate-12 font-black font-black"><Icon name="TrendingUp" size={160} /></div>
                                     <div className="flex justify-between items-start">
-                                        <label className="text-[10px] opacity-50 uppercase tracking-widest block mb-1">Portfolio Valuation</label>
+                                        <label className="text-[10px] opacity-50 uppercase tracking-widest block mb-1">總資產價值</label>
                                         <button onClick={cyclePerformanceView} className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition-all active:scale-95 active:rotate-180 duration-500 z-20"><Icon name="Repeat" size={14} className="text-white/80" /></button>
                                     </div>
                                     <div className="flex flex-col items-start gap-1 mt-2">
@@ -896,7 +928,7 @@
                                         </div>
                                     </div>
                                 </Card>
-
+                                
                                 <Card className="p-4 overflow-hidden text-center relative font-black font-black">
                                     <div className="flex justify-between items-center mb-2">
                                         <SectionTitle title="資產分配圓餅圖" iconName="PieChartIcon" />
@@ -919,7 +951,7 @@
                                         </div>
                                     )}
                                 </Card>
-
+                                
                                 {/* SCENARIO SIMULATOR CARD */}
                                 <Card className="p-5 bg-gradient-to-br from-slate-800 to-indigo-900 text-white border-none shadow-2xl relative overflow-hidden">
                                      <div className="flex justify-between items-center mb-4 relative z-10">
@@ -945,13 +977,13 @@
                                                         <span className="opacity-70">個股剩餘價值 (1x)</span>
                                                         <span className="font-mono font-bold">${scenarioData.bear.estSat.toLocaleString(undefined,{maximumFractionDigits:0})}</span>
                                                     </div>
-                                                    <div className="border-t border-white/10 pt-1 flex justify-between text-sm">
+                                                    <div className="flex justify-between text-xs border-t border-white/10 pt-2 mt-1">
+                                                        <span className="opacity-90 font-bold text-slate-200">剩餘總資產 (After Drop)</span>
+                                                        <span className="font-mono font-bold text-white">${scenarioData.bear.estTotal.toLocaleString(undefined,{maximumFractionDigits:0})}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-sm pt-1">
                                                         <span className="font-bold text-red-300">預估最大虧損</span>
                                                         <span className="font-mono font-black text-red-400">-${Math.abs(scenarioData.bear.maxLoss).toLocaleString(undefined,{maximumFractionDigits:0})}</span>
-                                                    </div>
-                                                    <div className="flex justify-between text-sm mt-1">
-                                                         <span className="font-bold text-slate-300">災後剩餘總資產</span>
-                                                         <span className="font-mono font-black text-white">${scenarioData.bear.estTotal.toLocaleString(undefined,{maximumFractionDigits:0})}</span>
                                                     </div>
                                                 </div>
                                              </div>
@@ -993,7 +1025,11 @@
 
                                 <Card className="space-y-4 text-left font-black font-black border-2 border-indigo-500 dark:border-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.2)]">
                                     <div className="flex justify-between items-center">
-                                        <SectionTitle title="持倉數量 (Holdings)" iconName="Edit2" />
+                                        <SectionTitle title="持倉數量" iconName="Edit2" />
+                                        {/* Added QQQ price display here on the right */}
+                                        <div className="text-xs font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded">
+                                            QQQ: ${prices.QQQ?.toFixed(2) || '-'}
+                                        </div>
                                         <button onClick={() => toggleDashboardSection('holdings')}><Icon name={dashboardSections.holdings ? "ChevronUp" : "ChevronDown"} size={16} className="text-slate-400" /></button>
                                     </div>
                                     
@@ -1171,7 +1207,7 @@
                                         <div className="flex justify-center gap-4 mb-2 text-[10px] font-bold">
                                             {chartMode === 'ALPHA' ? (
                                                 <>
-                                                    <div className="flex items-center gap-1 cursor-pointer opacity-80 hover:opacity-100"><div className="w-2 h-2 rounded-full bg-indigo-500"></div><span>我的策略</span></div>
+                                                    <div className="flex items-center gap-1 cursor-pointer opacity-80 hover:opacity-100"><div className="w-2 h-2 rounded-full bg-indigo-500"></div><span>我的策略 (紫線)</span></div>
                                                     <div className="flex items-center gap-1 cursor-pointer opacity-80 hover:opacity-100"><div className="w-2 h-2 rounded-full bg-emerald-500"></div><span>QQQ (大盤)</span></div>
                                                 </>
                                             ) : (
@@ -1230,147 +1266,6 @@
                                             </div>
                                         </Card>
                                     ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {view === 'loan' && (
-                            <div className="space-y-6 animate-in fade-in text-left font-black">
-                                <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 shadow-xl border border-slate-200 dark:border-slate-700 mb-6">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-xs">
-                                            <Icon name="Activity" size={16} /> 風險監控 (LTV Monitor)
-                                        </div>
-                                        <div className={`px-3 py-1 rounded-full text-xs font-black ${
-                                            (inputs.loan_amount > 0 && totalCapital > 0 ? (inputs.loan_amount / totalCapital * 100) : 0) < 30 ? 'bg-emerald-100 text-emerald-600' :
-                                            (inputs.loan_amount > 0 && totalCapital > 0 ? (inputs.loan_amount / totalCapital * 100) : 0) < 50 ? 'bg-yellow-100 text-yellow-600' :
-                                            'bg-red-100 text-red-600'
-                                        }`}>
-                                            {(inputs.loan_amount > 0 && totalCapital > 0 ? (inputs.loan_amount / totalCapital * 100) : 0).toFixed(1)}%
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="relative h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                        <div 
-                                            className={`absolute top-0 left-0 h-full transition-all duration-500 ${
-                                                (inputs.loan_amount > 0 && totalCapital > 0 ? (inputs.loan_amount / totalCapital * 100) : 0) < 30 ? 'bg-emerald-500' :
-                                                (inputs.loan_amount > 0 && totalCapital > 0 ? (inputs.loan_amount / totalCapital * 100) : 0) < 50 ? 'bg-yellow-500' :
-                                                'bg-red-500'
-                                            }`}
-                                            style={{ width: `${Math.min((inputs.loan_amount > 0 && totalCapital > 0 ? (inputs.loan_amount / totalCapital * 100) : 0), 100)}%` }}
-                                        ></div>
-                                    </div>
-                                    
-                                    <div className="flex justify-between mt-2 text-[10px] font-mono text-slate-400">
-                                        <span>0%</span>
-                                        <span>30% (安全)</span>
-                                        <span>50% (警戒)</span>
-                                        <span>100%</span>
-                                    </div>
-                                </div>
-
-                                <Card className="space-y-6 border-2 border-amber-100 dark:border-amber-900/30 shadow-xl p-6 text-left font-black font-black font-black">
-                                    <div className="p-5 bg-amber-50 dark:bg-amber-900/20 rounded-3xl flex items-start gap-4 border border-amber-100 font-medium font-black font-black font-black"><Icon name="Landmark" size={28} className="text-amber-600 flex-shrink-0" /><p className="text-[14px] text-amber-800 dark:text-amber-300 leading-relaxed font-black">還款邏輯：以「買入市值」為固定基準，獲利達標建議撤退。</p></div>
-                                    <div className="grid grid-cols-1 gap-6 font-black font-black font-black">{[{ l: "貸款買入時市值 (USD基準)", f: "loan_entry_valuation" }, { l: "貸款總額 (USD)", f: "loan_amount" }, { l: "每月還款金額 (USD)", f: "loan_monthly_repay" }, { l: "年化利率 (%)", f: "loan_rate" }, { l: "還款獲利目標 (%)", f: "loan_repay_target" }].map(it => (
-                                        <div key={it.f} className="space-y-2 text-left text-amber-900 dark:text-amber-500 font-black font-black"><label className="text-[11px] uppercase tracking-widest px-1 text-amber-600">{it.l}</label><input type="number" value={inputs[it.f]} onChange={e => handleInputChange(it.f, e.target.value)} onBlur={(e) => syncToCloud(it.f, e.target.value)} className="w-full bg-amber-50 dark:bg-slate-800 border-2 border-amber-100 dark:border-amber-900 rounded-[1.5rem] p-5 font-black text-xl text-center" /></div>
-                                    ))}</div>
-                                    <Card className={`${isTargetReached ? 'repay-alert' : 'bg-amber-900 dark:bg-amber-950'} text-white border-none p-6 text-center shadow-lg transition-colors duration-500 font-black`}>
-                                        <h4 className="text-xs opacity-60 uppercase mb-1 tracking-widest text-center font-black">賣出還款門檻 (依基準市值)</h4>
-                                        <p className="text-xl font-mono tracking-tight text-center font-black font-black font-black">${ loanSellThreshold.toLocaleString(undefined, { maximumFractionDigits: 0 }) }</p>
-                                    </Card>
-                                </Card>
-                            </div>
-                        )}
-
-                        {view === 'sync_settings' && (
-                            <div className="space-y-6 animate-in fade-in text-left">
-                                {/* 1. Account Sync */}
-                                <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                                    <button onClick={() => toggleSection('account')} className="w-full p-5 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-                                        <div className="flex items-center gap-3 font-black text-slate-700 dark:text-slate-200"><div className="p-2 bg-white dark:bg-slate-700 rounded-xl shadow-sm text-indigo-500"><Icon name="Fingerprint" size={20} /></div><span>帳號同步設定</span></div>
-                                        <Icon name={openSections.account ? "ChevronUp" : "ChevronDown"} size={20} className="text-slate-400" />
-                                    </button>
-                                    {openSections.account && (
-                                        <div className="p-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-2">
-                                            <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl text-center"><p className="text-[10px] uppercase text-slate-400 mb-1">CURRENT ID</p><p className="font-mono text-lg font-black">{effectiveUserId || 'Not Connected'}</p></div>
-                                            <div className="space-y-2"><label className="text-xs font-bold text-slate-500 ml-1">切換帳號 ID</label><div className="flex gap-2"><input type="text" value={tempSyncId} onChange={e => setTempSyncId(e.target.value)} className="flex-1 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-3 font-black" placeholder="輸入 ID" /><button onClick={() => { setCustomSyncId(tempSyncId.trim()); localStorage.setItem('qqq_sync_id', tempSyncId.trim()); showToast("帳號已切換"); }} className="bg-indigo-600 text-white px-4 rounded-xl font-bold">確認</button></div></div>
-                                            <div className="space-y-2 border-t pt-4 dark:border-slate-700"><label className="text-xs font-bold text-slate-500 ml-1">數據備份 (Backup)</label><div className="flex gap-2"><button onClick={exportData} className="flex-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2"><Icon name="Download" size={14} /> 匯出 JSON</button><label className="flex-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"><Icon name="Upload" size={14} /> 匯入 JSON<input type="file" accept=".json" onChange={importData} className="hidden" ref={fileInputRef} /></label></div></div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* 2. System Params */}
-                                <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                                    <button onClick={() => toggleSection('system')} className="w-full p-5 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-                                        <div className="flex items-center gap-3 font-black text-slate-700 dark:text-slate-200"><div className="p-2 bg-white dark:bg-slate-700 rounded-xl shadow-sm text-emerald-500"><Icon name="Settings" size={20} /></div><span>系統參數與工具</span></div>
-                                        <Icon name={openSections.system ? "ChevronUp" : "ChevronDown"} size={20} className="text-slate-400" />
-                                    </button>
-                                    {openSections.system && (
-                                        <div className="p-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-2">
-                                            <div className="flex gap-3 mb-4">
-                                                <button onClick={() => setDarkMode(!darkMode)} className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-bold"><Icon name={darkMode ? "Sun" : "Moon"} size={16} /> {darkMode ? "切換亮色" : "切換深色"}</button>
-                                                <button onClick={() => setIsCalcOpen(!isCalcOpen)} className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl text-sm font-bold transition-all ${isCalcOpen ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800'}`}><Icon name="Calculator" size={16} /> {isCalcOpen ? "隱藏計算機" : "開啟計算機"}</button>
-                                            </div>
-                                            
-                                            {isCalcOpen && (
-                                                <div className="bg-indigo-50 dark:bg-slate-800 p-4 rounded-2xl mb-4 border-2 border-indigo-100 dark:border-slate-700 animate-in fade-in slide-in-from-top-2">
-                                                    <div className="flex justify-between items-center mb-3 text-indigo-600 font-black"><span className="flex items-center gap-2"><Icon name="Calculator" size={16} /> 入金分配計算機</span></div>
-                                                    <div className="flex gap-2 mb-3"><input type="number" placeholder="預計投入總金額 (USD)" value={simulatedTotal} onChange={e => setSimulatedTotal(e.target.value)} className="flex-1 bg-white dark:bg-slate-900 border border-indigo-200 rounded-xl px-3 py-2 text-lg font-black focus:border-indigo-500 outline-none text-center" /></div>
-                                                    
-                                                    {simulatedTotal > 0 && (
-                                                        <div className="space-y-2 text-xs">
-                                                            <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-900 rounded-lg">
-                                                                <div className="flex items-center gap-2"><span className="text-indigo-600 font-bold">核心 {inputs.ticker_core_1 || "QQQ"}</span><input type="number" value={inputs.calc_alloc_qqq} onChange={e => handleInputChange('calc_alloc_qqq', e.target.value)} className="w-8 border-b border-indigo-200 text-center outline-none bg-transparent font-bold" />%</div>
-                                                                <div className="text-right"><div className="font-mono font-black">${(parseFloat(simulatedTotal) * (getNum(inputs.calc_alloc_qqq)/100)).toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="text-[9px] text-slate-400">{prices[(inputs.ticker_core_1 || "QQQ").toUpperCase()] > 0 ? Math.floor((parseFloat(simulatedTotal) * (getNum(inputs.calc_alloc_qqq)/100)) / prices[(inputs.ticker_core_1 || "QQQ").toUpperCase()]) : '-'} 股</div></div>
-                                                            </div>
-                                                            <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-900 rounded-lg">
-                                                                <div className="flex items-center gap-2"><span className="text-purple-600 font-bold">核心 TQQQ</span><input type="number" value={inputs.calc_alloc_tqqq} onChange={e => handleInputChange('calc_alloc_tqqq', e.target.value)} className="w-8 border-b border-purple-200 text-center outline-none bg-transparent font-bold" />%</div>
-                                                                <div className="text-right"><div className="font-mono font-black">${(parseFloat(simulatedTotal) * (getNum(inputs.calc_alloc_tqqq)/100)).toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="text-[9px] text-slate-400">{prices.TQQQ > 0 ? Math.floor((parseFloat(simulatedTotal) * (getNum(inputs.calc_alloc_tqqq)/100)) / prices.TQQQ) : '-'} 股</div></div>
-                                                            </div>
-                                                            <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-900 rounded-lg">
-                                                                <div className="flex items-center gap-2"><span className="text-emerald-600 font-bold truncate max-w-[60px]">{inputs.custom_ticker_1}</span><input type="number" value={inputs.calc_alloc_c1} onChange={e => handleInputChange('calc_alloc_c1', e.target.value)} className="w-8 border-b border-emerald-200 text-center outline-none bg-transparent font-bold" />%</div>
-                                                                <div className="text-right"><div className="font-mono font-black">${(parseFloat(simulatedTotal) * (getNum(inputs.calc_alloc_c1)/100)).toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="text-[9px] text-slate-400">{prices[(inputs.custom_ticker_1||'').toUpperCase()] > 0 ? Math.floor((parseFloat(simulatedTotal) * (getNum(inputs.calc_alloc_c1)/100)) / prices[(inputs.custom_ticker_1||'').toUpperCase()]) : '-'} 股</div></div>
-                                                            </div>
-                                                            <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-900 rounded-lg">
-                                                                <div className="flex items-center gap-2"><span className="text-amber-600 font-bold truncate max-w-[60px]">{inputs.custom_ticker_2}</span><input type="number" value={inputs.calc_alloc_c2} onChange={e => handleInputChange('calc_alloc_c2', e.target.value)} className="w-8 border-b border-amber-200 text-center outline-none bg-transparent font-bold" />%</div>
-                                                                <div className="text-right"><div className="font-mono font-black">${(parseFloat(simulatedTotal) * (getNum(inputs.calc_alloc_c2)/100)).toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="text-[9px] text-slate-400">{prices[(inputs.custom_ticker_2||'').toUpperCase()] > 0 ? Math.floor((parseFloat(simulatedTotal) * (getNum(inputs.calc_alloc_c2)/100)) / prices[(inputs.custom_ticker_2||'').toUpperCase()]) : '-'} 股</div></div>
-                                                            </div>
-                                                            <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-900 rounded-lg">
-                                                                <div className="flex items-center gap-2"><span className="text-slate-500 font-bold">現金保留</span><input type="number" value={inputs.calc_alloc_cash} onChange={e => handleInputChange('calc_alloc_cash', e.target.value)} className="w-8 border-b border-slate-300 text-center outline-none bg-transparent font-bold" />%</div>
-                                                                <div className="text-right"><div className="font-mono font-black">${(parseFloat(simulatedTotal) * (getNum(inputs.calc_alloc_cash)/100)).toLocaleString(undefined,{maximumFractionDigits:0})}</div></div>
-                                                            </div>
-                                                            <div className="text-center pt-1 text-[10px] text-slate-400">總分配比例: {getNum(inputs.calc_alloc_qqq) + getNum(inputs.calc_alloc_tqqq) + getNum(inputs.calc_alloc_c1) + getNum(inputs.calc_alloc_c2) + getNum(inputs.calc_alloc_cash)}%</div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            <div className="space-y-1"><label className="text-[10px] text-indigo-500 uppercase block font-bold">USD/TWD 匯率</label><input type="number" value={inputs.exchange_rate} onChange={e => handleInputChange('exchange_rate', e.target.value)} onBlur={e => syncToCloud('exchange_rate', e.target.value)} className="w-full bg-indigo-50 dark:bg-slate-800 border-2 border-indigo-100 dark:border-indigo-900/50 rounded-xl p-3 font-black text-center text-lg" /></div>
-                                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                                <div className="space-y-1"><label className="text-[10px] text-red-500 uppercase block font-bold text-center">衛星持倉上限 (%)</label><input type="number" value={inputs.rebalance_sat_cap} onChange={e => handleInputChange('rebalance_sat_cap', e.target.value)} onBlur={e => syncToCloud('rebalance_sat_cap', e.target.value)} className="w-full bg-red-50 dark:bg-slate-800 border border-red-100 dark:border-red-900/50 rounded-xl p-2 font-black text-center" /></div>
-                                                <div className="space-y-1"><label className="text-[10px] text-purple-500 uppercase block font-bold text-center">核心 TQQQ 目標 (%)</label><input type="number" value={inputs.rebalance_core_target} onChange={e => handleInputChange('rebalance_core_target', e.target.value)} onBlur={e => syncToCloud('rebalance_core_target', e.target.value)} className="w-full bg-purple-50 dark:bg-slate-800 border border-purple-100 dark:border-purple-900/50 rounded-xl p-2 font-black text-center" /></div>
-                                            </div>
-                                            <div className="space-y-1"><label className="text-[10px] text-slate-500 uppercase block font-bold text-center">核心寬容度 Tolerance (±%)</label><input type="number" value={inputs.rebalance_core_tolerance} onChange={e => handleInputChange('rebalance_core_tolerance', e.target.value)} onBlur={e => syncToCloud('rebalance_core_tolerance', e.target.value)} className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2 font-black text-center" /></div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* 3. Strategy Whitepaper */}
-                                <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                                    <button onClick={() => toggleSection('strategy')} className="w-full p-5 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-                                        <div className="flex items-center gap-3 font-black text-slate-700 dark:text-slate-200"><div className="p-2 bg-white dark:bg-slate-700 rounded-xl shadow-sm text-amber-500"><Icon name="BookOpen" size={20} /></div><span>策略執行手冊 (NRA V7)</span></div>
-                                        <Icon name={openSections.strategy ? "ChevronUp" : "ChevronDown"} size={20} className="text-slate-400" />
-                                    </button>
-                                    {openSections.strategy && (
-                                        <div className="p-5 pt-0 animate-in fade-in slide-in-from-top-2">
-                                            <div className="flex justify-end mb-2 pt-2"><button onClick={() => setIsStrategyEditing(!isStrategyEditing)} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${isStrategyEditing ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'}`}><Icon name={isStrategyEditing ? "Unlock" : "Lock"} size={12} /><span>{isStrategyEditing ? "編輯中" : "唯讀模式"}</span></button></div>
-                                            <div className="space-y-4">
-                                                <div className="space-y-1"><input type="text" value={inputs.title_core} readOnly={!isStrategyEditing} onChange={e => handleInputChange('title_core', e.target.value)} onBlur={e => syncToCloud('title_core', e.target.value)} className="title-input text-indigo-600 text-sm" /><textarea value={inputs.strat_core} readOnly={!isStrategyEditing} onChange={e => handleInputChange('strat_core', e.target.value)} onBlur={e => syncToCloud('strat_core', e.target.value)} className={`w-full strategy-textarea ${!isStrategyEditing ? 'strategy-read-only' : ''}`} /></div>
-                                                <div className="space-y-1"><input type="text" value={inputs.title_custom} readOnly={!isStrategyEditing} onChange={e => handleInputChange('title_custom', e.target.value)} onBlur={e => syncToCloud('title_custom', e.target.value)} className="title-input text-emerald-600 text-sm" /><textarea value={inputs.strat_custom} readOnly={!isStrategyEditing} onChange={e => handleInputChange('strat_custom', e.target.value)} onBlur={e => syncToCloud('strat_custom', e.target.value)} className={`w-full strategy-textarea ${!isStrategyEditing ? 'strategy-read-only' : ''}`} /></div>
-                                                <div className="space-y-1"><input type="text" value={inputs.title_ibit} readOnly={!isStrategyEditing} onChange={e => handleInputChange('title_ibit', e.target.value)} onBlur={e => syncToCloud('title_ibit', e.target.value)} className="title-input text-amber-600 text-sm" /><textarea value={inputs.strat_ibit} readOnly={!isStrategyEditing} onChange={e => handleInputChange('strat_ibit', e.target.value)} onBlur={e => syncToCloud('strat_ibit', e.target.value)} className={`w-full strategy-textarea ${!isStrategyEditing ? 'strategy-read-only' : ''}`} /></div>
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         )}
