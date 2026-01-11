@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Alpha Horizon">
-    <title>Alpha Horizon Dashboard v6.1</title>
+    <title>Alpha Horizon Dashboard v6.4</title>
     
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
 
@@ -273,7 +273,9 @@
                 }, 1000); 
                 return () => clearTimeout(timer);
             }, [inputs.ticker_core_1, inputs.custom_ticker_1, inputs.custom_ticker_2]);
-
+            
+            // Scroll to top on view change
+            useEffect(() => { window.scrollTo(0,0); }, [view]);
 
             const getNum = (val) => {
                 if (val === undefined || val === null || val === '') return 0;
@@ -585,6 +587,7 @@
                 const d = new Date(inputs.record_date); 
                 d.setHours(12, 0, 0, 0); 
                 try { 
+                    // Crucial: Save the current PRICES alongside inputs to lock them in time
                     await db.collection('artifacts').doc(appId).collection('users').doc(effectiveUserId).collection('trading_records').add({ 
                         date: d.toISOString(), 
                         total_equity: totalCapital, 
@@ -680,7 +683,6 @@
                 const baseEquity = baseRecord.total_equity || 1;
                 const getHistPrice = (rec, ticker) => rec.prices?.[ticker] || rec.prices?.[ticker.toUpperCase()] || 0;
                 
-                // Smart Benchmark: Try QQQ > QQQM > Core
                 const baseQQQ = getHistPrice(baseRecord, 'QQQ') || getHistPrice(baseRecord, 'QQQM') || getHistPrice(baseRecord, inputs.ticker_core_1) || 1;
                 
                 let runningMaxEquity = 0;
@@ -1207,7 +1209,7 @@
                                         <div className="flex justify-center gap-4 mb-2 text-[10px] font-bold">
                                             {chartMode === 'ALPHA' ? (
                                                 <>
-                                                    <div className="flex items-center gap-1 cursor-pointer opacity-80 hover:opacity-100"><div className="w-2 h-2 rounded-full bg-indigo-500"></div><span>我的策略 (紫線)</span></div>
+                                                    <div className="flex items-center gap-1 cursor-pointer opacity-80 hover:opacity-100"><div className="w-2 h-2 rounded-full bg-indigo-500"></div><span>我的策略</span></div>
                                                     <div className="flex items-center gap-1 cursor-pointer opacity-80 hover:opacity-100"><div className="w-2 h-2 rounded-full bg-emerald-500"></div><span>QQQ (大盤)</span></div>
                                                 </>
                                             ) : (
@@ -1266,6 +1268,156 @@
                                             </div>
                                         </Card>
                                     ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'loan' && (
+                            <div className="space-y-6 animate-in fade-in text-left font-black">
+                                <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 shadow-xl border border-slate-200 dark:border-slate-700 mb-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-xs">
+                                            <Icon name="Activity" size={16} /> 風險監控 (LTV Monitor)
+                                        </div>
+                                        <div className={`px-3 py-1 rounded-full text-xs font-black ${
+                                            (inputs.loan_amount > 0 && totalCapital > 0 ? (inputs.loan_amount / totalCapital * 100) : 0) < 30 ? 'bg-emerald-100 text-emerald-600' :
+                                            (inputs.loan_amount > 0 && totalCapital > 0 ? (inputs.loan_amount / totalCapital * 100) : 0) < 50 ? 'bg-yellow-100 text-yellow-600' :
+                                            'bg-red-100 text-red-600'
+                                        }`}>
+                                            {(inputs.loan_amount > 0 && totalCapital > 0 ? (inputs.loan_amount / totalCapital * 100) : 0).toFixed(1)}%
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="relative h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                        <div 
+                                            className={`absolute top-0 left-0 h-full transition-all duration-500 ${
+                                                (inputs.loan_amount > 0 && totalCapital > 0 ? (inputs.loan_amount / totalCapital * 100) : 0) < 30 ? 'bg-emerald-500' :
+                                                (inputs.loan_amount > 0 && totalCapital > 0 ? (inputs.loan_amount / totalCapital * 100) : 0) < 50 ? 'bg-yellow-500' :
+                                                'bg-red-500'
+                                            }`}
+                                            style={{ width: `${Math.min((inputs.loan_amount > 0 && totalCapital > 0 ? (inputs.loan_amount / totalCapital * 100) : 0), 100)}%` }}
+                                        ></div>
+                                    </div>
+                                    
+                                    <div className="flex justify-between mt-2 text-[10px] font-mono text-slate-400">
+                                        <span>0%</span>
+                                        <span>30% (安全)</span>
+                                        <span>50% (警戒)</span>
+                                        <span>100%</span>
+                                    </div>
+                                </div>
+
+                                <Card className="space-y-6 border-2 border-amber-100 dark:border-amber-900/30 shadow-xl p-6 text-left font-black font-black font-black">
+                                    <div className="p-5 bg-amber-50 dark:bg-amber-900/20 rounded-3xl flex items-start gap-4 border border-amber-100 font-medium font-black font-black font-black"><Icon name="Landmark" size={28} className="text-amber-600 flex-shrink-0" /><p className="text-[14px] text-amber-800 dark:text-amber-300 leading-relaxed font-black">還款邏輯：以「買入市值」為固定基準，獲利達標建議撤退。</p></div>
+                                    <div className="grid grid-cols-1 gap-6 font-black font-black font-black">{[{ l: "貸款買入時市值 (USD基準)", f: "loan_entry_valuation" }, { l: "貸款總額 (USD)", f: "loan_amount" }, { l: "每月還款金額 (USD)", f: "loan_monthly_repay" }, { l: "年化利率 (%)", f: "loan_rate" }, { l: "還款獲利目標 (%)", f: "loan_repay_target" }].map(it => (
+                                        <div key={it.f} className="space-y-2 text-left text-amber-900 dark:text-amber-500 font-black font-black"><label className="text-[11px] uppercase tracking-widest px-1 text-amber-600">{it.l}</label><input type="number" value={inputs[it.f]} onChange={e => handleInputChange(it.f, e.target.value)} onBlur={(e) => syncToCloud(it.f, e.target.value)} className="w-full bg-amber-50 dark:bg-slate-800 border-2 border-amber-100 dark:border-amber-900 rounded-[1.5rem] p-5 font-black text-xl text-center" /></div>
+                                    ))}</div>
+                                    <Card className={`${isTargetReached ? 'repay-alert' : 'bg-amber-900 dark:bg-amber-950'} text-white border-none p-6 text-center shadow-lg transition-colors duration-500 font-black`}>
+                                        <h4 className="text-xs opacity-60 uppercase mb-1 tracking-widest text-center font-black">賣出還款門檻 (依基準市值)</h4>
+                                        <p className="text-xl font-mono tracking-tight text-center font-black font-black font-black">${ loanSellThreshold.toLocaleString(undefined, { maximumFractionDigits: 0 }) }</p>
+                                    </Card>
+                                </Card>
+                            </div>
+                        )}
+
+                        {view === 'sync_settings' && (
+                            <div className="space-y-6 animate-in fade-in text-left">
+                                {/* 1. Account Sync */}
+                                <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                                    <button onClick={() => toggleSection('account')} className="w-full p-5 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+                                        <div className="flex items-center gap-3 font-black text-slate-700 dark:text-slate-200"><div className="p-2 bg-white dark:bg-slate-700 rounded-xl shadow-sm text-indigo-500"><Icon name="Fingerprint" size={20} /></div><span>帳號同步設定</span></div>
+                                        <Icon name={openSections.account ? "ChevronUp" : "ChevronDown"} size={20} className="text-slate-400" />
+                                    </button>
+                                    {openSections.account && (
+                                        <div className="p-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-2">
+                                            <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl text-center"><p className="text-[10px] uppercase text-slate-400 mb-1">CURRENT ID</p><p className="font-mono text-lg font-black">{effectiveUserId || 'Not Connected'}</p></div>
+                                            <div className="space-y-2"><label className="text-xs font-bold text-slate-500 ml-1">切換帳號 ID</label><div className="flex gap-2"><input type="text" value={tempSyncId} onChange={e => setTempSyncId(e.target.value)} className="flex-1 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-3 font-black" placeholder="輸入 ID" /><button onClick={() => { setCustomSyncId(tempSyncId.trim()); localStorage.setItem('qqq_sync_id', tempSyncId.trim()); showToast("帳號已切換"); }} className="bg-indigo-600 text-white px-4 rounded-xl font-bold">確認</button></div></div>
+                                            <div className="space-y-2 border-t pt-4 dark:border-slate-700"><label className="text-xs font-bold text-slate-500 ml-1">數據備份 (Backup)</label><div className="flex gap-2"><button onClick={exportData} className="flex-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2"><Icon name="Download" size={14} /> 匯出 JSON</button><label className="flex-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"><Icon name="Upload" size={14} /> 匯入 JSON<input type="file" accept=".json" onChange={importData} className="hidden" ref={fileInputRef} /></label></div></div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* 2. System Params */}
+                                <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                                    <button onClick={() => toggleSection('system')} className="w-full p-5 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+                                        <div className="flex items-center gap-3 font-black text-slate-700 dark:text-slate-200"><div className="p-2 bg-white dark:bg-slate-700 rounded-xl shadow-sm text-emerald-500"><Icon name="Settings" size={20} /></div><span>系統參數與工具</span></div>
+                                        <Icon name={openSections.system ? "ChevronUp" : "ChevronDown"} size={20} className="text-slate-400" />
+                                    </button>
+                                    {openSections.system && (
+                                        <div className="p-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-2">
+                                            <div className="flex gap-3 mb-4">
+                                                <button onClick={() => setDarkMode(!darkMode)} className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-bold"><Icon name={darkMode ? "Sun" : "Moon"} size={16} /> {darkMode ? "切換亮色" : "切換深色"}</button>
+                                                <button onClick={() => setIsCalcOpen(!isCalcOpen)} className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl text-sm font-bold transition-all ${isCalcOpen ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800'}`}><Icon name="Calculator" size={16} /> {isCalcOpen ? "隱藏計算機" : "開啟計算機"}</button>
+                                            </div>
+                                            
+                                            {isCalcOpen && (
+                                                <div className="bg-indigo-50 dark:bg-slate-800 p-4 rounded-2xl mb-4 border-2 border-indigo-100 dark:border-slate-700 animate-in fade-in slide-in-from-top-2">
+                                                    <div className="flex justify-between items-center mb-3 text-indigo-600 font-black"><span className="flex items-center gap-2"><Icon name="Calculator" size={16} /> 入金分配計算機</span></div>
+                                                    <div className="flex gap-2 mb-3"><input type="number" placeholder="預計投入總金額 (USD)" value={simulatedTotal} onChange={e => setSimulatedTotal(e.target.value)} className="flex-1 bg-white dark:bg-slate-900 border border-indigo-200 rounded-xl px-3 py-2 text-lg font-black focus:border-indigo-500 outline-none text-center" /></div>
+                                                    
+                                                    {simulatedTotal > 0 && (
+                                                        <div className="space-y-2 text-xs">
+                                                            <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-900 rounded-lg">
+                                                                <div className="flex items-center gap-2"><span className="text-indigo-600 font-bold">核心 {inputs.ticker_core_1 || "QQQ"}</span><input type="number" value={inputs.calc_alloc_qqq} onChange={e => handleInputChange('calc_alloc_qqq', e.target.value)} className="w-8 border-b border-indigo-200 text-center outline-none bg-transparent font-bold" />%</div>
+                                                                <div className="text-right"><div className="font-mono font-black">${(parseFloat(simulatedTotal) * (getNum(inputs.calc_alloc_qqq)/100)).toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="text-[9px] text-slate-400">{prices[(inputs.ticker_core_1 || "QQQ").toUpperCase()] > 0 ? Math.floor((parseFloat(simulatedTotal) * (getNum(inputs.calc_alloc_qqq)/100)) / prices[(inputs.ticker_core_1 || "QQQ").toUpperCase()]) : '-'} 股</div></div>
+                                                            </div>
+                                                            <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-900 rounded-lg">
+                                                                <div className="flex items-center gap-2"><span className="text-purple-600 font-bold">核心 TQQQ</span><input type="number" value={inputs.calc_alloc_tqqq} onChange={e => handleInputChange('calc_alloc_tqqq', e.target.value)} className="w-8 border-b border-purple-200 text-center outline-none bg-transparent font-bold" />%</div>
+                                                                <div className="text-right"><div className="font-mono font-black">${(parseFloat(simulatedTotal) * (getNum(inputs.calc_alloc_tqqq)/100)).toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="text-[9px] text-slate-400">{prices.TQQQ > 0 ? Math.floor((parseFloat(simulatedTotal) * (getNum(inputs.calc_alloc_tqqq)/100)) / prices.TQQQ) : '-'} 股</div></div>
+                                                            </div>
+                                                            <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-900 rounded-lg">
+                                                                <div className="flex items-center gap-2"><span className="text-emerald-600 font-bold truncate max-w-[60px]">{inputs.custom_ticker_1}</span><input type="number" value={inputs.calc_alloc_c1} onChange={e => handleInputChange('calc_alloc_c1', e.target.value)} className="w-8 border-b border-emerald-200 text-center outline-none bg-transparent font-bold" />%</div>
+                                                                <div className="text-right"><div className="font-mono font-black">${(parseFloat(simulatedTotal) * (getNum(inputs.calc_alloc_c1)/100)).toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="text-[9px] text-slate-400">{prices[(inputs.custom_ticker_1||'').toUpperCase()] > 0 ? Math.floor((parseFloat(simulatedTotal) * (getNum(inputs.calc_alloc_c1)/100)) / prices[(inputs.custom_ticker_1||'').toUpperCase()]) : '-'} 股</div></div>
+                                                            </div>
+                                                            <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-900 rounded-lg">
+                                                                <div className="flex items-center gap-2"><span className="text-amber-600 font-bold truncate max-w-[60px]">{inputs.custom_ticker_2}</span><input type="number" value={inputs.calc_alloc_c2} onChange={e => handleInputChange('calc_alloc_c2', e.target.value)} className="w-8 border-b border-amber-200 text-center outline-none bg-transparent font-bold" />%</div>
+                                                                <div className="text-right"><div className="font-mono font-black">${(parseFloat(simulatedTotal) * (getNum(inputs.calc_alloc_c2)/100)).toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="text-[9px] text-slate-400">{prices[(inputs.custom_ticker_2||'').toUpperCase()] > 0 ? Math.floor((parseFloat(simulatedTotal) * (getNum(inputs.calc_alloc_c2)/100)) / prices[(inputs.custom_ticker_2||'').toUpperCase()]) : '-'} 股</div></div>
+                                                            </div>
+                                                            <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-900 rounded-lg">
+                                                                <div className="flex items-center gap-2"><span className="text-slate-500 font-bold">現金保留</span><input type="number" value={inputs.calc_alloc_cash} onChange={e => handleInputChange('calc_alloc_cash', e.target.value)} className="w-8 border-b border-slate-300 text-center outline-none bg-transparent font-bold" />%</div>
+                                                                <div className="text-right"><div className="font-mono font-black">${(parseFloat(simulatedTotal) * (getNum(inputs.calc_alloc_cash)/100)).toLocaleString(undefined,{maximumFractionDigits:0})}</div></div>
+                                                            </div>
+                                                            <div className="text-center pt-1 text-[10px] text-slate-400">總分配比例: {getNum(inputs.calc_alloc_qqq) + getNum(inputs.calc_alloc_tqqq) + getNum(inputs.calc_alloc_c1) + getNum(inputs.calc_alloc_c2) + getNum(inputs.calc_alloc_cash)}%</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            <div className="space-y-1"><label className="text-[10px] text-indigo-500 uppercase block font-bold">USD/TWD 匯率</label><input type="number" value={inputs.exchange_rate} onChange={e => handleInputChange('exchange_rate', e.target.value)} onBlur={e => syncToCloud('exchange_rate', e.target.value)} className="w-full bg-indigo-50 dark:bg-slate-800 border-2 border-indigo-100 dark:border-indigo-900/50 rounded-xl p-3 font-black text-center text-lg" /></div>
+                                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                                <div className="space-y-1"><label className="text-[10px] text-red-500 uppercase block font-bold text-center">衛星持倉上限 (%)</label><input type="number" value={inputs.rebalance_sat_cap} onChange={e => handleInputChange('rebalance_sat_cap', e.target.value)} onBlur={e => syncToCloud('rebalance_sat_cap', e.target.value)} className="w-full bg-red-50 dark:bg-slate-800 border border-red-100 dark:border-red-900/50 rounded-xl p-2 font-black text-center" /></div>
+                                                <div className="space-y-1"><label className="text-[10px] text-purple-500 uppercase block font-bold text-center">核心 TQQQ 目標 (%)</label><input type="number" value={inputs.rebalance_core_target} onChange={e => handleInputChange('rebalance_core_target', e.target.value)} onBlur={e => syncToCloud('rebalance_core_target', e.target.value)} className="w-full bg-purple-50 dark:bg-slate-800 border border-purple-100 dark:border-purple-900/50 rounded-xl p-2 font-black text-center" /></div>
+                                            </div>
+                                            <div className="space-y-1"><label className="text-[10px] text-slate-500 uppercase block font-bold text-center">核心寬容度 Tolerance (±%)</label><input type="number" value={inputs.rebalance_core_tolerance} onChange={e => handleInputChange('rebalance_core_tolerance', e.target.value)} onBlur={e => syncToCloud('rebalance_core_tolerance', e.target.value)} className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2 font-black text-center" /></div>
+                                            
+                                            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                                <label className="text-xs font-black text-indigo-500 uppercase tracking-widest block mb-1">衛星目標權重設定 (%)</label>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <div><label className="text-[9px] text-emerald-500 block text-center mb-0.5 truncate">{inputs.custom_ticker_1 || '自選1'}</label><input type="number" value={inputs.target_sat_1} onChange={e => handleInputChange('target_sat_1', e.target.value)} onBlur={e => syncToCloud('target_sat_1', e.target.value)} className="w-full bg-emerald-50 dark:bg-slate-800 border border-emerald-100 dark:border-emerald-900/50 rounded-xl p-2 font-black text-center" /></div>
+                                                    <div><label className="text-[9px] text-amber-500 block text-center mb-0.5 truncate">{inputs.custom_ticker_2 || '自選2'}</label><input type="number" value={inputs.target_sat_2} onChange={e => handleInputChange('target_sat_2', e.target.value)} onBlur={e => syncToCloud('target_sat_2', e.target.value)} className="w-full bg-amber-50 dark:bg-slate-800 border border-amber-100 dark:border-amber-900/50 rounded-xl p-2 font-black text-center" /></div>
+                                                    <div><label className="text-[9px] text-orange-500 block text-center mb-0.5">IBIT</label><input type="number" value={inputs.target_sat_ibit} onChange={e => handleInputChange('target_sat_ibit', e.target.value)} onBlur={e => syncToCloud('target_sat_ibit', e.target.value)} className="w-full bg-orange-50 dark:bg-slate-800 border border-orange-100 dark:border-orange-900/50 rounded-xl p-2 font-black text-center" /></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* 3. Strategy Whitepaper */}
+                                <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                                    <button onClick={() => toggleSection('strategy')} className="w-full p-5 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+                                        <div className="flex items-center gap-3 font-black text-slate-700 dark:text-slate-200"><div className="p-2 bg-white dark:bg-slate-700 rounded-xl shadow-sm text-amber-500"><Icon name="BookOpen" size={20} /></div><span>策略執行手冊 (NRA V7)</span></div>
+                                        <Icon name={openSections.strategy ? "ChevronUp" : "ChevronDown"} size={20} className="text-slate-400" />
+                                    </button>
+                                    {openSections.strategy && (
+                                        <div className="p-5 pt-0 animate-in fade-in slide-in-from-top-2">
+                                            <div className="flex justify-end mb-2 pt-2"><button onClick={() => setIsStrategyEditing(!isStrategyEditing)} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${isStrategyEditing ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'}`}><Icon name={isStrategyEditing ? "Unlock" : "Lock"} size={12} /><span>{isStrategyEditing ? "編輯中" : "唯讀模式"}</span></button></div>
+                                            <div className="space-y-4">
+                                                <div className="space-y-1"><input type="text" value={inputs.title_core} readOnly={!isStrategyEditing} onChange={e => handleInputChange('title_core', e.target.value)} onBlur={e => syncToCloud('title_core', e.target.value)} className="title-input text-indigo-600 text-sm" /><textarea value={inputs.strat_core} readOnly={!isStrategyEditing} onChange={e => handleInputChange('strat_core', e.target.value)} onBlur={e => syncToCloud('strat_core', e.target.value)} className={`w-full strategy-textarea ${!isStrategyEditing ? 'strategy-read-only' : ''}`} /></div>
+                                                <div className="space-y-1"><input type="text" value={inputs.title_custom} readOnly={!isStrategyEditing} onChange={e => handleInputChange('title_custom', e.target.value)} onBlur={e => syncToCloud('title_custom', e.target.value)} className="title-input text-emerald-600 text-sm" /><textarea value={inputs.strat_custom} readOnly={!isStrategyEditing} onChange={e => handleInputChange('strat_custom', e.target.value)} onBlur={e => syncToCloud('strat_custom', e.target.value)} className={`w-full strategy-textarea ${!isStrategyEditing ? 'strategy-read-only' : ''}`} /></div>
+                                                <div className="space-y-1"><input type="text" value={inputs.title_ibit} readOnly={!isStrategyEditing} onChange={e => handleInputChange('title_ibit', e.target.value)} onBlur={e => syncToCloud('title_ibit', e.target.value)} className="title-input text-amber-600 text-sm" /><textarea value={inputs.strat_ibit} readOnly={!isStrategyEditing} onChange={e => handleInputChange('strat_ibit', e.target.value)} onBlur={e => syncToCloud('strat_ibit', e.target.value)} className={`w-full strategy-textarea ${!isStrategyEditing ? 'strategy-read-only' : ''}`} /></div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
