@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Alpha Horizon Dashboard v7.8</title>
+    <title>Alpha Horizon Dashboard v7.9</title>
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
@@ -57,7 +57,7 @@
         
         // --- COMPONENTS ---
         const Icon = ({ name, size = 20, className = "" }) => {
-            const icons = { TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>, Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>, RefreshCcw: <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 4a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16m-18-8h5V3m13 18h-5v5"/>, LayoutDashboard: <><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></>, History: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 0V3m0 5h5M12 7v5l4 2"/>, Landmark: <><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 11 4 11 12 2"/></>, Save: <><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></>, Quote: <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5zM16 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-2c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5z"/>, ShieldAlert: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></>, CheckCircle: <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>, Edit2: <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>, Trash2: <><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></>, X: <><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></>, BookOpen: <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>, PieChartIcon: <><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></>, MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>, Fingerprint: <><path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10"/><path d="M12 12v3"/><path d="M16 17.5c-2.5 1.5-5.5 1.5-8 0"/></>, Calculator: <g><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></g>, AlertCircle: <g><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></g>, Sun: <circle cx="12" cy="12" r="5" />, Moon: <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>, Scale: <g><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></g>, ArrowLeftRight: <path d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"/>, Calendar: <><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" /></>, Lock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></g>, Unlock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" /></g>, Repeat: <path d="m17 2 4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3"/>, ChevronDown: <path d="m6 9 6 6 6-6"/>, ChevronUp: <path d="m18 15-6-6-6 6"/>, Shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>, Download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>, Upload: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></>, Activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2"/> };
+            const icons = { TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>, Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 1 2-2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>, RefreshCcw: <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 4a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16m-18-8h5V3m13 18h-5v5"/>, LayoutDashboard: <><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></>, History: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 0V3m0 5h5M12 7v5l4 2"/>, Landmark: <><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 11 4 11 12 2"/></>, Save: <><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></>, Quote: <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5zM16 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-2c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5z"/>, ShieldAlert: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></>, CheckCircle: <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>, Edit2: <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>, Trash2: <><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></>, X: <><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></>, BookOpen: <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>, PieChartIcon: <><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></>, MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>, Fingerprint: <><path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10"/><path d="M12 12v3"/><path d="M16 17.5c-2.5 1.5-5.5 1.5-8 0"/></>, Calculator: <g><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></g>, AlertCircle: <g><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></g>, Sun: <circle cx="12" cy="12" r="5" />, Moon: <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>, Scale: <g><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></g>, ArrowLeftRight: <path d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"/>, Calendar: <><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" /></>, Lock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></g>, Unlock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" /></g>, Repeat: <path d="m17 2 4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3"/>, ChevronDown: <path d="m6 9 6 6 6-6"/>, ChevronUp: <path d="m18 15-6-6-6 6"/>, Shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>, Download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>, Upload: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></>, Activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2"/> };
             return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name] || <circle cx="12" cy="12" r="10" />}</svg>;
         };
 
@@ -201,7 +201,7 @@
             }, [inputs.ticker_core_1, inputs.custom_ticker_1, inputs.custom_ticker_2, loadingPrices]);
 
             // Complex Calculations (Refactored)
-            const { totalCapital, performanceStats, rebalanceStatus, scenarioData, bearDefense, qqqDistance, currentLeverage, pieData } = useMemo(() => {
+            const { totalCapital, performanceStats, rebalanceStatus, scenarioData, bearDefense, qqqDistance, currentLeverage, pieData, calcResults } = useMemo(() => {
                 const getP = (t) => prices[(t || "").toUpperCase()] || 0;
                 const getV = (k) => getNum(inputs[k]);
                 
@@ -261,14 +261,9 @@
                 const bearData = { isActive: isBear, totalDefensive: getV('cash_balance') + (getP('SGOV') * getV('qty_sgov')), monthlyBuy: (getV('cash_balance') + (getP('SGOV') * getV('qty_sgov'))) / 12 };
 
                 // Simulator - STRICTLY QQQ BENCHMARK
-                // Scenario: QQQ Drops to 200 SMA (which is riskOff approx trigger or just sma200)
-                // Let's use SMA200 flat as the "bad scenario" baseline or riskOff. 
-                // User asked "Drops to 200 SMA".
                 const bearDrop = (benchmarkPrice > 0) ? (sma200 - benchmarkPrice) / benchmarkPrice : 0;
-                
-                // Estimate Holdings Value if QQQ drops by bearDrop %
                 const estBearCore = isBear ? 0 : (valQQQ*(1+bearDrop)) + (valTQQQ*(1+(bearDrop*3)));
-                const satVal = valSat1 + valSat2 + valIbit; // Satellites assume 1x beta for simplicity or just drop same as QQQ
+                const satVal = valSat1 + valSat2 + valIbit; 
                 const estBearSat = satVal * (1+bearDrop);
                 const estTotalBear = estBearCore + estBearSat + getV('cash_balance') + (getP('SGOV') * getV('qty_sgov'));
 
@@ -282,6 +277,40 @@
                 })).concat({name:'現金', value: getV('cash_balance'), color:'#94a3b8'}).filter(x=>x.value>0);
                 const pieSum = pie.reduce((a,b)=>a+b.value, 0);
 
+                // Smart Injection Calc
+                let calcRes = [];
+                if (simulatedTotal) {
+                    const injection = parseFloat(simulatedTotal);
+                    const newTotal = total + injection;
+                    
+                    // Targets
+                    const tSat1 = getV('target_sat_1')/100;
+                    const tSat2 = getV('target_sat_2')/100;
+                    const tIbit = getV('target_sat_ibit')/100;
+                    
+                    const targetSat1Val = newTotal * tSat1;
+                    const targetSat2Val = newTotal * tSat2;
+                    const targetIbitVal = newTotal * tIbit;
+                    
+                    const remForCore = newTotal - targetSat1Val - targetSat2Val - targetIbitVal;
+                    const targetTQQQVal = remForCore * (coreTarget/100);
+                    const targetQQQVal = remForCore * (1 - coreTarget/100);
+
+                    const calcDiff = (target, current, ticker) => {
+                        const diff = target - current;
+                        const price = getP(ticker);
+                        return { ticker, diff, qty: price > 0 ? diff / price : 0 };
+                    };
+
+                    calcRes = [
+                        calcDiff(targetTQQQVal, valTQQQ, 'TQQQ'),
+                        calcDiff(targetQQQVal, valQQQ, tCore),
+                        calcDiff(targetSat1Val, valSat1, inputs.custom_ticker_1),
+                        calcDiff(targetSat2Val, valSat2, inputs.custom_ticker_2),
+                        calcDiff(targetIbitVal, valIbit, 'IBIT')
+                    ];
+                }
+
                 return {
                     totalCapital: total,
                     performanceStats: { ytd, mtd, total: tot },
@@ -292,15 +321,16 @@
                         tSat1: getV('target_sat_1'), tSat2: getV('target_sat_2'), tSatIbit: getV('target_sat_ibit'), 
                         t1: inputs.custom_ticker_1, t2: inputs.custom_ticker_2,
                         stat1, stat2, statIbit,
-                        valSat1, valSat2, valIbit // Passed for display
+                        valSat1, valSat2, valIbit
                     },
                     bearDefense: bearData,
                     scenarioData: { bear: { triggerPrice: sma200, dropPct: bearDrop*100, estTotal: estTotalBear, maxLoss: estTotalBear - total } },
                     qqqDistance: (sma200>0 && benchmarkPrice>0) ? ((benchmarkPrice - sma200)/sma200)*100 : null,
                     currentLeverage: (total>0 ? exposure/total : 0).toFixed(2),
-                    pieData: pie.map(p => ({...p, percentage: ((p.value/pieSum)*100).toFixed(1)}))
+                    pieData: pie.map(p => ({...p, percentage: ((p.value/pieSum)*100).toFixed(1)})),
+                    calcResults: calcRes
                 };
-            }, [prices, inputs, records]);
+            }, [prices, inputs, records, simulatedTotal]);
 
             // History Grouping Logic
             const historyGroups = useMemo(() => {
@@ -343,12 +373,9 @@
                 const { valCore, valSat1, valSat2, valIbit, tqqqRatio, c1W, c2W, ibitW, coreTarget, isCoreImbalanced, tSat1, tSat2, tSatIbit, stat1, stat2, statIbit, t1, t2 } = rebalanceStatus;
                 const getP = (t) => prices[(t || "").toUpperCase()] || 0;
                 
-                // Helper to prevent Infinity
                 const getQty = (val, price) => (price > 0 ? Math.abs(val / price) : 0);
 
-                // Core Rebalance Action
                 if (isCoreImbalanced) {
-                    // Logic: Calculate how much TQQQ to buy/sell to reach target % within current core value
                     const targetTQQQVal = valCore * (coreTarget / 100);
                     const diffVal = targetTQQQVal - rebalanceStatus.valTQQQ;
                     const action = diffVal > 0 ? '買入' : '賣出';
@@ -356,11 +383,8 @@
                     a.push({ type: 'warning', title: '【TQQQ】 核心再平衡', msg: `目前 ${tqqqRatio.toFixed(1)}% (建議${action} ${qty.toFixed(0)} 股 / $${Math.abs(diffVal).toFixed(0)})`});
                 }
 
-                // Satellite Actions
                 const checkSatAction = (stat, name, currentW, targetW, currentVal, ticker) => {
                     if (stat !== 'ok') {
-                        // Logic: Calculate how much to buy/sell to return to EXACT target %
-                        // Target Value = Total Capital * (Target % / 100)
                         const targetVal = totalCapital * (targetW / 100);
                         const diffVal = targetVal - currentVal;
                         const action = diffVal > 0 ? '買入' : '賣出';
@@ -649,7 +673,22 @@
                                         </div>
 
                                         <div className="flex gap-3"><button onClick={()=>setDarkMode(!darkMode)} className="flex-1 p-3 bg-slate-100 rounded-xl flex justify-center gap-2"><Icon name={darkMode?"Sun":"Moon"}/> {darkMode?"亮色":"深色"}</button><button onClick={()=>setIsCalcOpen(!isCalcOpen)} className="flex-1 p-3 bg-slate-100 rounded-xl flex justify-center gap-2"><Icon name="Calculator"/> 計算機</button></div>
-                                        {isCalcOpen && <div className="bg-indigo-50 p-4 rounded-xl space-y-2"><input type="number" placeholder="投入金額" value={simulatedTotal} onChange={e=>setSimulatedTotal(e.target.value)} className="bg-white p-2 rounded-lg text-lg w-full" />{simulatedTotal>0 && <div className="text-xs space-y-1">{HOLDINGS_CONFIG.filter(c=>c.id!=='sgov').map(c=><div key={c.id} className="flex justify-between"><span>{c.type==='fixed'?c.ticker:inputs[c.tickerKey]}</span><span>${(parseFloat(simulatedTotal)*(inputs[`calc_alloc_${c.id==='core'?'qqq':c.id}`]/100)).toFixed(0)}</span></div>)}</div>}</div>}
+                                        {isCalcOpen && <div className="bg-indigo-50 dark:bg-slate-800 p-4 rounded-xl space-y-3">
+                                            <div className="text-xs font-black text-indigo-500 uppercase tracking-widest mb-1">入金再平衡計算</div>
+                                            <input type="number" placeholder="輸入預計入金金額 (USD)" value={simulatedTotal} onChange={e=>setSimulatedTotal(e.target.value)} className="bg-white dark:bg-slate-700 p-3 rounded-xl text-lg font-black w-full text-center shadow-inner" />
+                                            {simulatedTotal > 0 && <div className="space-y-2 pt-2">
+                                                <div className="text-[10px] text-center opacity-60 mb-2">建議交易指令 (負數代表需賣出/減碼)</div>
+                                                {calcResults.map((res, idx) => (
+                                                    <div key={idx} className="flex justify-between items-center p-2 bg-white dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-700">
+                                                        <span className="font-bold text-xs text-slate-600 dark:text-slate-300">{res.ticker}</span>
+                                                        <div className="text-right">
+                                                            <div className={`font-black font-mono text-sm ${res.diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>{res.diff > 0 ? '+' : ''}{res.qty.toFixed(0)} 股</div>
+                                                            <div className="text-[9px] opacity-50">約 ${res.diff.toLocaleString(undefined,{maximumFractionDigits:0})}</div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>}
+                                        </div>}
                                         <div className="space-y-1"><label className="text-[10px]">匯率</label><input value={inputs.exchange_rate} onChange={e=>handleInputChange('exchange_rate',e.target.value)} className="bg-slate-100 p-2 rounded-xl" /></div>
                                     </div>}
                                 </div>
