@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Alpha Horizon">
-    <title>Alpha Horizon Dashboard v6.4</title>
+    <title>Alpha Horizon Dashboard v6.5</title>
     
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
 
@@ -62,7 +62,7 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback, useRef } = React;
-        const { ComposedChart, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Line, ReferenceLine, Label } = Recharts;
+        const { ComposedChart, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Line, ReferenceLine } = Recharts;
 
         const appId = "qqq-strategic-production-v1"; 
         const FINNHUB_API_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
@@ -683,6 +683,7 @@
                 const baseEquity = baseRecord.total_equity || 1;
                 const getHistPrice = (rec, ticker) => rec.prices?.[ticker] || rec.prices?.[ticker.toUpperCase()] || 0;
                 
+                // Smart Benchmark: Try QQQ > QQQM > Core
                 const baseQQQ = getHistPrice(baseRecord, 'QQQ') || getHistPrice(baseRecord, 'QQQM') || getHistPrice(baseRecord, inputs.ticker_core_1) || 1;
                 
                 let runningMaxEquity = 0;
@@ -1175,15 +1176,7 @@
                                     )}
                                 </Card>
 
-                                <Card className="p-4 space-y-2 border-dashed border-2 border-slate-300 text-left font-black">
-                                    <div className="flex justify-between items-center">
-                                        <SectionTitle title="決策紀錄備註" iconName="MessageSquare" />
-                                        <button onClick={() => toggleDashboardSection('memo')}><Icon name={dashboardSections.memo ? "ChevronUp" : "ChevronDown"} size={16} className="text-slate-400" /></button>
-                                    </div>
-                                    {dashboardSections.memo && (
-                                        <textarea rows="3" placeholder="在此輸入本次決策心得..." value={inputs.record_memo} onChange={e => setInputs(p => ({ ...p, record_memo: e.target.value }))} className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 text-[14px] font-medium resize-none text-left w-full animate-in fade-in slide-in-from-top-2" />
-                                    )}
-                                </Card>
+                                <Card className="p-4 space-y-2 border-dashed border-2 border-slate-300 text-left font-black"><SectionTitle title="決策紀錄備註" iconName="MessageSquare" /><textarea rows="3" placeholder="在此輸入本次決策心得..." value={inputs.record_memo} onChange={e => setInputs(p => ({ ...p, record_memo: e.target.value }))} className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 text-[14px] font-medium resize-none text-left" /></Card>
 
                                 <button onClick={save} disabled={isSaving} className={`w-full ${isSaving ? 'bg-slate-400' : 'bg-slate-900 dark:bg-indigo-600'} text-white py-6 rounded-[2rem] font-black text-xl shadow-2xl active:scale-95 mb-12 flex items-center justify-center gap-3 font-black font-black`}><Icon name={isSaving ? "RefreshCcw" : "Save"} size={24} className={isSaving ? "animate-spin" : ""} /> {isSaving ? "正在同步..." : "儲存目前紀錄"}</button>
                             </div>
