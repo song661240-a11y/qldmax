@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Alpha Horizon Dashboard v7.6</title>
+    <title>Alpha Horizon Dashboard v7.8</title>
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
@@ -148,6 +148,7 @@
             const [chartMode, setChartMode] = useState('NAV_DD');
             const [filterMode, setFilterMode] = useState('all');
             const [visibleCount, setVisibleCount] = useState(20);
+            const [expandedYears, setExpandedYears] = useState({}); // New State for History Accordion
             const [darkMode, setDarkMode] = useState(() => localStorage.getItem('qqq_theme') === 'dark');
             const [customSyncId, setCustomSyncId] = useState(() => localStorage.getItem('qqq_sync_id') || '');
             const [tempSyncId, setTempSyncId] = useState(customSyncId);
@@ -178,6 +179,7 @@
             const effectiveUserId = customSyncId || (user ? user.uid : null);
             const handleInputChange = (f, v) => setInputs(p => ({ ...p, [f]: v === '' ? '' : (isNaN(v) ? v : parseFloat(v)) }));
             const syncToCloud = async (f, v) => { if (effectiveUserId) await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ [f]: v }, { merge: true }); };
+            const toggleYear = (y) => setExpandedYears(prev => ({...prev, [y]: !prev[y]}));
 
             const fetchPrices = useCallback(async (force = false) => {
                 if (loadingPrices) return;
@@ -289,7 +291,8 @@
                         coreTarget, c1W: c1W.toFixed(1), c2W: c2W.toFixed(1), ibitW: ibitW.toFixed(1), 
                         tSat1: getV('target_sat_1'), tSat2: getV('target_sat_2'), tSatIbit: getV('target_sat_ibit'), 
                         t1: inputs.custom_ticker_1, t2: inputs.custom_ticker_2,
-                        stat1, stat2, statIbit
+                        stat1, stat2, statIbit,
+                        valSat1, valSat2, valIbit // Passed for display
                     },
                     bearDefense: bearData,
                     scenarioData: { bear: { triggerPrice: sma200, dropPct: bearDrop*100, estTotal: estTotalBear, maxLoss: estTotalBear - total } },
@@ -298,6 +301,42 @@
                     pieData: pie.map(p => ({...p, percentage: ((p.value/pieSum)*100).toFixed(1)}))
                 };
             }, [prices, inputs, records]);
+
+            // History Grouping Logic
+            const historyGroups = useMemo(() => {
+                if (!records || records.length === 0) return [];
+                const sorted = [...records].sort((a, b) => new Date(a.date) - new Date(b.date));
+                const groups = {};
+
+                sorted.forEach(rec => {
+                    const d = new Date(rec.date);
+                    const y = d.getFullYear();
+                    const m = d.getMonth() + 1;
+                    
+                    if (!groups[y]) groups[y] = { records: [], months: {} };
+                    groups[y].records.push(rec);
+                    
+                    if (!groups[y].months[m]) groups[y].months[m] = [];
+                    groups[y].months[m].push(rec);
+                });
+
+                return Object.keys(groups).sort((a,b) => b-a).map(year => { 
+                    const yData = groups[year];
+                    const yStart = yData.records[0].total_equity;
+                    const yEnd = yData.records[yData.records.length - 1].total_equity;
+                    const yRet = yStart > 0 ? ((yEnd - yStart) / yStart) * 100 : 0;
+                    
+                    const months = Object.keys(yData.months).sort((a,b) => b-a).map(month => {
+                        const mRecs = yData.months[month];
+                        const mStart = mRecs[0].total_equity;
+                        const mEnd = mRecs[mRecs.length - 1].total_equity;
+                        const mRet = mStart > 0 ? ((mEnd - mStart) / mStart) * 100 : 0;
+                        return { month, return: mRet };
+                    });
+
+                    return { year, return: yRet, months };
+                });
+            }, [records]);
 
             const alerts = useMemo(() => {
                 const a = [];
@@ -314,7 +353,7 @@
                     const diffVal = targetTQQQVal - rebalanceStatus.valTQQQ;
                     const action = diffVal > 0 ? '買入' : '賣出';
                     const qty = getQty(diffVal, getP('TQQQ'));
-                    a.push({ type: 'warning', title: '核心再平衡', msg: `TQQQ ${tqqqRatio.toFixed(1)}% 偏離目標 (建議${action} ${qty.toFixed(0)} 股 / $${Math.abs(diffVal).toFixed(0)})`});
+                    a.push({ type: 'warning', title: '【TQQQ】 核心再平衡', msg: `目前 ${tqqqRatio.toFixed(1)}% (建議${action} ${qty.toFixed(0)} 股 / $${Math.abs(diffVal).toFixed(0)})`});
                 }
 
                 // Satellite Actions
@@ -327,7 +366,7 @@
                         const action = diffVal > 0 ? '買入' : '賣出';
                         const qty = getQty(diffVal, getP(ticker));
                         const reason = stat === 'high' ? '高於上限' : '低於下限';
-                        a.push({ type: stat==='high'?'opportunity':'warning', title: `${name} ${reason}`, msg: `目前 ${currentW.toFixed(1)}% (建議${action} ${qty.toFixed(0)} 股 / $${Math.abs(diffVal).toFixed(0)})`});
+                        a.push({ type: stat==='high'?'opportunity':'warning', title: `【${name}】 ${reason}`, msg: `目前 ${currentW.toFixed(1)}% (建議${action} ${qty.toFixed(0)} 股 / $${Math.abs(diffVal).toFixed(0)})`});
                     }
                 };
 
@@ -335,7 +374,7 @@
                 checkSatAction(stat2, t2||'自選2', parseFloat(c2W), tSat2, valSat2, t2);
                 checkSatAction(statIbit, 'IBIT', parseFloat(ibitW), tSatIbit, valIbit, 'IBIT');
 
-                if (bearDefense.isActive) a.push({ type: 'danger', title: '熊市防禦', msg: 'QQQ < 200 SMA (-3%)，請轉入防禦資產'});
+                if (bearDefense.isActive) a.push({ type: 'danger', title: '【QQQ】 熊市防禦', msg: 'QQQ < 200 SMA (-3%)，請轉入防禦資產'});
                 return a;
             }, [rebalanceStatus, bearDefense, totalCapital, prices]);
 
@@ -395,7 +434,7 @@
                                         <div className="flex gap-2 opacity-80"><Icon name={isAlertsView ? "ShieldAlert" : "Quote"} size={16} /><span className="text-[10px] tracking-widest font-bold">{isAlertsView ? "策略警示" : "投資座右銘"}</span></div>
                                         <div className="flex gap-2">{!isAlertsView && <button onClick={() => setIsMottoLocked(!isMottoLocked)} className="p-1.5 bg-white/20 rounded-full"><Icon name={isMottoLocked?"Lock":"Unlock"} size={14}/></button>}<button onClick={() => setIsAlertsView(!isAlertsView)} className={`p-1.5 bg-white/20 rounded-full ${alerts.length>0?'bg-red-500/80':''}`}><Icon name="AlertCircle" size={18}/></button></div>
                                     </div>
-                                    {isAlertsView ? (alerts.length ? alerts.map((a,i)=><div key={i} className="bg-white/10 p-2 rounded-lg mb-2 text-xs">{a.type==='danger'?'🔴':'🔵'} {a.msg}</div>) : <div className="text-center opacity-70 text-xs py-4">無警示</div>) : <textarea value={inputs.motto} readOnly={isMottoLocked} onChange={e=>handleInputChange('motto',e.target.value)} onBlur={e=>syncToCloud('motto',e.target.value)} className={`w-full bg-transparent text-lg font-black text-center outline-none resize-none ${isMottoLocked?'':'bg-white/10 rounded-xl'}`} rows="5" placeholder="輸入心法..." />}
+                                    {isAlertsView ? (alerts.length ? alerts.map((a,i)=><div key={i} className="bg-white/10 p-2 rounded-lg mb-2 text-xs font-bold">{a.type==='danger'?'🔴':'🔵'} {a.title}<div className="font-medium opacity-80 mt-1">{a.msg}</div></div>) : <div className="text-center opacity-70 text-xs py-4">無警示</div>) : <textarea value={inputs.motto} readOnly={isMottoLocked} onChange={e=>handleInputChange('motto',e.target.value)} onBlur={e=>syncToCloud('motto',e.target.value)} className={`w-full bg-transparent text-lg font-black text-center outline-none resize-none ${isMottoLocked?'':'bg-white/10 rounded-xl'}`} rows="5" placeholder="輸入心法..." />}
                                 </Card>
                                 {bearDefense.isActive && <div className="bg-red-500 text-white rounded-[2rem] p-5 shadow-xl border-4 border-red-400 text-center relative overflow-hidden"><div className="absolute top-0 right-0 p-4 opacity-20"><Icon name="Shield" size={80} /></div><div className="inline-flex items-center gap-2 mb-2 bg-red-700/50 px-4 py-1 rounded-full text-xs font-black">進入熊市防禦</div><div className="text-3xl font-black">${bearDefense.monthlyBuy.toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="text-xs opacity-90 mb-4">本月定投額 (1/12)</div></div>}
 
@@ -422,7 +461,9 @@
                                             const val = k==='ibitW' ? rebalanceStatus.valIbit : rebalanceStatus[k==='c1W'?'valSat1':'valSat2'];
                                             const status = k==='ibitW' ? rebalanceStatus.statIbit : rebalanceStatus[k==='c1W'?'stat1':'stat2'];
                                             const colorClass = status === 'high' ? 'bg-red-500' : (status === 'low' ? 'bg-indigo-400' : 'bg-emerald-500');
-                                            
+                                            const maxScale = target * 2 || 20; // 50% is target
+                                            const widthPct = Math.min((rebalanceStatus[k] / maxScale) * 100, 100);
+
                                             return (
                                                 <div key={k} className="space-y-1">
                                                     <div className="flex justify-between text-xs font-bold">
@@ -430,9 +471,10 @@
                                                         <span className={status!=='ok'?'text-red-500':'text-emerald-500'}>{rebalanceStatus[k]}%</span>
                                                     </div>
                                                     <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden relative">
-                                                        <div className={`h-full transition-all duration-500 ${colorClass}`} style={{width:`${Math.min(rebalanceStatus[k]*2,100)}%`}}></div>
+                                                        <div className="absolute top-0 bottom-0 w-0.5 bg-slate-400/50 z-10" style={{left: '50%'}}></div>
+                                                        <div className={`h-full transition-all duration-500 ${colorClass}`} style={{width:`${widthPct}%`}}></div>
                                                     </div>
-                                                    <div className="text-right text-[10px] text-slate-400 font-mono">(${val.toLocaleString(undefined,{maximumFractionDigits:0})})</div>
+                                                    <div className="text-center text-[10px] text-slate-400 font-mono mt-0.5">(${val.toLocaleString(undefined,{maximumFractionDigits:0})})</div>
                                                 </div>
                                             ); 
                                         })}
@@ -505,10 +547,42 @@
                                         <ComposedChart data={graphData} margin={{top:10,right:0,left:0,bottom:0}}><XAxis dataKey="date" tickFormatter={v=>new Date(v).toLocaleDateString(undefined,{month:'numeric',day:'numeric'})} tick={{fontSize:10}}/><YAxis tickFormatter={v=>`${v.toFixed(0)}%`} tick={{fontSize:10}}/><Tooltip contentStyle={{borderRadius:'12px'}}/><Line type="monotone" dataKey="ret" stroke="#6366f1" strokeWidth={2} dot={false}/><Line type="monotone" dataKey="qRet" stroke="#10b981" strokeWidth={2} dot={false}/></ComposedChart>}
                                     </ResponsiveContainer>
                                 </Card>
-                                <div className="space-y-4">{graphData.slice().reverse().slice(0,visibleCount).map(r => { const rec = records.find(x=>x.date===r.date); return (
-                                    <Card key={r.date} className="border-none shadow-md p-5 flex justify-between items-center cursor-pointer" onClick={()=>{setEditingId(rec.id);setEditForm(JSON.parse(JSON.stringify(rec)));}}>
-                                        <div><div className="text-[10px] text-slate-400">{new Date(r.date).toLocaleDateString()}</div><div className="text-xl font-mono">${r.equity.toLocaleString()}</div></div>
-                                        <div className="flex gap-2"><button onClick={(e)=>{e.stopPropagation();setEditingId(rec.id);setEditForm(JSON.parse(JSON.stringify(rec)));}} className="p-2 bg-blue-50 text-blue-500 rounded-lg"><Icon name="Edit2" size={14}/></button><button onClick={(e)=>{e.stopPropagation();confirmDelete(rec.id)}} className="p-2 bg-red-50 text-red-500 rounded-lg"><Icon name="Trash2" size={14}/></button></div>
+                                
+                                {/* New Yearly/Monthly Performance Breakdown */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 text-xs font-black text-slate-500 mb-1 px-1 uppercase tracking-widest"><Icon name="Activity" size={14}/> 年度/月度 損益回顧</div>
+                                    {historyGroups.map(g => (
+                                        <div key={g.year} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+                                            <div onClick={() => toggleYear(g.year)} className="p-4 flex justify-between items-center cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                                <div className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2"><span className="bg-indigo-100 dark:bg-slate-700 text-indigo-600 dark:text-slate-300 px-2 py-0.5 rounded text-xs">{g.year}</span></div>
+                                                <div className={`font-mono font-black flex items-center gap-2 ${g.return >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                    {g.return > 0 ? '+' : ''}{g.return.toFixed(2)}%
+                                                    <Icon name={expandedYears[g.year] ? "ChevronUp" : "ChevronDown"} size={16} className="text-slate-400"/>
+                                                </div>
+                                            </div>
+                                            {expandedYears[g.year] && (
+                                                <div className="border-t border-slate-100 dark:border-slate-700/50">
+                                                    {g.months.map(m => (
+                                                        <div key={m.month} className="flex justify-between p-3 px-5 text-xs font-bold border-b border-slate-50 dark:border-slate-800/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                                                            <span className="text-slate-500">{m.month} 月</span>
+                                                            <span className={`font-mono ${m.return >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                                {m.return > 0 ? '+' : ''}{m.return.toFixed(2)}%
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                    {historyGroups.length === 0 && <div className="text-center text-xs text-slate-400 py-4">尚無歷史數據</div>}
+                                </div>
+
+                                <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                                    <div className="flex items-center gap-2 text-xs font-black text-slate-500 px-1 uppercase tracking-widest"><Icon name="History" size={14}/> 詳細紀錄列表</div>
+                                    {graphData.slice().reverse().slice(0,visibleCount).map(r => { const rec = records.find(x=>x.date===r.date); return (
+                                    <Card key={r.date} className="border-none shadow-md p-5 flex justify-between items-center cursor-pointer hover:scale-[1.01]" onClick={()=>{setEditingId(rec.id);setEditForm(JSON.parse(JSON.stringify(rec)));}}>
+                                        <div><div className="text-[10px] text-slate-400 font-bold">{new Date(r.date).toLocaleDateString()}</div><div className="text-xl font-mono">${r.equity.toLocaleString()}</div></div>
+                                        <div className="flex gap-2"><button onClick={(e)=>{e.stopPropagation();setEditingId(rec.id);setEditForm(JSON.parse(JSON.stringify(rec)));}} className="p-2 bg-blue-50 dark:bg-slate-800 text-blue-500 rounded-lg"><Icon name="Edit2" size={14}/></button><button onClick={(e)=>{e.stopPropagation();confirmDelete(rec.id)}} className="p-2 bg-red-50 dark:bg-slate-800 text-red-500 rounded-lg"><Icon name="Trash2" size={14}/></button></div>
                                     </Card>
                                 );})}</div>
                             </div>
