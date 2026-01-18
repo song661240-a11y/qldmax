@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Alpha Horizon Dashboard v7.9</title>
+    <title>Alpha Horizon Dashboard v8.7</title>
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
@@ -35,9 +35,8 @@
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback, useRef } = React;
-        const { ComposedChart, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Line, ReferenceLine } = Recharts;
+        const { ComposedChart, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Line } = Recharts;
 
-        // --- CONFIG & UTILS ---
         const APP_ID = "qqq-strategic-production-v1";
         const FINNHUB_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
         if (!firebase.apps.length) firebase.initializeApp({ apiKey: "AIzaSyBpax3wlTwHTe6G3niZajtTxpoUWbgvX80", authDomain: "qldmax.firebaseapp.com", projectId: "qldmax", storageBucket: "qldmax.firebasestorage.app", messagingSenderId: "752199866954", appId: "1:752199866954:web:50d17ae522095c363d64b3" });
@@ -55,9 +54,46 @@
         const getNum = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
         const getDiff = (curr, target) => { const c = parseFloat(curr), t = parseFloat(target); return (!c || !t) ? null : ((t - c) / c) * 100; };
         
-        // --- COMPONENTS ---
         const Icon = ({ name, size = 20, className = "" }) => {
-            const icons = { TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>, Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 1 2-2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>, RefreshCcw: <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 4a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16m-18-8h5V3m13 18h-5v5"/>, LayoutDashboard: <><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></>, History: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 0V3m0 5h5M12 7v5l4 2"/>, Landmark: <><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 11 4 11 12 2"/></>, Save: <><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></>, Quote: <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5zM16 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-2c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5z"/>, ShieldAlert: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></>, CheckCircle: <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>, Edit2: <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>, Trash2: <><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></>, X: <><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></>, BookOpen: <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>, PieChartIcon: <><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></>, MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>, Fingerprint: <><path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10"/><path d="M12 12v3"/><path d="M16 17.5c-2.5 1.5-5.5 1.5-8 0"/></>, Calculator: <g><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></g>, AlertCircle: <g><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></g>, Sun: <circle cx="12" cy="12" r="5" />, Moon: <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>, Scale: <g><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></g>, ArrowLeftRight: <path d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"/>, Calendar: <><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" /></>, Lock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></g>, Unlock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" /></g>, Repeat: <path d="m17 2 4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3"/>, ChevronDown: <path d="m6 9 6 6 6-6"/>, ChevronUp: <path d="m18 15-6-6-6 6"/>, Shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>, Download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>, Upload: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></>, Activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2"/> };
+            const icons = { 
+                TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>, 
+                Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 1 2-2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>, 
+                RefreshCcw: <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 4a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16m-18-8h5V3m13 18h-5v5"/>, 
+                LayoutDashboard: <g><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></g>, 
+                History: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 0V3m0 5h5M12 7v5l4 2"/>, 
+                Landmark: <g><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 11 4 11 12 2"/></g>, 
+                Save: <g><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></g>, 
+                Quote: <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5zM16 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-2c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5z"/>, 
+                ShieldAlert: <g><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></g>, 
+                CheckCircle: <g><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></g>, 
+                Edit2: <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>, 
+                Trash2: <g><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></g>, 
+                X: <g><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></g>, 
+                BookOpen: <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>, 
+                PieChartIcon: <g><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></g>, 
+                MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>, 
+                Fingerprint: <g><path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10"/><path d="M12 12v3"/><path d="M16 17.5c-2.5 1.5-5.5 1.5-8 0"/></g>, 
+                Calculator: <g><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></g>, 
+                AlertCircle: <g><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></g>, 
+                Sun: <circle cx="12" cy="12" r="5" />, 
+                Moon: <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>, 
+                Scale: <g><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></g>, 
+                ArrowLeftRight: <path d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"/>, 
+                Calendar: <g><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" /></g>, 
+                Lock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></g>, 
+                Unlock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" /></g>, 
+                Repeat: <path d="m17 2 4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3"/>, 
+                ChevronDown: <path d="m6 9 6 6 6-6"/>, 
+                ChevronUp: <path d="m18 15-6-6-6 6"/>, 
+                Shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>, 
+                Download: <g><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></g>, 
+                Upload: <g><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></g>, 
+                Activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>, 
+                Plus: <path d="M12 5v14M5 12h14"/>, 
+                Zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>, 
+                Coins: <g><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></g>,
+                List: <g><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></g>
+            };
             return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name] || <circle cx="12" cy="12" r="10" />}</svg>;
         };
 
@@ -99,37 +135,108 @@
 
         const EditModal = ({ editingId, editForm, setEditingId, setEditForm, saveEdit }) => {
             if (!editingId || !editForm) return null;
+            
+            // Helper for edit options list inside modal
+            const updateFormOption = (id, field, val) => {
+                 const newInv = editForm.inputs.options_inventory.map(o => o.id === id ? { ...o, [field]: val } : o);
+                 setEditForm(p => ({...p, inputs: {...p.inputs, options_inventory: newInv}}));
+            };
+            const removeFormOption = (id) => {
+                 const newInv = editForm.inputs.options_inventory.filter(o => o.id !== id);
+                 setEditForm(p => ({...p, inputs: {...p.inputs, options_inventory: newInv}}));
+            };
+            const addFormOption = () => {
+                 const newOpt = { id: Date.now(), type: 'SC', ticker: 'TQQQ', strike: '', expiry: '', contracts: 1, premium: 0, delta: '' };
+                 const newInv = [...(editForm.inputs.options_inventory || []), newOpt];
+                 setEditForm(p => ({...p, inputs: {...p.inputs, options_inventory: newInv}}));
+            };
+
             return (
                 <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center">
-                    <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl animate-in slide-in-from-bottom-full max-h-[85vh] overflow-y-auto">
+                    <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl animate-in slide-in-from-bottom-full max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6 border-b pb-4 dark:border-slate-800">
-                            <h3 className="text-xl font-black flex items-center gap-2"><Icon name="Edit2" size={20} className="text-indigo-500" /> 編輯紀錄</h3>
+                            <h3 className="text-xl font-black flex items-center gap-2"><Icon name="Edit2" size={20} className="text-indigo-500" /> 編輯歷史紀錄</h3>
                             <button onClick={() => setEditingId(null)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full"><Icon name="X" size={20} /></button>
                         </div>
-                        <div className="space-y-3">
-                            {HOLDINGS_CONFIG.map(c => {
-                                const t = c.type === 'fixed' ? c.ticker : (editForm.inputs[c.tickerKey] || c.defaultTicker);
-                                return (
-                                    <div key={c.id} className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
-                                        <div className="flex flex-col"><span className={`font-bold text-xs ${c.color}`}>{t}</span><span className="text-[10px] text-slate-400">當時: ${editForm.prices?.[t] || '-'}</span></div>
-                                        <input type="number" value={editForm.inputs[c.qtyKey]} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, [c.qtyKey]: e.target.value}}))} className="w-24 bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold" />
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <div className="text-xs font-black text-slate-400 uppercase tracking-widest">現貨部位</div>
+                                {HOLDINGS_CONFIG.map(c => {
+                                    const t = c.type === 'fixed' ? c.ticker : (editForm.inputs[c.tickerKey] || c.defaultTicker);
+                                    return (
+                                        <div key={c.id} className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 px-3 rounded-xl border border-slate-100 dark:border-slate-700">
+                                            <div className="flex flex-col"><span className={`font-bold text-xs ${c.color}`}>{t}</span><span className="text-[10px] text-slate-400">當時: ${editForm.prices?.[t] || '-'}</span></div>
+                                            <input type="number" value={editForm.inputs[c.qtyKey]} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, [c.qtyKey]: e.target.value}}))} className="w-24 bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold" />
+                                        </div>
+                                    );
+                                })}
+                                <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 px-3 rounded-xl"><span className="font-bold text-xs text-slate-500">現金 (USD)</span><input type="number" value={editForm.inputs.cash_balance} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, cash_balance: e.target.value}}))} className="w-28 bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold" /></div>
+                            </div>
+                            
+                            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                                <div className="text-xs font-black text-amber-500 uppercase tracking-widest flex justify-between items-center">
+                                    <span>權利金與選擇權</span>
+                                    <button onClick={addFormOption} className="text-[9px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded">+ 合約</button>
+                                </div>
+                                <div className="flex justify-between items-center bg-amber-50 dark:bg-slate-800/50 p-2 px-3 rounded-xl border border-amber-100 dark:border-amber-900/30">
+                                    <span className="font-bold text-xs text-amber-600">已實現權利金</span>
+                                    <input type="number" value={editForm.inputs.total_realized_premium || 0} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, total_realized_premium: parseFloat(e.target.value)}}))} className="w-28 bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold text-amber-500" />
+                                </div>
+                                
+                                {/* Historical Options List */}
+                                {(editForm.inputs.options_inventory || []).map((opt, idx) => (
+                                    <div key={idx} className="bg-slate-50 dark:bg-slate-800/30 p-2 rounded-lg text-xs grid grid-cols-12 gap-1 items-center border border-slate-200 dark:border-slate-700">
+                                        <div className="col-span-2"><input value={opt.ticker} onChange={e=>updateFormOption(opt.id,'ticker',e.target.value.toUpperCase())} className="w-full font-bold bg-transparent"/></div>
+                                        <div className="col-span-2"><select value={opt.type} onChange={e=>updateFormOption(opt.id,'type',e.target.value)} className="w-full bg-transparent"><option value="SC">SC</option><option value="SP">SP</option></select></div>
+                                        <div className="col-span-2"><input value={opt.strike} onChange={e=>updateFormOption(opt.id,'strike',e.target.value)} className="w-full text-center bg-transparent" placeholder="Strk"/></div>
+                                        <div className="col-span-2"><input type="number" value={opt.contracts} onChange={e=>updateFormOption(opt.id,'contracts',e.target.value)} className="w-full text-center bg-transparent" placeholder="#"/></div>
+                                        <div className="col-span-2"><input type="number" value={opt.premium} onChange={e=>updateFormOption(opt.id,'premium',e.target.value)} className="w-full text-center bg-transparent" placeholder="$"/></div>
+                                        <div className="col-span-2 text-right"><button onClick={()=>removeFormOption(opt.id)} className="text-red-400"><Icon name="X" size={12}/></button></div>
                                     </div>
-                                );
-                            })}
-                            <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-3 rounded-xl"><span className="font-bold text-xs text-slate-500">現金 (USD)</span><input type="number" value={editForm.inputs.cash_balance} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, cash_balance: e.target.value}}))} className="w-28 bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold" /></div>
-                            <textarea value={editForm.memo || ''} onChange={e => setEditForm(p => ({...p, memo: e.target.value}))} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 text-sm h-24" placeholder="備註..." />
-                            <button onClick={saveEdit} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black flex justify-center gap-2"><Icon name="Save" size={20} /> 更新</button>
+                                ))}
+                            </div>
+
+                            <textarea value={editForm.memo || ''} onChange={e => setEditForm(p => ({...p, memo: e.target.value}))} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 text-sm h-20" placeholder="備註..." />
+                            <button onClick={saveEdit} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black flex justify-center gap-2"><Icon name="Save" size={20} /> 保存修正</button>
                         </div>
                     </div>
                 </div>
             );
         };
 
+        const EditOptionHistoryModal = ({ trade, onClose, onSave, onDelete }) => {
+            const [localTrade, setLocalTrade] = useState({...trade});
+            return (
+                <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2rem] p-6 shadow-2xl">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-black flex gap-2"><Icon name="Edit2"/> 編輯交易</h3>
+                            <button onClick={onClose}><Icon name="X"/></button>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-2">
+                                <div><label className="text-xs text-slate-500 block">日期</label><input type="date" value={localTrade.date?.split('T')[0]} onChange={e=>setLocalTrade({...localTrade, date: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div>
+                                <div><label className="text-xs text-slate-500 block">標的</label><input value={localTrade.ticker} onChange={e=>setLocalTrade({...localTrade, ticker: e.target.value.toUpperCase()})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div><label className="text-xs text-slate-500 block">動作</label><select value={localTrade.type} onChange={e=>setLocalTrade({...localTrade, type: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"><option value="CLOSE">平倉</option><option value="ROLL">轉倉</option><option value="MANUAL">補登</option></select></div>
+                                <div><label className="text-xs text-slate-500 block">損益 ($)</label><input type="number" value={localTrade.pnl} onChange={e=>setLocalTrade({...localTrade, pnl: parseFloat(e.target.value)})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div>
+                            </div>
+                            <div className="flex gap-2 mt-4">
+                                <button onClick={()=>onDelete(localTrade.id)} className="p-3 bg-red-100 text-red-500 rounded-xl"><Icon name="Trash2"/></button>
+                                <button onClick={()=>onSave(localTrade)} className="flex-1 bg-indigo-600 text-white rounded-xl font-bold">儲存</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         // --- MAIN APP ---
         const App = () => {
-            // State
             const [user, setUser] = useState(null);
             const [view, setView] = useState('dashboard');
+            const [historyTab, setHistoryTab] = useState('nav'); // 'nav' or 'options'
             const [records, setRecords] = useState([]);
             const [prices, setPrices] = useState({});
             const [loadingPrices, setLoadingPrices] = useState(false);
@@ -137,8 +244,8 @@
             const [message, setMessage] = useState(null);
             const [editingId, setEditingId] = useState(null);
             const [editForm, setEditForm] = useState(null);
-            const [dashboardSections, setSections] = useState({ pie: true, simulator: true, rebalance: true, holdings: true, indicators: true, memo: true });
-            const [openSettings, setSettings] = useState({ account: true, system: false, strategy: false });
+            const [dashboardSections, setSections] = useState({ pie: true, simulator: true, rebalance: true, holdings: true, indicators: true, memo: true, options: true });
+            const [openSettings, setSettings] = useState({ account: true, system: false, strategy: false, rsi_matrix: false });
             const [isStrategyEditing, setIsStrategyEditing] = useState(false);
             const [simulatedTotal, setSimulatedTotal] = useState('');
             const [isCalcOpen, setIsCalcOpen] = useState(false);
@@ -148,38 +255,149 @@
             const [chartMode, setChartMode] = useState('NAV_DD');
             const [filterMode, setFilterMode] = useState('all');
             const [visibleCount, setVisibleCount] = useState(20);
-            const [expandedYears, setExpandedYears] = useState({}); // New State for History Accordion
+            const [expandedYears, setExpandedYears] = useState({});
             const [darkMode, setDarkMode] = useState(() => localStorage.getItem('qqq_theme') === 'dark');
             const [customSyncId, setCustomSyncId] = useState(() => localStorage.getItem('qqq_sync_id') || '');
             const [tempSyncId, setTempSyncId] = useState(customSyncId);
+            const [opAction, setOpAction] = useState(null); 
+            const [opInputs, setOpInputs] = useState({}); 
+            const [editingTrade, setEditingTrade] = useState(null); // For history options edit
             const fileInputRef = useRef(null);
 
             const [inputs, setInputs] = useState({
+                current_rsi: '',
+                total_realized_premium: 0,
+                option_history: [], // [{id, date, ticker, type, pnl}]
                 qqq_sma200: 0, qqq_sma20: 0, custom_1_sma40: 0, custom_2_sma20: 0, ibit_sma20: 0,
                 exchange_rate: 32.5, rebalance_sat_cap: 15, rebalance_core_target: 50, rebalance_core_tolerance: 15,
-                
-                // Detailed Sat Tolerance Settings
-                tol_up_sat_1: 20, tol_down_sat_1: 10,
-                tol_up_sat_2: 20, tol_down_sat_2: 10,
-                tol_up_ibit: 20, tol_down_ibit: 10,
-
+                tol_up_sat_1: 20, tol_down_sat_1: 10, tol_up_sat_2: 20, tol_down_sat_2: 10, tol_up_ibit: 20, tol_down_ibit: 10,
                 target_sat_1: 10, target_sat_2: 10, target_sat_ibit: 10,
                 calc_alloc_qqq: 40, calc_alloc_tqqq: 40, calc_alloc_c1: 10, calc_alloc_c2: 10, calc_alloc_cash: 0,
                 ticker_core_1: 'QQQ', qty_qqq: 0, qty_tqqq: 0, qty_ibit: 0, qty_sgov: 0, custom_ticker_1: 'TSLA', qty_custom_1: 0, custom_ticker_2: 'IBIT', qty_custom_2: 0,
                 cash_balance: 0, record_date: new Date().toISOString().split('T')[0],
                 loan_amount: 0, loan_rate: 2.0, loan_years: 7, loan_repay_target: 20, loan_entry_valuation: 0, loan_monthly_repay: 0, motto: '', record_memo: '',
                 target_qqq: '', target_tqqq: '', target_ibit: '', target_sgov: '', target_custom_1: '', target_custom_2: '',
-                title_core: "核心策略 (80%) - QQQ/TQQQ (NRA V7)", strat_core: "【核心部位執行規則】\n1. 趨勢濾網：QQQ 日線 200 SMA (緩衝區 +5% / -3%)。\n2. 進攻模式 (Risk-On)：QQQ > 200 SMA x 1.05 ➔ 持有 50% TQQQ + 50% QQQ。\n3. 防禦模式 (Risk-Off)：QQQ < 200 SMA x 0.97 ➔ 全數轉入 SGOV。\n4. 熊市 DCA：防禦期啟動 12 個月定投 QQQ (非槓桿)，進攻信號出現即停止。\n\n【再平衡】\nTQQQ 佔核心 > 65% 或 < 35% 強制校正回 50/50。", 
-                title_custom: "自選衛星 1 (10%) - TSLA (週線 40)", strat_custom: "【TSLA 執行規則】\n1. 監測指標：週線 40 SMA (緩衝區 +5% / -3%)。\n2. 止損/歸隊：價格跌破 -3% 離場，突破 +5% 買回。\n\n【母子連動 (防禦期)】\n若 QQQ < 200 SMA (日)：\n- 強制減碼至 30% 試探部位。\n- 若 QQQ < 20 SMA (日)，試探部位強制清倉。", 
-                title_ibit: "自選衛星 2 (10%) - IBIT (週線 20)", strat_ibit: "【IBIT 執行規則】\n1. 監測指標：週線 20 SMA (緩衝區 +5% / -3%)。\n2. 特例：若 IBIT/BTC 觸及 200 週 SMA，視為極限價值區，不執行止損。\n\n【母子連動 (防禦期)】\n若 QQQ < 200 SMA (日)：\n- 強制減碼至 30% 試探部位。\n- 若 QQQ < 20 SMA (日)，試探部位強制清倉."
+                title_core: "核心策略 (80%) - QQQ/TQQQ (NRA V8.2)", strat_core: "...", 
+                title_custom: "自選衛星 1 (10%) - TSLA (週線 40)", strat_custom: "...", 
+                title_ibit: "自選衛星 2 (10%) - IBIT (週線 20)", strat_ibit: "...",
+                options_matrix: [
+                    { min: 55, max: 70, cover: 0, delta: 'N/A' },
+                    { min: 70, max: 75, cover: 30, delta: '0.15' },
+                    { min: 75, max: 80, cover: 50, delta: '0.20' },
+                    { min: 80, max: 100, cover: 70, delta: '0.25' }
+                ],
+                options_inventory: [] 
             });
 
-            // Handlers
+            // Calculate total realized premium from history array
+            const totalRealizedPremium = useMemo(() => {
+                return (inputs.option_history || []).reduce((acc, curr) => acc + (parseFloat(curr.pnl) || 0), 0);
+            }, [inputs.option_history]);
+
             const showToast = (txt) => { setMessage(txt); setTimeout(() => setMessage(null), 3000); };
             const effectiveUserId = customSyncId || (user ? user.uid : null);
             const handleInputChange = (f, v) => setInputs(p => ({ ...p, [f]: v === '' ? '' : (isNaN(v) ? v : parseFloat(v)) }));
             const syncToCloud = async (f, v) => { if (effectiveUserId) await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ [f]: v }, { merge: true }); };
             const toggleYear = (y) => setExpandedYears(prev => ({...prev, [y]: !prev[y]}));
+
+            const handleMatrixChange = (idx, field, val) => {
+                const newM = [...inputs.options_matrix];
+                newM[idx][field] = val;
+                setInputs(p => ({...p, options_matrix: newM}));
+                syncToCloud('options_matrix', newM);
+            };
+
+            const addOption = () => {
+                const newOpt = { id: Date.now(), type: 'SC', ticker: '', strike: '', expiry: '', contracts: 1, premium: 0, delta: '' };
+                const newInv = [...(inputs.options_inventory || []), newOpt];
+                setInputs(p => ({...p, options_inventory: newInv}));
+                syncToCloud('options_inventory', newInv);
+            };
+
+            const removeOption = (id) => {
+                const newInv = inputs.options_inventory.filter(o => o.id !== id);
+                setInputs(p => ({...p, options_inventory: newInv}));
+                syncToCloud('options_inventory', newInv);
+            };
+
+            const updateOption = (id, field, val) => {
+                const newInv = inputs.options_inventory.map(o => o.id === id ? { ...o, [field]: val } : o);
+                setInputs(p => ({...p, options_inventory: newInv}));
+                syncToCloud('options_inventory', newInv);
+            };
+
+            const executeOptionAction = () => {
+                const opt = inputs.options_inventory.find(o => o.id === opAction.id);
+                if (!opt) return;
+                
+                const entryP = parseFloat(opt.premium) || 0;
+                const exitP = parseFloat(opInputs.exitPrice) || 0;
+                const ctr = parseFloat(opt.contracts) || 1;
+                const realized = (entryP - exitP) * ctr * 100;
+                
+                // Create transaction record
+                const newTrade = {
+                    id: Date.now(),
+                    date: new Date().toISOString(),
+                    ticker: opt.ticker,
+                    type: opAction.type, // CLOSE or ROLL
+                    pnl: realized
+                };
+                const newHistory = [newTrade, ...(inputs.option_history || [])];
+
+                if (opAction.type === 'CLOSE') {
+                    const newInv = inputs.options_inventory.filter(o => o.id !== opAction.id);
+                    setInputs(p => ({...p, options_inventory: newInv, option_history: newHistory}));
+                    db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ options_inventory: newInv, option_history: newHistory }, { merge: true });
+                    showToast(`平倉成功！損益: $${realized.toFixed(0)}`);
+                } else if (opAction.type === 'ROLL') {
+                    const newInv = inputs.options_inventory.map(o => o.id === opAction.id ? { 
+                        ...o, 
+                        premium: opInputs.newPremium, 
+                        strike: opInputs.newStrike, 
+                        expiry: opInputs.newExpiry, 
+                        delta: opInputs.newDelta 
+                    } : o);
+                    setInputs(p => ({...p, options_inventory: newInv, option_history: newHistory}));
+                    db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ options_inventory: newInv, option_history: newHistory }, { merge: true });
+                    showToast(`轉倉成功！本腿損益: $${realized.toFixed(0)}`);
+                }
+                setOpAction(null);
+                setOpInputs({});
+            };
+
+            // Option History Editing
+            const handleTradeSave = (updatedTrade) => {
+                let newHistory;
+                if (inputs.option_history.find(t => t.id === updatedTrade.id)) {
+                    // Update existing
+                    newHistory = inputs.option_history.map(t => t.id === updatedTrade.id ? updatedTrade : t);
+                } else {
+                    // Create new
+                    newHistory = [updatedTrade, ...inputs.option_history];
+                }
+                setInputs(p => ({...p, option_history: newHistory}));
+                syncToCloud('option_history', newHistory);
+                setEditingTrade(null);
+                showToast("交易紀錄已更新");
+            };
+            const handleTradeDelete = (id) => {
+                const newHistory = inputs.option_history.filter(t => t.id !== id);
+                setInputs(p => ({...p, option_history: newHistory}));
+                syncToCloud('option_history', newHistory);
+                setEditingTrade(null);
+                showToast("交易紀錄已刪除");
+            };
+            
+            const addNewHistoryTrade = () => {
+                setEditingTrade({
+                    id: Date.now(),
+                    date: new Date().toISOString(),
+                    ticker: 'TQQQ',
+                    type: 'MANUAL',
+                    pnl: 0
+                });
+            };
 
             const fetchPrices = useCallback(async (force = false) => {
                 if (loadingPrices) return;
@@ -200,16 +418,14 @@
                 } catch(e) { console.error(e); } finally { setLoadingPrices(false); }
             }, [inputs.ticker_core_1, inputs.custom_ticker_1, inputs.custom_ticker_2, loadingPrices]);
 
-            // Complex Calculations (Refactored)
-            const { totalCapital, performanceStats, rebalanceStatus, scenarioData, bearDefense, qqqDistance, currentLeverage, pieData, calcResults } = useMemo(() => {
+            // Calculations
+            const { totalCapital, performanceStats, rebalanceStatus, scenarioData, bearDefense, qqqDistance, currentLeverage, pieData, calcResults, rsiSuggestion } = useMemo(() => {
                 const getP = (t) => prices[(t || "").toUpperCase()] || 0;
                 const getV = (k) => getNum(inputs[k]);
                 
-                // Total Capital
                 let total = getV('cash_balance');
                 HOLDINGS_CONFIG.forEach(c => total += (c.type === 'fixed' ? getP(c.ticker) : getP(inputs[c.tickerKey])) * getV(c.qtyKey));
 
-                // Stats
                 let ytd = 0, mtd = 0, tot = 0;
                 if (records.length) {
                     const sorted = [...records].sort((a,b) => new Date(a.date) - new Date(b.date));
@@ -222,7 +438,6 @@
                     mtd = getRet(startM);
                 }
 
-                // Rebalance Calculations
                 const tCore = (inputs.ticker_core_1 || "QQQ").toUpperCase();
                 const valQQQ = getP(tCore) * getV('qty_qqq');
                 const valTQQQ = getP('TQQQ') * getV('qty_tqqq');
@@ -241,7 +456,6 @@
                 const coreTarget = getV('rebalance_core_target');
                 const coreTol = getV('rebalance_core_tolerance');
                 
-                // Check Bounds
                 const checkSat = (w, target, up, down) => {
                     const u = getNum(up) || 20; const d = getNum(down) || 10;
                     if (w > target * (1 + u/100)) return 'high';
@@ -253,14 +467,12 @@
                 const stat2 = checkSat(c2W, getV('target_sat_2'), inputs.tol_up_sat_2, inputs.tol_down_sat_2);
                 const statIbit = checkSat(ibitW, getV('target_sat_ibit'), inputs.tol_up_ibit, inputs.tol_down_ibit);
 
-                // Bear Defense & Distance - STRICTLY QQQ BENCHMARK
                 const sma200 = getV('qqq_sma200');
-                const benchmarkPrice = getP('QQQ'); // Benchmark is ALWAYS QQQ
+                const benchmarkPrice = getP('QQQ'); 
                 const riskOff = sma200 * 0.97;
                 const isBear = sma200 > 0 && benchmarkPrice > 0 && benchmarkPrice < riskOff;
                 const bearData = { isActive: isBear, totalDefensive: getV('cash_balance') + (getP('SGOV') * getV('qty_sgov')), monthlyBuy: (getV('cash_balance') + (getP('SGOV') * getV('qty_sgov'))) / 12 };
 
-                // Simulator - STRICTLY QQQ BENCHMARK
                 const bearDrop = (benchmarkPrice > 0) ? (sma200 - benchmarkPrice) / benchmarkPrice : 0;
                 const estBearCore = isBear ? 0 : (valQQQ*(1+bearDrop)) + (valTQQQ*(1+(bearDrop*3)));
                 const satVal = valSat1 + valSat2 + valIbit; 
@@ -269,7 +481,6 @@
 
                 const exposure = (valTQQQ*3) + valQQQ + satVal;
                 
-                // Pie Data
                 const pie = HOLDINGS_CONFIG.map(c => ({ 
                     name: c.type==='fixed'?c.ticker:inputs[c.tickerKey]||c.defaultTicker, 
                     value: (c.type==='fixed'?getP(c.ticker):getP(inputs[c.tickerKey])) * getV(c.qtyKey), 
@@ -277,31 +488,24 @@
                 })).concat({name:'現金', value: getV('cash_balance'), color:'#94a3b8'}).filter(x=>x.value>0);
                 const pieSum = pie.reduce((a,b)=>a+b.value, 0);
 
-                // Smart Injection Calc
                 let calcRes = [];
                 if (simulatedTotal) {
                     const injection = parseFloat(simulatedTotal);
                     const newTotal = total + injection;
-                    
-                    // Targets
                     const tSat1 = getV('target_sat_1')/100;
                     const tSat2 = getV('target_sat_2')/100;
                     const tIbit = getV('target_sat_ibit')/100;
-                    
                     const targetSat1Val = newTotal * tSat1;
                     const targetSat2Val = newTotal * tSat2;
                     const targetIbitVal = newTotal * tIbit;
-                    
                     const remForCore = newTotal - targetSat1Val - targetSat2Val - targetIbitVal;
                     const targetTQQQVal = remForCore * (coreTarget/100);
                     const targetQQQVal = remForCore * (1 - coreTarget/100);
-
                     const calcDiff = (target, current, ticker) => {
                         const diff = target - current;
                         const price = getP(ticker);
                         return { ticker, diff, qty: price > 0 ? diff / price : 0 };
                     };
-
                     calcRes = [
                         calcDiff(targetTQQQVal, valTQQQ, 'TQQQ'),
                         calcDiff(targetQQQVal, valQQQ, tCore),
@@ -310,6 +514,14 @@
                         calcDiff(targetIbitVal, valIbit, 'IBIT')
                     ];
                 }
+
+                const rsi = getNum(inputs.current_rsi);
+                let sug = { cover: 0, delta: 'N/A' };
+                if (rsi > 0 && inputs.options_matrix) {
+                    const rule = inputs.options_matrix.find(r => rsi >= r.min && rsi < r.max);
+                    if (rule) sug = { cover: rule.cover, delta: rule.delta };
+                }
+                const suggestContracts = Math.floor((getV('qty_tqqq') / 100) * (sug.cover / 100));
 
                 return {
                     totalCapital: total,
@@ -328,34 +540,29 @@
                     qqqDistance: (sma200>0 && benchmarkPrice>0) ? ((benchmarkPrice - sma200)/sma200)*100 : null,
                     currentLeverage: (total>0 ? exposure/total : 0).toFixed(2),
                     pieData: pie.map(p => ({...p, percentage: ((p.value/pieSum)*100).toFixed(1)})),
-                    calcResults: calcRes
+                    calcResults: calcRes,
+                    rsiSuggestion: { ...sug, contracts: suggestContracts }
                 };
             }, [prices, inputs, records, simulatedTotal]);
 
-            // History Grouping Logic
             const historyGroups = useMemo(() => {
                 if (!records || records.length === 0) return [];
                 const sorted = [...records].sort((a, b) => new Date(a.date) - new Date(b.date));
                 const groups = {};
-
                 sorted.forEach(rec => {
                     const d = new Date(rec.date);
                     const y = d.getFullYear();
                     const m = d.getMonth() + 1;
-                    
                     if (!groups[y]) groups[y] = { records: [], months: {} };
                     groups[y].records.push(rec);
-                    
                     if (!groups[y].months[m]) groups[y].months[m] = [];
                     groups[y].months[m].push(rec);
                 });
-
                 return Object.keys(groups).sort((a,b) => b-a).map(year => { 
                     const yData = groups[year];
                     const yStart = yData.records[0].total_equity;
                     const yEnd = yData.records[yData.records.length - 1].total_equity;
                     const yRet = yStart > 0 ? ((yEnd - yStart) / yStart) * 100 : 0;
-                    
                     const months = Object.keys(yData.months).sort((a,b) => b-a).map(month => {
                         const mRecs = yData.months[month];
                         const mStart = mRecs[0].total_equity;
@@ -363,20 +570,18 @@
                         const mRet = mStart > 0 ? ((mEnd - mStart) / mStart) * 100 : 0;
                         return { month, return: mRet };
                     });
-
                     return { year, return: yRet, months };
                 });
             }, [records]);
 
             const alerts = useMemo(() => {
                 const a = [];
-                const { valCore, valSat1, valSat2, valIbit, tqqqRatio, c1W, c2W, ibitW, coreTarget, isCoreImbalanced, tSat1, tSat2, tSatIbit, stat1, stat2, statIbit, t1, t2 } = rebalanceStatus;
+                const { tqqqRatio, c1W, c2W, ibitW, coreTarget, isCoreImbalanced, tSat1, tSat2, tSatIbit, stat1, stat2, statIbit, t1, t2 } = rebalanceStatus;
                 const getP = (t) => prices[(t || "").toUpperCase()] || 0;
-                
                 const getQty = (val, price) => (price > 0 ? Math.abs(val / price) : 0);
 
                 if (isCoreImbalanced) {
-                    const targetTQQQVal = valCore * (coreTarget / 100);
+                    const targetTQQQVal = rebalanceStatus.valCore * (coreTarget / 100);
                     const diffVal = targetTQQQVal - rebalanceStatus.valTQQQ;
                     const action = diffVal > 0 ? '買入' : '賣出';
                     const qty = getQty(diffVal, getP('TQQQ'));
@@ -394,13 +599,19 @@
                     }
                 };
 
-                checkSatAction(stat1, t1||'自選1', parseFloat(c1W), tSat1, valSat1, t1);
-                checkSatAction(stat2, t2||'自選2', parseFloat(c2W), tSat2, valSat2, t2);
-                checkSatAction(statIbit, 'IBIT', parseFloat(ibitW), tSatIbit, valIbit, 'IBIT');
+                checkSatAction(stat1, t1||'自選1', parseFloat(c1W), tSat1, rebalanceStatus.valSat1, t1);
+                checkSatAction(stat2, t2||'自選2', parseFloat(c2W), tSat2, rebalanceStatus.valSat2, t2);
+                checkSatAction(statIbit, 'IBIT', parseFloat(ibitW), tSatIbit, rebalanceStatus.valIbit, 'IBIT');
 
                 if (bearDefense.isActive) a.push({ type: 'danger', title: '【QQQ】 熊市防禦', msg: 'QQQ < 200 SMA (-3%)，請轉入防禦資產'});
+                
+                if (inputs.options_inventory) {
+                    inputs.options_inventory.forEach(o => {
+                        if (parseFloat(o.delta) >= 0.4) a.push({ type: 'danger', title: `【${o.ticker}】 選擇權警戒`, msg: `Delta ${o.delta} 觸及 0.40！請執行黃金轉倉。` });
+                    });
+                }
                 return a;
-            }, [rebalanceStatus, bearDefense, totalCapital, prices]);
+            }, [rebalanceStatus, bearDefense, totalCapital, prices, inputs.options_inventory]);
 
             // Effects
             useEffect(() => { auth.signInAnonymously().catch(console.error); return auth.onAuthStateChanged(setUser); }, []);
@@ -408,7 +619,7 @@
             useEffect(() => { document.documentElement.className = darkMode ? 'dark' : 'light'; }, [darkMode]);
 
             // Actions
-            const save = async () => { if (!effectiveUserId || isSaving) return; setIsSaving(true); try { await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').add({ date: new Date(inputs.record_date).toISOString(), total_equity: totalCapital, prices, inputs, memo: inputs.record_memo }); await syncToCloud('last_save', Date.now()); showToast("同步成功"); setInputs(p=>({...p, record_memo: ''})); } catch(e) { showToast("失敗"); } setIsSaving(false); };
+            const save = async () => { if (!effectiveUserId || isSaving) return; setIsSaving(true); try { await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').add({ date: new Date(inputs.record_date).toISOString(), total_equity: totalCapital, total_realized_premium: totalRealizedPremium, prices, inputs, memo: inputs.record_memo }); await syncToCloud('last_save', Date.now()); showToast("同步成功"); setInputs(p=>({...p, record_memo: ''})); } catch(e) { showToast("失敗"); } setIsSaving(false); };
             const confirmDelete = async (id) => { await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').doc(id).delete(); showToast("已刪除"); };
             const exportData = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({records, inputs})], {type: "application/json"})); a.download = `Backup_${new Date().toISOString().split('T')[0]}.json`; a.click(); };
             const importData = (e) => { const r = new FileReader(); r.onload = (ev) => { const d = JSON.parse(ev.target.result); if(d.inputs) setInputs(p=>({...p,...d.inputs})); if(d.records) setRecords(d.records); alert("匯入成功 (暫存)"); }; if(e.target.files[0]) r.readAsText(e.target.files[0]); };
@@ -421,17 +632,14 @@
                 const sorted = records.filter(r => { const d=new Date(r.date), n=new Date(); return filterMode==='all' || (filterMode==='year' && d.getFullYear()===n.getFullYear()) || (filterMode==='month' && d.getMonth()===n.getMonth()); }).sort((a,b)=>new Date(a.date)-new Date(b.date));
                 if(!sorted.length) return [];
                 const baseEq = sorted[0].total_equity || 1;
-                // STRICTLY USE QQQ FOR BENCHMARK
                 const baseQ = sorted[0].prices?.QQQ || 1;
                 let maxEq = 0;
                 return sorted.map(r => {
                     if(r.total_equity > maxEq) maxEq = r.total_equity;
-                    // STRICTLY USE QQQ FOR BENCHMARK
                     return { date: r.date, equity: r.total_equity, dd: maxEq>0 ? ((r.total_equity-maxEq)/maxEq)*100 : 0, ret: ((r.total_equity-baseEq)/baseEq)*100, qRet: (((r.prices?.QQQ||0)-baseQ)/baseQ)*100 };
                 });
             }, [records, filterMode]);
 
-            // Indicator Labels Config
             const INDICATOR_FIELDS = [
                 {k:'qqq_sma200', l:'QQQ 200 SMA'},
                 {k:'qqq_sma20', l:'QQQ 20 SMA'},
@@ -444,6 +652,38 @@
                 <div className="pb-40 min-h-screen transition-colors duration-300 font-black text-left select-none overflow-x-hidden">
                     {message && <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-top-4"><div className="bg-indigo-600 text-white px-6 py-3 rounded-full shadow-2xl text-sm flex items-center gap-2"><Icon name="CheckCircle" size={16} /> {message}</div></div>}
                     <EditModal editingId={editingId} editForm={editForm} setEditingId={setEditingId} setEditForm={setEditForm} saveEdit={async () => { await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').doc(editingId).update({ inputs: editForm.inputs, memo: editForm.memo }); setEditingId(null); showToast("更新成功"); }} />
+                    {editingTrade && <EditOptionHistoryModal trade={editingTrade} onClose={()=>setEditingTrade(null)} onSave={handleTradeSave} onDelete={handleTradeDelete} />}
+
+                    {/* OPTION ACTION MODAL */}
+                    {opAction && (
+                        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center">
+                            <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl animate-in slide-in-from-bottom-full">
+                                <h3 className="text-xl font-black mb-4 flex items-center gap-2">
+                                    <Icon name={opAction.type==='ROLL'?'RefreshCcw':'CheckCircle'} className="text-indigo-500"/>
+                                    {opAction.type === 'ROLL' ? '選擇權轉倉 (Roll)' : '選擇權平倉 (Close)'}
+                                </h3>
+                                <div className="space-y-3">
+                                    <div><label className="text-xs font-bold text-slate-500">平倉價格 (Exit Price)</label><input type="number" autoFocus value={opInputs.exitPrice||''} onChange={e=>setOpInputs({...opInputs, exitPrice:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-3 rounded-xl text-center font-black" /></div>
+                                    {opAction.type === 'ROLL' && (
+                                        <>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div><label className="text-xs font-bold text-slate-500">新合約權利金</label><input type="number" value={opInputs.newPremium||''} onChange={e=>setOpInputs({...opInputs, newPremium:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold" /></div>
+                                                <div><label className="text-xs font-bold text-slate-500">新合約 Strike</label><input type="number" value={opInputs.newStrike||''} onChange={e=>setOpInputs({...opInputs, newStrike:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold" /></div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div><label className="text-xs font-bold text-slate-500">新合約日期</label><input type="date" value={opInputs.newExpiry||''} onChange={e=>setOpInputs({...opInputs, newExpiry:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold text-xs" /></div>
+                                                <div><label className="text-xs font-bold text-slate-500">新合約 Delta</label><input type="number" value={opInputs.newDelta||''} onChange={e=>setOpInputs({...opInputs, newDelta:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold" /></div>
+                                            </div>
+                                        </>
+                                    )}
+                                    <div className="flex gap-2 mt-4">
+                                        <button onClick={()=>{setOpAction(null);setOpInputs({})}} className="flex-1 bg-slate-200 dark:bg-slate-800 text-slate-500 py-3 rounded-xl font-bold">取消</button>
+                                        <button onClick={executeOptionAction} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold">確認執行</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <header className="fixed top-0 inset-x-0 bg-indigo-900 dark:bg-slate-950 z-50 px-5 py-4 pt-6 flex justify-between items-center shadow-lg text-white">
                         <div className="flex items-center gap-2 font-black"><div className="bg-white p-2 rounded-2xl shadow-sm"><Icon name="TrendingUp" className="text-indigo-900" size={18} /></div><h1 className="text-lg">Alpha Horizon</h1></div>
@@ -485,7 +725,7 @@
                                             const val = k==='ibitW' ? rebalanceStatus.valIbit : rebalanceStatus[k==='c1W'?'valSat1':'valSat2'];
                                             const status = k==='ibitW' ? rebalanceStatus.statIbit : rebalanceStatus[k==='c1W'?'stat1':'stat2'];
                                             const colorClass = status === 'high' ? 'bg-red-500' : (status === 'low' ? 'bg-indigo-400' : 'bg-emerald-500');
-                                            const maxScale = target * 2 || 20; // 50% is target
+                                            const maxScale = target * 2 || 20; 
                                             const widthPct = Math.min((rebalanceStatus[k] / maxScale) * 100, 100);
 
                                             return (
@@ -509,7 +749,11 @@
                                     <div className="absolute -right-4 -bottom-4 opacity-10 rotate-12"><Icon name="TrendingUp" size={160} /></div>
                                     <div className="flex justify-between"><label className="text-[10px] opacity-50 uppercase tracking-widest">總資產</label><button onClick={(e)=>{e.stopPropagation();setPerfView(perfView==='MTD'?'YTD':(perfView==='YTD'?'ALL':'MTD'))}} className="bg-white/10 p-2 rounded-full"><Icon name="Repeat" size={14}/></button></div>
                                     <div className="mt-2"><div className="text-4xl font-black font-mono">${totalCapital.toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="text-sm font-mono text-white/50">≈ NT$ {(totalCapital*inputs.exchange_rate).toLocaleString(undefined,{maximumFractionDigits:0})}</div></div>
-                                    <div className="mt-4 pt-3 border-t border-white/10 flex justify-between text-xs font-bold z-10 relative"><div><span className="opacity-40 text-[9px] block">{perfD.l}報酬</span><span className={`text-lg ${perfD.v>=0?'text-emerald-400':'text-red-400'}`}>{perfD.v>0?'+':''}{perfD.v.toFixed(2)}%</span></div><div className="text-right"><span className="opacity-40 text-[9px] block">貸款</span><span className="font-mono text-base text-red-500">${inputs.loan_amount.toLocaleString()}</span></div></div>
+                                    <div className="mt-4 pt-3 border-t border-white/10 flex justify-between text-xs font-bold z-10 relative">
+                                        <div><span className="opacity-40 text-[9px] block">{perfD.l}報酬</span><span className={`text-lg ${perfD.v>=0?'text-emerald-400':'text-red-400'}`}>{perfD.v>0?'+':''}{perfD.v.toFixed(2)}%</span></div>
+                                        <div className="text-center"><span className="opacity-40 text-[9px] block">已實現權利金 (Premium)</span><span className="text-lg text-amber-400 font-mono">${totalRealizedPremium.toLocaleString(undefined,{maximumFractionDigits:0})}</span></div>
+                                        <div className="text-right"><span className="opacity-40 text-[9px] block">貸款</span><span className="font-mono text-base text-red-500">${inputs.loan_amount.toLocaleString()}</span></div>
+                                    </div>
                                 </Card>
 
                                 <Card className="p-4 text-center">
@@ -538,17 +782,71 @@
                                 <Card className="border-2 border-indigo-500 dark:border-indigo-600">
                                     <div className="flex justify-between items-center"><SectionTitle title="持倉數量" iconName="Edit2" /><div className="text-xs text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded">QQQ: ${prices['QQQ']?.toFixed(2)||'-'}</div><button onClick={()=>setSections(p=>({...p,holdings:!p.holdings}))}><Icon name={dashboardSections.holdings?"ChevronUp":"ChevronDown"} size={16}/></button></div>
                                     {dashboardSections.holdings && <div className="space-y-2 mt-2">
+                                        
                                         <div className="grid grid-cols-12 gap-1 text-[10px] text-slate-400 text-center mb-1"><div className="col-span-3 text-left pl-2">標的</div><div className="col-span-3">股數</div><div className="col-span-3">目標價</div><div className="col-span-3">距離</div></div>
                                         {HOLDINGS_CONFIG.map(c => <HoldingRow key={c.id} conf={c} inputs={inputs} prices={prices} onChange={handleInputChange} onBlur={syncToCloud} />)}
                                         <div className="pt-2"><label className="text-[11px] font-black text-slate-500 block text-center mb-1">現金 (USD)</label><input type="number" value={inputs.cash_balance} onChange={e=>handleInputChange('cash_balance',e.target.value)} onBlur={e=>syncToCloud('cash_balance',e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-indigo-100 rounded-2xl p-4 text-xl font-mono text-indigo-600" /></div>
                                         <div className="pt-2 flex justify-between items-center"><div className="flex items-center gap-2"><Icon name="Calendar" size={16} className="text-slate-400"/><input type="date" value={inputs.record_date} onChange={e=>handleInputChange('record_date',e.target.value)} className="text-xs font-bold" /></div></div>
+                                        
+                                        {/* OPTIONS INVENTORY */}
+                                        <div className="pt-4 mt-2 border-t border-slate-200 dark:border-slate-700">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <div className="flex gap-2 text-xs font-black text-slate-500 uppercase tracking-widest cursor-pointer" onClick={()=>setSections(p=>({...p,options:!p.options}))}><Icon name="Zap" size={14}/> 選擇權帳本 <Icon name={dashboardSections.options?"ChevronUp":"ChevronDown"} size={12}/></div>
+                                                <button onClick={addOption} className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded font-bold">+ 新增合約</button>
+                                            </div>
+                                            {dashboardSections.options && (
+                                                <div className="space-y-2">
+                                                    {(inputs.options_inventory || []).map(opt => (
+                                                        <div key={opt.id} className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg text-xs space-y-2 relative border border-slate-100 dark:border-slate-700">
+                                                            <div className="flex justify-between items-center">
+                                                                <div className="flex gap-2">
+                                                                    <input value={opt.ticker} onChange={e=>updateOption(opt.id,'ticker',e.target.value.toUpperCase())} className="w-12 font-bold bg-transparent outline-none text-indigo-600" placeholder="TQQQ"/>
+                                                                    <select value={opt.type} onChange={e=>updateOption(opt.id,'type',e.target.value)} className="bg-transparent font-bold"><option value="SC">Sell Call</option><option value="SP">Sell Put</option></select>
+                                                                </div>
+                                                                <button onClick={()=>removeOption(opt.id)} className="text-slate-400 hover:text-red-500"><Icon name="X" size={14}/></button>
+                                                            </div>
+                                                            <div className="grid grid-cols-4 gap-2 text-center">
+                                                                <div><label className="text-[9px] text-slate-400 block">Strike</label><input value={opt.strike} onChange={e=>updateOption(opt.id,'strike',e.target.value)} className="w-full bg-white dark:bg-slate-700 rounded p-1 text-center font-bold"/></div>
+                                                                <div><label className="text-[9px] text-slate-400 block">Expiry</label><input type="date" value={opt.expiry} onChange={e=>updateOption(opt.id,'expiry',e.target.value)} className="w-full bg-white dark:bg-slate-700 rounded p-1 text-center font-bold text-[9px]"/></div>
+                                                                <div><label className="text-[9px] text-slate-400 block">張數</label><input type="number" value={opt.contracts} onChange={e=>updateOption(opt.id,'contracts',e.target.value)} className="w-full bg-white dark:bg-slate-700 rounded p-1 text-center font-bold"/></div>
+                                                                <div><label className="text-[9px] text-slate-400 block">權利金</label><input type="number" value={opt.premium} onChange={e=>updateOption(opt.id,'premium',e.target.value)} className="w-full bg-white dark:bg-slate-700 rounded p-1 text-center font-bold text-emerald-500"/></div>
+                                                            </div>
+                                                            <div className="flex justify-between items-center pt-1">
+                                                                <div className="flex items-center gap-1"><span className="text-[9px] text-slate-400">Delta</span><input type="number" value={opt.delta} onChange={e=>updateOption(opt.id,'delta',e.target.value)} className={`w-12 bg-transparent text-center font-bold border-b ${parseFloat(opt.delta)>=0.4?'text-red-500 border-red-500 animate-pulse':'border-slate-300'}`} placeholder="0.30"/></div>
+                                                                <div className="flex gap-2">
+                                                                    <button onClick={()=>{setOpAction({type:'ROLL',id:opt.id});setOpInputs({})}} className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-[9px] font-bold">轉倉</button>
+                                                                    <button onClick={()=>{setOpAction({type:'CLOSE',id:opt.id});setOpInputs({})}} className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-[9px] font-bold">平倉</button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    {(!inputs.options_inventory || inputs.options_inventory.length === 0) && <div className="text-center text-[10px] text-slate-400 py-2">無部位</div>}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>}
                                 </Card>
 
                                 <Card>
                                     <div className="flex justify-between"><SectionTitle title="指標參數" iconName="Settings" /><button onClick={()=>setSections(p=>({...p,indicators:!p.indicators}))}><Icon name={dashboardSections.indicators?"ChevronUp":"ChevronDown"} size={16}/></button></div>
-                                    {dashboardSections.indicators && <div className="grid grid-cols-2 gap-3 mt-2">
-                                        {INDICATOR_FIELDS.map(f => <div key={f.k} className="space-y-1"><label className="text-[10px] uppercase text-center block text-indigo-500 truncate">{f.l}</label><input type="number" value={inputs[f.k]} onChange={e=>handleInputChange(f.k,e.target.value)} onBlur={e=>syncToCloud(f.k,e.target.value)} className="bg-indigo-50 dark:bg-slate-800 border rounded-xl p-2 text-center" /></div>)}
+                                    {dashboardSections.indicators && <div className="space-y-4 mt-2">
+                                        {/* RSI INPUT MOVED HERE */}
+                                        <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-xl mb-4 border-2 border-indigo-100 dark:border-slate-700">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <label className="text-xs font-black text-indigo-500 uppercase tracking-widest">QQQ 日線 RSI (手動)</label>
+                                                <input type="number" placeholder="輸入..." value={inputs.current_rsi} onChange={e=>handleInputChange('current_rsi',e.target.value)} className="w-20 bg-white dark:bg-slate-700 rounded-lg p-1.5 text-center font-black text-lg shadow-inner" />
+                                            </div>
+                                            {inputs.current_rsi > 0 && (
+                                                <div className="bg-white dark:bg-slate-700/50 p-2 rounded-lg text-xs flex justify-between items-center">
+                                                    <span className="font-bold text-slate-600 dark:text-slate-300">TQQQ 建議: {rsiSuggestion.cover}% 覆蓋</span>
+                                                    <span className="font-mono text-indigo-500">賣 {rsiSuggestion.contracts} 張 (Delta {rsiSuggestion.delta})</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {INDICATOR_FIELDS.map(f => <div key={f.k} className="space-y-1"><label className="text-[10px] uppercase text-center block text-slate-500 truncate">{f.l}</label><input type="number" value={inputs[f.k]} onChange={e=>handleInputChange(f.k,e.target.value)} onBlur={e=>syncToCloud(f.k,e.target.value)} className="bg-slate-50 dark:bg-slate-800 border rounded-xl p-2 text-center" /></div>)}
+                                        </div>
                                     </div>}
                                 </Card>
 
@@ -563,52 +861,96 @@
 
                         {view === 'history' && (
                             <div className="space-y-6 animate-in fade-in">
-                                <div className="flex bg-slate-200 dark:bg-slate-800 rounded-3xl p-1">{['all','year','month'].map(m=><button key={m} onClick={()=>setFilterMode(m)} className={`flex-1 py-3 rounded-2xl text-xs font-black uppercase ${filterMode===m?'bg-white shadow text-indigo-600':'text-slate-500'}`}>{m}</button>)}</div>
-                                <Card className="h-72 p-2 shadow-xl border-none">
-                                    <div className="flex justify-between px-2 mb-2"><SectionTitle title={chartMode==='NAV_DD'?"淨值 & 回撤":"Alpha vs QQQ"} iconName="TrendingUp" /><button onClick={()=>setChartMode(chartMode==='NAV_DD'?'ALPHA':'NAV_DD')} className="px-3 py-1 bg-indigo-100 rounded-lg text-xs font-bold text-indigo-600">切換</button></div>
-                                    <ResponsiveContainer>{chartMode==='NAV_DD' ? 
-                                        <ComposedChart data={graphData} margin={{top:10,right:0,left:0,bottom:0}}><defs><linearGradient id="colorEq" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs><XAxis dataKey="date" tickFormatter={v=>new Date(v).toLocaleDateString(undefined,{month:'numeric',day:'numeric'})} tick={{fontSize:10}}/><YAxis yAxisId="left" tickFormatter={v=>`${(v/1000).toFixed(0)}k`} tick={{fontSize:10}}/><YAxis yAxisId="right" orientation="right" tickFormatter={v=>`${v.toFixed(0)}%`} tick={{fontSize:10,fill:'#ef4444'}}/><Tooltip contentStyle={{borderRadius:'12px'}}/><Area yAxisId="left" type="monotone" dataKey="equity" stroke="#6366f1" fill="url(#colorEq)"/><Area yAxisId="right" type="step" dataKey="dd" stroke="#ef4444" fill="#ef4444" fillOpacity={0.1}/></ComposedChart> : 
-                                        <ComposedChart data={graphData} margin={{top:10,right:0,left:0,bottom:0}}><XAxis dataKey="date" tickFormatter={v=>new Date(v).toLocaleDateString(undefined,{month:'numeric',day:'numeric'})} tick={{fontSize:10}}/><YAxis tickFormatter={v=>`${v.toFixed(0)}%`} tick={{fontSize:10}}/><Tooltip contentStyle={{borderRadius:'12px'}}/><Line type="monotone" dataKey="ret" stroke="#6366f1" strokeWidth={2} dot={false}/><Line type="monotone" dataKey="qRet" stroke="#10b981" strokeWidth={2} dot={false}/></ComposedChart>}
-                                    </ResponsiveContainer>
-                                </Card>
-                                
-                                {/* New Yearly/Monthly Performance Breakdown */}
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-2 text-xs font-black text-slate-500 mb-1 px-1 uppercase tracking-widest"><Icon name="Activity" size={14}/> 年度/月度 損益回顧</div>
-                                    {historyGroups.map(g => (
-                                        <div key={g.year} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-                                            <div onClick={() => toggleYear(g.year)} className="p-4 flex justify-between items-center cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                                                <div className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2"><span className="bg-indigo-100 dark:bg-slate-700 text-indigo-600 dark:text-slate-300 px-2 py-0.5 rounded text-xs">{g.year}</span></div>
-                                                <div className={`font-mono font-black flex items-center gap-2 ${g.return >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                    {g.return > 0 ? '+' : ''}{g.return.toFixed(2)}%
-                                                    <Icon name={expandedYears[g.year] ? "ChevronUp" : "ChevronDown"} size={16} className="text-slate-400"/>
-                                                </div>
-                                            </div>
-                                            {expandedYears[g.year] && (
-                                                <div className="border-t border-slate-100 dark:border-slate-700/50">
-                                                    {g.months.map(m => (
-                                                        <div key={m.month} className="flex justify-between p-3 px-5 text-xs font-bold border-b border-slate-50 dark:border-slate-800/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                                                            <span className="text-slate-500">{m.month} 月</span>
-                                                            <span className={`font-mono ${m.return >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                                {m.return > 0 ? '+' : ''}{m.return.toFixed(2)}%
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                    {historyGroups.length === 0 && <div className="text-center text-xs text-slate-400 py-4">尚無歷史數據</div>}
+                                <div className="flex bg-slate-200 dark:bg-slate-800 rounded-3xl p-1">
+                                    <button onClick={()=>setHistoryTab('nav')} className={`flex-1 py-3 rounded-2xl text-xs font-black uppercase ${historyTab==='nav'?'bg-white shadow text-indigo-600':'text-slate-500'}`}>資產走勢</button>
+                                    <button onClick={()=>setHistoryTab('options')} className={`flex-1 py-3 rounded-2xl text-xs font-black uppercase ${historyTab==='options'?'bg-white shadow text-amber-500':'text-slate-500'}`}>選擇權收益</button>
                                 </div>
 
-                                <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
-                                    <div className="flex items-center gap-2 text-xs font-black text-slate-500 px-1 uppercase tracking-widest"><Icon name="History" size={14}/> 詳細紀錄列表</div>
-                                    {graphData.slice().reverse().slice(0,visibleCount).map(r => { const rec = records.find(x=>x.date===r.date); return (
-                                    <Card key={r.date} className="border-none shadow-md p-5 flex justify-between items-center cursor-pointer hover:scale-[1.01]" onClick={()=>{setEditingId(rec.id);setEditForm(JSON.parse(JSON.stringify(rec)));}}>
-                                        <div><div className="text-[10px] text-slate-400 font-bold">{new Date(r.date).toLocaleDateString()}</div><div className="text-xl font-mono">${r.equity.toLocaleString()}</div></div>
-                                        <div className="flex gap-2"><button onClick={(e)=>{e.stopPropagation();setEditingId(rec.id);setEditForm(JSON.parse(JSON.stringify(rec)));}} className="p-2 bg-blue-50 dark:bg-slate-800 text-blue-500 rounded-lg"><Icon name="Edit2" size={14}/></button><button onClick={(e)=>{e.stopPropagation();confirmDelete(rec.id)}} className="p-2 bg-red-50 dark:bg-slate-800 text-red-500 rounded-lg"><Icon name="Trash2" size={14}/></button></div>
-                                    </Card>
-                                );})}</div>
+                                {historyTab === 'nav' ? (
+                                    <>
+                                        <Card className="h-72 p-2 shadow-xl border-none">
+                                            <div className="flex justify-between px-2 mb-2"><SectionTitle title={chartMode==='NAV_DD'?"淨值 & 回撤":"Alpha vs QQQ"} iconName="TrendingUp" /><button onClick={()=>setChartMode(chartMode==='NAV_DD'?'ALPHA':'NAV_DD')} className="px-3 py-1 bg-indigo-100 rounded-lg text-xs font-bold text-indigo-600">切換</button></div>
+                                            <ResponsiveContainer>{chartMode==='NAV_DD' ? 
+                                                <ComposedChart data={graphData} margin={{top:10,right:0,left:0,bottom:0}}><defs><linearGradient id="colorEq" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs><XAxis dataKey="date" tickFormatter={v=>new Date(v).toLocaleDateString(undefined,{month:'numeric',day:'numeric'})} tick={{fontSize:10}}/><YAxis yAxisId="left" tickFormatter={v=>`${(v/1000).toFixed(0)}k`} tick={{fontSize:10}}/><YAxis yAxisId="right" orientation="right" tickFormatter={v=>`${v.toFixed(0)}%`} tick={{fontSize:10,fill:'#ef4444'}}/><Tooltip contentStyle={{borderRadius:'12px'}}/><Area yAxisId="left" type="monotone" dataKey="equity" stroke="#6366f1" fill="url(#colorEq)"/><Area yAxisId="right" type="step" dataKey="dd" stroke="#ef4444" fill="#ef4444" fillOpacity={0.1}/></ComposedChart> : 
+                                                <ComposedChart data={graphData} margin={{top:10,right:0,left:0,bottom:0}}><XAxis dataKey="date" tickFormatter={v=>new Date(v).toLocaleDateString(undefined,{month:'numeric',day:'numeric'})} tick={{fontSize:10}}/><YAxis tickFormatter={v=>`${v.toFixed(0)}%`} tick={{fontSize:10}}/><Tooltip contentStyle={{borderRadius:'12px'}}/><Line type="monotone" dataKey="ret" stroke="#6366f1" strokeWidth={2} dot={false}/><Line type="monotone" dataKey="qRet" stroke="#10b981" strokeWidth={2} dot={false}/></ComposedChart>}
+                                            </ResponsiveContainer>
+                                        </Card>
+                                        
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2 text-xs font-black text-slate-500 mb-1 px-1 uppercase tracking-widest"><Icon name="Activity" size={14}/> 年度/月度 損益回顧</div>
+                                            {historyGroups.map(g => (
+                                                <div key={g.year} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+                                                    <div onClick={() => toggleYear(g.year)} className="p-4 flex justify-between items-center cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                                        <div className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2"><span className="bg-indigo-100 dark:bg-slate-700 text-indigo-600 dark:text-slate-300 px-2 py-0.5 rounded text-xs">{g.year}</span></div>
+                                                        <div className={`font-mono font-black flex items-center gap-2 ${g.return >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                            {g.return > 0 ? '+' : ''}{g.return.toFixed(2)}%
+                                                            <Icon name={expandedYears[g.year] ? "ChevronUp" : "ChevronDown"} size={16} className="text-slate-400"/>
+                                                        </div>
+                                                    </div>
+                                                    {expandedYears[g.year] && (
+                                                        <div className="border-t border-slate-100 dark:border-slate-700/50">
+                                                            {g.months.map(m => (
+                                                                <div key={m.month} className="flex justify-between p-3 px-5 text-xs font-bold border-b border-slate-50 dark:border-slate-800/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                                                                    <span className="text-slate-500">{m.month} 月</span>
+                                                                    <span className={`font-mono ${m.return >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                                        {m.return > 0 ? '+' : ''}{m.return.toFixed(2)}%
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                                            <div className="flex items-center gap-2 text-xs font-black text-slate-500 px-1 uppercase tracking-widest"><Icon name="History" size={14}/> 詳細紀錄列表</div>
+                                            {graphData.slice().reverse().slice(0,visibleCount).map(r => { const rec = records.find(x=>x.date===r.date); return (
+                                            <Card key={r.date} className="border-none shadow-md p-5 flex justify-between items-center cursor-pointer hover:scale-[1.01]" onClick={()=>{setEditingId(rec.id);setEditForm(JSON.parse(JSON.stringify(rec)));}}>
+                                                <div><div className="text-[10px] text-slate-400 font-bold">{new Date(r.date).toLocaleDateString()}</div><div className="text-xl font-mono">${r.equity.toLocaleString()}</div>
+                                                {rec.total_realized_premium > 0 && <div className="text-xs text-amber-500 font-mono mt-1">Premium: ${rec.total_realized_premium.toLocaleString()}</div>}
+                                                </div>
+                                                <div className="flex gap-2"><button onClick={(e)=>{e.stopPropagation();setEditingId(rec.id);setEditForm(JSON.parse(JSON.stringify(rec)));}} className="p-2 bg-blue-50 dark:bg-slate-800 text-blue-500 rounded-lg"><Icon name="Edit2" size={14}/></button><button onClick={(e)=>{e.stopPropagation();confirmDelete(rec.id)}} className="p-2 bg-red-50 dark:bg-slate-800 text-red-500 rounded-lg"><Icon name="Trash2" size={14}/></button></div>
+                                            </Card>
+                                            );})}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-slate-800 dark:to-slate-900 border-2 border-amber-200 dark:border-slate-700">
+                                            <div className="text-xs font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest mb-1">歷史已實現總權利金</div>
+                                            <div className="text-3xl font-black font-mono text-slate-800 dark:text-slate-100">${totalRealizedPremium.toLocaleString()}</div>
+                                        </Card>
+                                        <div className="flex justify-between items-center px-1 mb-2">
+                                            <div className="flex items-center gap-2 text-xs font-black text-slate-500 uppercase tracking-widest"><Icon name="List" size={14}/> 交易明細</div>
+                                            <button onClick={addNewHistoryTrade} className="text-[10px] bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 hover:bg-indigo-100">+ 新增紀錄</button>
+                                        </div>
+                                        {inputs.option_history && inputs.option_history.length > 0 ? (
+                                            inputs.option_history.map(t => (
+                                                <Card key={t.id} className="p-4 flex justify-between items-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                                    <div>
+                                                        <div className="text-[10px] text-slate-400 font-bold">{new Date(t.date).toLocaleDateString()}</div>
+                                                        <div className="font-bold flex items-center gap-2">
+                                                            <span className="text-indigo-600 dark:text-indigo-400">{t.ticker}</span>
+                                                            <span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">{t.type}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`text-lg font-mono font-black ${t.pnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                            {t.pnl > 0 ? '+' : ''}{t.pnl.toLocaleString(undefined,{maximumFractionDigits:0})}
+                                                        </div>
+                                                        <div className="flex gap-1">
+                                                            <button onClick={(e)=>{e.stopPropagation();setEditingTrade(t)}} className="p-1.5 text-blue-400 hover:bg-blue-50 rounded"><Icon name="Edit2" size={14}/></button>
+                                                            <button onClick={(e)=>{e.stopPropagation();handleTradeDelete(t.id)}} className="p-1.5 text-red-400 hover:bg-red-50 rounded"><Icon name="Trash2" size={14}/></button>
+                                                        </div>
+                                                    </div>
+                                                </Card>
+                                            ))
+                                        ) : (
+                                            <div className="text-center text-slate-400 text-sm py-10">尚無選擇權交易紀錄</div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -672,23 +1014,30 @@
                                             </div>
                                         </div>
 
-                                        <div className="flex gap-3"><button onClick={()=>setDarkMode(!darkMode)} className="flex-1 p-3 bg-slate-100 rounded-xl flex justify-center gap-2"><Icon name={darkMode?"Sun":"Moon"}/> {darkMode?"亮色":"深色"}</button><button onClick={()=>setIsCalcOpen(!isCalcOpen)} className="flex-1 p-3 bg-slate-100 rounded-xl flex justify-center gap-2"><Icon name="Calculator"/> 計算機</button></div>
-                                        {isCalcOpen && <div className="bg-indigo-50 dark:bg-slate-800 p-4 rounded-xl space-y-3">
-                                            <div className="text-xs font-black text-indigo-500 uppercase tracking-widest mb-1">入金再平衡計算</div>
-                                            <input type="number" placeholder="輸入預計入金金額 (USD)" value={simulatedTotal} onChange={e=>setSimulatedTotal(e.target.value)} className="bg-white dark:bg-slate-700 p-3 rounded-xl text-lg font-black w-full text-center shadow-inner" />
-                                            {simulatedTotal > 0 && <div className="space-y-2 pt-2">
-                                                <div className="text-[10px] text-center opacity-60 mb-2">建議交易指令 (負數代表需賣出/減碼)</div>
-                                                {calcResults.map((res, idx) => (
-                                                    <div key={idx} className="flex justify-between items-center p-2 bg-white dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-700">
-                                                        <span className="font-bold text-xs text-slate-600 dark:text-slate-300">{res.ticker}</span>
-                                                        <div className="text-right">
-                                                            <div className={`font-black font-mono text-sm ${res.diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>{res.diff > 0 ? '+' : ''}{res.qty.toFixed(0)} 股</div>
-                                                            <div className="text-[9px] opacity-50">約 ${res.diff.toLocaleString(undefined,{maximumFractionDigits:0})}</div>
-                                                        </div>
+                                        <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl mt-4">
+                                            <div className="flex justify-between items-center mb-3">
+                                                <div className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Icon name="Activity" size={14}/> RSI 收益矩陣設定</div>
+                                                <button onClick={()=>setSettings(p=>({...p,rsi_matrix:!p.rsi_matrix}))}><Icon name={openSettings.rsi_matrix?"ChevronUp":"ChevronDown"} size={16} className="text-slate-400"/></button>
+                                            </div>
+                                            {openSettings.rsi_matrix && (
+                                                <div className="space-y-2">
+                                                    <div className="grid grid-cols-12 gap-1 text-[9px] text-center text-slate-400 mb-1">
+                                                        <div className="col-span-3">RSI Min</div><div className="col-span-3">RSI Max</div><div className="col-span-3">覆蓋%</div><div className="col-span-3">Delta</div>
                                                     </div>
-                                                ))}
-                                            </div>}
-                                        </div>}
+                                                    {inputs.options_matrix && inputs.options_matrix.map((row, i) => (
+                                                        <div key={i} className="grid grid-cols-12 gap-1 mb-1">
+                                                            <div className="col-span-3"><input type="number" value={row.min} onChange={e=>handleMatrixChange(i,'min',e.target.value)} className="bg-white dark:bg-slate-700 w-full p-1 rounded text-center text-xs"/></div>
+                                                            <div className="col-span-3"><input type="number" value={row.max} onChange={e=>handleMatrixChange(i,'max',e.target.value)} className="bg-white dark:bg-slate-700 w-full p-1 rounded text-center text-xs"/></div>
+                                                            <div className="col-span-3"><input type="number" value={row.cover} onChange={e=>handleMatrixChange(i,'cover',e.target.value)} className="bg-white dark:bg-slate-700 w-full p-1 rounded text-center text-xs"/></div>
+                                                            <div className="col-span-3"><input type="text" value={row.delta} onChange={e=>handleMatrixChange(i,'delta',e.target.value)} className="bg-white dark:bg-slate-700 w-full p-1 rounded text-center text-xs"/></div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex gap-3"><button onClick={()=>setDarkMode(!darkMode)} className="flex-1 p-3 bg-slate-100 rounded-xl flex justify-center gap-2"><Icon name={darkMode?"Sun":"Moon"}/> {darkMode?"亮色":"深色"}</button><button onClick={()=>setIsCalcOpen(!isCalcOpen)} className="flex-1 p-3 bg-slate-100 rounded-xl flex justify-center gap-2"><Icon name="Calculator"/> 計算機</button></div>
+                                        {isCalcOpen && <div className="bg-indigo-50 p-4 rounded-xl space-y-2"><input type="number" placeholder="投入金額" value={simulatedTotal} onChange={e=>setSimulatedTotal(e.target.value)} className="bg-white p-2 rounded-lg text-lg w-full" />{simulatedTotal>0 && <div className="text-xs space-y-1">{HOLDINGS_CONFIG.filter(c=>c.id!=='sgov').map(c=><div key={c.id} className="flex justify-between"><span>{c.type==='fixed'?c.ticker:inputs[c.tickerKey]}</span><span>${(parseFloat(simulatedTotal)*(inputs[`calc_alloc_${c.id==='core'?'qqq':c.id}`]/100)).toFixed(0)}</span></div>)}</div>}</div>}
                                         <div className="space-y-1"><label className="text-[10px]">匯率</label><input value={inputs.exchange_rate} onChange={e=>handleInputChange('exchange_rate',e.target.value)} className="bg-slate-100 p-2 rounded-xl" /></div>
                                     </div>}
                                 </div>
