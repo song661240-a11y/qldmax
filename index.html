@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Alpha Horizon Dashboard v8.7</title>
+    <title>Alpha Horizon Dashboard v8.8</title>
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
@@ -35,7 +35,7 @@
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback, useRef } = React;
-        const { ComposedChart, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Line } = Recharts;
+        const { ComposedChart, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Line, ReferenceLine } = Recharts;
 
         const APP_ID = "qqq-strategic-production-v1";
         const FINNHUB_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
@@ -277,9 +277,9 @@
                 cash_balance: 0, record_date: new Date().toISOString().split('T')[0],
                 loan_amount: 0, loan_rate: 2.0, loan_years: 7, loan_repay_target: 20, loan_entry_valuation: 0, loan_monthly_repay: 0, motto: '', record_memo: '',
                 target_qqq: '', target_tqqq: '', target_ibit: '', target_sgov: '', target_custom_1: '', target_custom_2: '',
-                title_core: "核心策略 (80%) - QQQ/TQQQ (NRA V8.2)", strat_core: "...", 
-                title_custom: "自選衛星 1 (10%) - TSLA (週線 40)", strat_custom: "...", 
-                title_ibit: "自選衛星 2 (10%) - IBIT (週線 20)", strat_ibit: "...",
+                title_core: "核心策略 (80%) - QQQ/TQQQ (NRA V8.2)", strat_core: "【核心部位執行規則】\n1. 趨勢濾網：QQQ 日線 200 SMA (緩衝區 +5% / -3%)。\n2. 進攻模式 (Risk-On)：QQQ > 200 SMA x 1.05 ➔ 持有 50% TQQQ + 50% QQQ。\n3. 防禦模式 (Risk-Off)：QQQ < 200 SMA x 0.97 ➔ 全數轉入 SGOV。\n4. 熊市 DCA：防禦期啟動 12 個月定投 QQQ (非槓桿)，進攻信號出現即停止。\n\n【收益增強 (Sniper Matrix)】\n* 依據 QQQ RSI 強度分批賣出 TQQQ Call (詳見 RSI 矩陣)。\n* 上限 70%，永遠保留 30% 裸多。\n* 觸發 Delta 0.40 執行唯一一次轉倉 (Roll Up/Out)。", 
+                title_custom: "自選衛星 1 (10%) - TSLA (週線 40)", strat_custom: "【TSLA 執行規則】\n1. 監測指標：週線 40 SMA (緩衝區 +5% / -3%)。\n2. 止損/歸隊：價格跌破 -3% 離場，突破 +5% 買回。\n\n【母子連動 (防禦期)】\n若 QQQ < 200 SMA (日)：\n- 強制減碼至 30% 試探部位。\n- 若 QQQ < 20 SMA (日)，試探部位強制清倉。", 
+                title_ibit: "自選衛星 2 (10%) - IBIT (週線 20)", strat_ibit: "【IBIT 執行規則】\n1. 監測指標：週線 20 SMA (緩衝區 +5% / -3%)。\n2. 特例：若 IBIT/BTC 觸及 200 週 SMA，視為極限價值區，不執行止損。\n\n【母子連動 (防禦期)】\n若 QQQ < 200 SMA (日)：\n- 強制減碼至 30% 試探部位。\n- 若 QQQ < 20 SMA (日)，試探部位強制清倉。",
                 options_matrix: [
                     { min: 55, max: 70, cover: 0, delta: 'N/A' },
                     { min: 70, max: 75, cover: 30, delta: '0.15' },
@@ -927,7 +927,7 @@
                                         </div>
                                         {inputs.option_history && inputs.option_history.length > 0 ? (
                                             inputs.option_history.map(t => (
-                                                <Card key={t.id} className="p-4 flex justify-between items-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                                <Card key={t.id} className="p-4 flex justify-between items-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50" onClick={()=>setEditingTrade(t)}>
                                                     <div>
                                                         <div className="text-[10px] text-slate-400 font-bold">{new Date(t.date).toLocaleDateString()}</div>
                                                         <div className="font-bold flex items-center gap-2">
