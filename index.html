@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Alpha Horizon Dashboard v8.8</title>
+    <title>Alpha Horizon Dashboard v9.1</title>
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
@@ -35,7 +35,7 @@
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback, useRef } = React;
-        const { ComposedChart, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Line, ReferenceLine } = Recharts;
+        const { ComposedChart, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Line } = Recharts;
 
         const APP_ID = "qqq-strategic-production-v1";
         const FINNHUB_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
@@ -208,7 +208,7 @@
             const [localTrade, setLocalTrade] = useState({...trade});
             return (
                 <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2rem] p-6 shadow-2xl">
+                    <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2rem] p-6 shadow-2xl animate-in fade-in">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-black flex gap-2"><Icon name="Edit2"/> 編輯交易</h3>
                             <button onClick={onClose}><Icon name="X"/></button>
@@ -220,8 +220,9 @@
                             </div>
                             <div className="grid grid-cols-2 gap-2">
                                 <div><label className="text-xs text-slate-500 block">動作</label><select value={localTrade.type} onChange={e=>setLocalTrade({...localTrade, type: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"><option value="CLOSE">平倉</option><option value="ROLL">轉倉</option><option value="MANUAL">補登</option></select></div>
-                                <div><label className="text-xs text-slate-500 block">損益 ($)</label><input type="number" value={localTrade.pnl} onChange={e=>setLocalTrade({...localTrade, pnl: parseFloat(e.target.value)})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div>
+                                <div><label className="text-xs text-slate-500 block">損益 ($)</label><input type="number" step="any" value={localTrade.pnl} onChange={e=>setLocalTrade({...localTrade, pnl: parseFloat(e.target.value)})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold text-center" /></div>
                             </div>
+                            <div className="text-[10px] text-center text-slate-400 mt-1">負數代表虧損 (Loss)，正數代表獲利 (Profit)</div>
                             <div className="flex gap-2 mt-4">
                                 <button onClick={()=>onDelete(localTrade.id)} className="p-3 bg-red-100 text-red-500 rounded-xl"><Icon name="Trash2"/></button>
                                 <button onClick={()=>onSave(localTrade)} className="flex-1 bg-indigo-600 text-white rounded-xl font-bold">儲存</button>
@@ -236,7 +237,7 @@
         const App = () => {
             const [user, setUser] = useState(null);
             const [view, setView] = useState('dashboard');
-            const [historyTab, setHistoryTab] = useState('nav'); // 'nav' or 'options'
+            const [historyTab, setHistoryTab] = useState('nav'); 
             const [records, setRecords] = useState([]);
             const [prices, setPrices] = useState({});
             const [loadingPrices, setLoadingPrices] = useState(false);
@@ -261,13 +262,13 @@
             const [tempSyncId, setTempSyncId] = useState(customSyncId);
             const [opAction, setOpAction] = useState(null); 
             const [opInputs, setOpInputs] = useState({}); 
-            const [editingTrade, setEditingTrade] = useState(null); // For history options edit
+            const [editingTrade, setEditingTrade] = useState(null); 
             const fileInputRef = useRef(null);
 
             const [inputs, setInputs] = useState({
                 current_rsi: '',
                 total_realized_premium: 0,
-                option_history: [], // [{id, date, ticker, type, pnl}]
+                option_history: [], 
                 qqq_sma200: 0, qqq_sma20: 0, custom_1_sma40: 0, custom_2_sma20: 0, ibit_sma20: 0,
                 exchange_rate: 32.5, rebalance_sat_cap: 15, rebalance_core_target: 50, rebalance_core_tolerance: 15,
                 tol_up_sat_1: 20, tol_down_sat_1: 10, tol_up_sat_2: 20, tol_down_sat_2: 10, tol_up_ibit: 20, tol_down_ibit: 10,
@@ -277,9 +278,9 @@
                 cash_balance: 0, record_date: new Date().toISOString().split('T')[0],
                 loan_amount: 0, loan_rate: 2.0, loan_years: 7, loan_repay_target: 20, loan_entry_valuation: 0, loan_monthly_repay: 0, motto: '', record_memo: '',
                 target_qqq: '', target_tqqq: '', target_ibit: '', target_sgov: '', target_custom_1: '', target_custom_2: '',
-                title_core: "核心策略 (80%) - QQQ/TQQQ (NRA V8.2)", strat_core: "【核心部位執行規則】\n1. 趨勢濾網：QQQ 日線 200 SMA (緩衝區 +5% / -3%)。\n2. 進攻模式 (Risk-On)：QQQ > 200 SMA x 1.05 ➔ 持有 50% TQQQ + 50% QQQ。\n3. 防禦模式 (Risk-Off)：QQQ < 200 SMA x 0.97 ➔ 全數轉入 SGOV。\n4. 熊市 DCA：防禦期啟動 12 個月定投 QQQ (非槓桿)，進攻信號出現即停止。\n\n【收益增強 (Sniper Matrix)】\n* 依據 QQQ RSI 強度分批賣出 TQQQ Call (詳見 RSI 矩陣)。\n* 上限 70%，永遠保留 30% 裸多。\n* 觸發 Delta 0.40 執行唯一一次轉倉 (Roll Up/Out)。", 
-                title_custom: "自選衛星 1 (10%) - TSLA (週線 40)", strat_custom: "【TSLA 執行規則】\n1. 監測指標：週線 40 SMA (緩衝區 +5% / -3%)。\n2. 止損/歸隊：價格跌破 -3% 離場，突破 +5% 買回。\n\n【母子連動 (防禦期)】\n若 QQQ < 200 SMA (日)：\n- 強制減碼至 30% 試探部位。\n- 若 QQQ < 20 SMA (日)，試探部位強制清倉。", 
-                title_ibit: "自選衛星 2 (10%) - IBIT (週線 20)", strat_ibit: "【IBIT 執行規則】\n1. 監測指標：週線 20 SMA (緩衝區 +5% / -3%)。\n2. 特例：若 IBIT/BTC 觸及 200 週 SMA，視為極限價值區，不執行止損。\n\n【母子連動 (防禦期)】\n若 QQQ < 200 SMA (日)：\n- 強制減碼至 30% 試探部位。\n- 若 QQQ < 20 SMA (日)，試探部位強制清倉。",
+                title_core: "核心策略 (80%) - QQQ/TQQQ (NRA V8.2)", strat_core: "...", 
+                title_custom: "自選衛星 1 (10%) - TSLA (週線 40)", strat_custom: "...", 
+                title_ibit: "自選衛星 2 (10%) - IBIT (週線 20)", strat_ibit: "...",
                 options_matrix: [
                     { min: 55, max: 70, cover: 0, delta: 'N/A' },
                     { min: 70, max: 75, cover: 30, delta: '0.15' },
@@ -332,24 +333,27 @@
                 
                 const entryP = parseFloat(opt.premium) || 0;
                 const exitP = parseFloat(opInputs.exitPrice) || 0;
+                const newP = parseFloat(opInputs.newPremium) || 0;
                 const ctr = parseFloat(opt.contracts) || 1;
-                const realized = (entryP - exitP) * ctr * 100;
                 
-                // Create transaction record
+                const realized = (entryP - exitP) * ctr * 100;
+                const netCashflow = (newP - exitP) * ctr * 100;
+
                 const newTrade = {
                     id: Date.now(),
                     date: new Date().toISOString(),
                     ticker: opt.ticker,
-                    type: opAction.type, // CLOSE or ROLL
+                    type: opAction.type,
                     pnl: realized
                 };
                 const newHistory = [newTrade, ...(inputs.option_history || [])];
+                const newTotalRealized = (inputs.total_realized_premium || 0) + realized;
 
                 if (opAction.type === 'CLOSE') {
                     const newInv = inputs.options_inventory.filter(o => o.id !== opAction.id);
-                    setInputs(p => ({...p, options_inventory: newInv, option_history: newHistory}));
-                    db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ options_inventory: newInv, option_history: newHistory }, { merge: true });
-                    showToast(`平倉成功！損益: $${realized.toFixed(0)}`);
+                    setInputs(p => ({...p, options_inventory: newInv, option_history: newHistory, total_realized_premium: newTotalRealized}));
+                    db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ options_inventory: newInv, option_history: newHistory, total_realized_premium: newTotalRealized }, { merge: true });
+                    showToast(`平倉損益: $${realized.toFixed(0)}`);
                 } else if (opAction.type === 'ROLL') {
                     const newInv = inputs.options_inventory.map(o => o.id === opAction.id ? { 
                         ...o, 
@@ -358,35 +362,51 @@
                         expiry: opInputs.newExpiry, 
                         delta: opInputs.newDelta 
                     } : o);
-                    setInputs(p => ({...p, options_inventory: newInv, option_history: newHistory}));
-                    db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ options_inventory: newInv, option_history: newHistory }, { merge: true });
-                    showToast(`轉倉成功！本腿損益: $${realized.toFixed(0)}`);
+                    setInputs(p => ({...p, options_inventory: newInv, option_history: newHistory, total_realized_premium: newTotalRealized}));
+                    db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ options_inventory: newInv, option_history: newHistory, total_realized_premium: newTotalRealized }, { merge: true });
+                    showToast(`轉倉損益: $${realized.toFixed(0)} | 現金流: $${netCashflow.toFixed(0)}`);
                 }
                 setOpAction(null);
                 setOpInputs({});
             };
 
-            // Option History Editing
             const handleTradeSave = (updatedTrade) => {
                 let newHistory;
                 if (inputs.option_history.find(t => t.id === updatedTrade.id)) {
-                    // Update existing
                     newHistory = inputs.option_history.map(t => t.id === updatedTrade.id ? updatedTrade : t);
                 } else {
-                    // Create new
                     newHistory = [updatedTrade, ...inputs.option_history];
                 }
-                setInputs(p => ({...p, option_history: newHistory}));
-                syncToCloud('option_history', newHistory);
+                // Recalculate total premium after edit
+                const newTotal = newHistory.reduce((acc, curr) => acc + (parseFloat(curr.pnl) || 0), 0);
+                
+                setInputs(p => ({...p, option_history: newHistory, total_realized_premium: newTotal}));
+                
+                // SYNC BOTH HISTORY ARRAY AND TOTAL SCALAR
+                db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ 
+                    option_history: newHistory,
+                    total_realized_premium: newTotal 
+                }, { merge: true });
+                
                 setEditingTrade(null);
-                showToast("交易紀錄已更新");
+                showToast("交易紀錄與總額已更新");
             };
+
             const handleTradeDelete = (id) => {
                 const newHistory = inputs.option_history.filter(t => t.id !== id);
-                setInputs(p => ({...p, option_history: newHistory}));
-                syncToCloud('option_history', newHistory);
+                // Recalculate total premium after delete
+                const newTotal = newHistory.reduce((acc, curr) => acc + (parseFloat(curr.pnl) || 0), 0);
+                
+                setInputs(p => ({...p, option_history: newHistory, total_realized_premium: newTotal}));
+                
+                // SYNC BOTH HISTORY ARRAY AND TOTAL SCALAR
+                db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ 
+                    option_history: newHistory,
+                    total_realized_premium: newTotal 
+                }, { merge: true });
+                
                 setEditingTrade(null);
-                showToast("交易紀錄已刪除");
+                showToast("交易紀錄已刪除，總額已更新");
             };
             
             const addNewHistoryTrade = () => {
@@ -491,28 +511,30 @@
                 let calcRes = [];
                 if (simulatedTotal) {
                     const injection = parseFloat(simulatedTotal);
-                    const newTotal = total + injection;
-                    const tSat1 = getV('target_sat_1')/100;
-                    const tSat2 = getV('target_sat_2')/100;
-                    const tIbit = getV('target_sat_ibit')/100;
-                    const targetSat1Val = newTotal * tSat1;
-                    const targetSat2Val = newTotal * tSat2;
-                    const targetIbitVal = newTotal * tIbit;
-                    const remForCore = newTotal - targetSat1Val - targetSat2Val - targetIbitVal;
-                    const targetTQQQVal = remForCore * (coreTarget/100);
-                    const targetQQQVal = remForCore * (1 - coreTarget/100);
-                    const calcDiff = (target, current, ticker) => {
-                        const diff = target - current;
-                        const price = getP(ticker);
-                        return { ticker, diff, qty: price > 0 ? diff / price : 0 };
-                    };
-                    calcRes = [
-                        calcDiff(targetTQQQVal, valTQQQ, 'TQQQ'),
-                        calcDiff(targetQQQVal, valQQQ, tCore),
-                        calcDiff(targetSat1Val, valSat1, inputs.custom_ticker_1),
-                        calcDiff(targetSat2Val, valSat2, inputs.custom_ticker_2),
-                        calcDiff(targetIbitVal, valIbit, 'IBIT')
-                    ];
+                    if (!isNaN(injection)) {
+                        const newTotal = total + injection;
+                        const tSat1 = getV('target_sat_1')/100;
+                        const tSat2 = getV('target_sat_2')/100;
+                        const tIbit = getV('target_sat_ibit')/100;
+                        const targetSat1Val = newTotal * tSat1;
+                        const targetSat2Val = newTotal * tSat2;
+                        const targetIbitVal = newTotal * tIbit;
+                        const remForCore = newTotal - targetSat1Val - targetSat2Val - targetIbitVal;
+                        const targetTQQQVal = remForCore * (coreTarget/100);
+                        const targetQQQVal = remForCore * (1 - coreTarget/100);
+                        const calcDiff = (target, current, ticker) => {
+                            const diff = target - current;
+                            const price = getP(ticker);
+                            return { ticker, diff, qty: price > 0 ? diff / price : 0 };
+                        };
+                        calcRes = [
+                            calcDiff(targetTQQQVal, valTQQQ, 'TQQQ'),
+                            calcDiff(targetQQQVal, valQQQ, tCore),
+                            calcDiff(targetSat1Val, valSat1, inputs.custom_ticker_1),
+                            calcDiff(targetSat2Val, valSat2, inputs.custom_ticker_2),
+                            calcDiff(targetIbitVal, valIbit, 'IBIT')
+                        ];
+                    }
                 }
 
                 const rsi = getNum(inputs.current_rsi);
@@ -619,7 +641,7 @@
             useEffect(() => { document.documentElement.className = darkMode ? 'dark' : 'light'; }, [darkMode]);
 
             // Actions
-            const save = async () => { if (!effectiveUserId || isSaving) return; setIsSaving(true); try { await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').add({ date: new Date(inputs.record_date).toISOString(), total_equity: totalCapital, total_realized_premium: totalRealizedPremium, prices, inputs, memo: inputs.record_memo }); await syncToCloud('last_save', Date.now()); showToast("同步成功"); setInputs(p=>({...p, record_memo: ''})); } catch(e) { showToast("失敗"); } setIsSaving(false); };
+            const save = async () => { if (!effectiveUserId || isSaving) return; setIsSaving(true); try { await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').add({ date: new Date(inputs.record_date).toISOString(), total_equity: totalCapital, total_realized_premium: inputs.total_realized_premium, prices, inputs, memo: inputs.record_memo }); await syncToCloud('last_save', Date.now()); showToast("同步成功"); setInputs(p=>({...p, record_memo: ''})); } catch(e) { showToast("失敗"); } setIsSaving(false); };
             const confirmDelete = async (id) => { await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').doc(id).delete(); showToast("已刪除"); };
             const exportData = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({records, inputs})], {type: "application/json"})); a.download = `Backup_${new Date().toISOString().split('T')[0]}.json`; a.click(); };
             const importData = (e) => { const r = new FileReader(); r.onload = (ev) => { const d = JSON.parse(ev.target.result); if(d.inputs) setInputs(p=>({...p,...d.inputs})); if(d.records) setRecords(d.records); alert("匯入成功 (暫存)"); }; if(e.target.files[0]) r.readAsText(e.target.files[0]); };
@@ -674,6 +696,29 @@
                                                 <div><label className="text-xs font-bold text-slate-500">新合約日期</label><input type="date" value={opInputs.newExpiry||''} onChange={e=>setOpInputs({...opInputs, newExpiry:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold text-xs" /></div>
                                                 <div><label className="text-xs font-bold text-slate-500">新合約 Delta</label><input type="number" value={opInputs.newDelta||''} onChange={e=>setOpInputs({...opInputs, newDelta:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold" /></div>
                                             </div>
+                                            {/* LIVE CALCULATION DISPLAY */}
+                                            {inputs.options_inventory.find(o => o.id === opAction.id) && (
+                                                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl text-xs space-y-1 border border-slate-200 dark:border-slate-700">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-slate-400">原始賣出價:</span>
+                                                        <span className="font-mono font-bold">${inputs.options_inventory.find(o => o.id === opAction.id).premium}</span>
+                                                    </div>
+                                                    <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-1">
+                                                        <span className="text-slate-400">本腿損益:</span>
+                                                        <span className={`font-mono font-black ${(parseFloat(inputs.options_inventory.find(o => o.id === opAction.id).premium) - (parseFloat(opInputs.exitPrice)||0)) * 100 * parseFloat(inputs.options_inventory.find(o => o.id === opAction.id).contracts) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                            {((parseFloat(inputs.options_inventory.find(o => o.id === opAction.id).premium) - (parseFloat(opInputs.exitPrice)||0)) * 100 * parseFloat(inputs.options_inventory.find(o => o.id === opAction.id).contracts)).toFixed(0)}
+                                                        </span>
+                                                    </div>
+                                                    {opAction.type === 'ROLL' && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-slate-400">本次轉倉現金流:</span>
+                                                            <span className={`font-mono font-black ${((parseFloat(opInputs.newPremium)||0) - (parseFloat(opInputs.exitPrice)||0)) * 100 * parseFloat(inputs.options_inventory.find(o => o.id === opAction.id).contracts) >= 0 ? 'text-amber-500' : 'text-blue-500'}`}>
+                                                                {(((parseFloat(opInputs.newPremium)||0) - (parseFloat(opInputs.exitPrice)||0)) * 100 * parseFloat(inputs.options_inventory.find(o => o.id === opAction.id).contracts)).toFixed(0)}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </>
                                     )}
                                     <div className="flex gap-2 mt-4">
@@ -751,7 +796,7 @@
                                     <div className="mt-2"><div className="text-4xl font-black font-mono">${totalCapital.toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="text-sm font-mono text-white/50">≈ NT$ {(totalCapital*inputs.exchange_rate).toLocaleString(undefined,{maximumFractionDigits:0})}</div></div>
                                     <div className="mt-4 pt-3 border-t border-white/10 flex justify-between text-xs font-bold z-10 relative">
                                         <div><span className="opacity-40 text-[9px] block">{perfD.l}報酬</span><span className={`text-lg ${perfD.v>=0?'text-emerald-400':'text-red-400'}`}>{perfD.v>0?'+':''}{perfD.v.toFixed(2)}%</span></div>
-                                        <div className="text-center"><span className="opacity-40 text-[9px] block">已實現權利金 (Premium)</span><span className="text-lg text-amber-400 font-mono">${totalRealizedPremium.toLocaleString(undefined,{maximumFractionDigits:0})}</span></div>
+                                        <div className="text-center"><span className="opacity-40 text-[9px] block">已實現權利金 (Premium)</span><span className="text-lg text-amber-400 font-mono">${(inputs.total_realized_premium||0).toLocaleString(undefined,{maximumFractionDigits:0})}</span></div>
                                         <div className="text-right"><span className="opacity-40 text-[9px] block">貸款</span><span className="font-mono text-base text-red-500">${inputs.loan_amount.toLocaleString()}</span></div>
                                     </div>
                                 </Card>
@@ -918,7 +963,7 @@
                                 ) : (
                                     <div className="space-y-4">
                                         <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-slate-800 dark:to-slate-900 border-2 border-amber-200 dark:border-slate-700">
-                                            <div className="text-xs font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest mb-1">歷史已實現總權利金</div>
+                                            <div className="text-xs font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest mb-1">歷史已實現總權利金 <span className="text-[9px] text-slate-400 ml-1">(即時同步)</span></div>
                                             <div className="text-3xl font-black font-mono text-slate-800 dark:text-slate-100">${totalRealizedPremium.toLocaleString()}</div>
                                         </Card>
                                         <div className="flex justify-between items-center px-1 mb-2">
