@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Alpha Horizon Dashboard v9.7</title>
+    <title>Alpha Horizon Dashboard v9.9</title>
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
@@ -100,7 +100,6 @@
         const Card = ({ children, className = "" }) => <div className={`rounded-[2rem] shadow-xl border p-5 transition-all bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 ${className}`}>{children}</div>;
         const SectionTitle = ({ title, iconName }) => <h2 className="text-[11px] font-black mb-3 flex items-center gap-2 uppercase tracking-widest text-slate-500 dark:text-slate-400"><Icon name={iconName} size={14} /> {title}</h2>;
 
-        // Custom Tooltip
         const CustomTooltip = ({ active, payload }) => {
             if (active && payload && payload.length) {
                 const d = payload[0].payload;
@@ -129,6 +128,39 @@
                     <input type="number" placeholder="0" value={inputs[conf.qtyKey]} onChange={e => onChange(conf.qtyKey, e.target.value)} onBlur={e => onBlur(conf.qtyKey, e.target.value)} className="col-span-3 bg-transparent font-black text-sm h-10 font-mono focus:bg-white dark:focus:bg-slate-800" />
                     <input type="number" placeholder="-" value={inputs[conf.targetKey]} onChange={e => onChange(conf.targetKey, e.target.value)} onBlur={e => onBlur(conf.targetKey, e.target.value)} className={`col-span-3 bg-transparent font-bold text-xs h-10 font-mono ${conf.color} focus:bg-white dark:focus:bg-slate-800`} />
                     <div className={`col-span-3 text-center text-xs font-black font-mono ${diff && diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>{diff ? `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%` : '-'}</div>
+                </div>
+            );
+        };
+
+        const EditInventoryModal = ({ item, onClose, onSave, onDelete }) => {
+            const [localItem, setLocalItem] = useState({...item});
+            return (
+                <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2rem] p-6 shadow-2xl animate-in fade-in">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-black flex gap-2"><Icon name="Edit2"/> 編輯持倉合約</h3>
+                            <button onClick={onClose}><Icon name="X"/></button>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-2">
+                                <div><label className="text-xs text-slate-500 block">標的</label><input value={localItem.ticker} onChange={e=>setLocalItem({...localItem, ticker: e.target.value.toUpperCase()})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div>
+                                <div><label className="text-xs text-slate-500 block">類型</label><select value={localItem.type} onChange={e=>setLocalItem({...localItem, type: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"><option value="SC">Sell Call</option><option value="SP">Sell Put</option></select></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div><label className="text-xs text-slate-500 block">Strike</label><input type="number" value={localItem.strike} onChange={e=>setLocalItem({...localItem, strike: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div>
+                                <div><label className="text-xs text-slate-500 block">Expiry</label><input type="date" value={localItem.expiry} onChange={e=>setLocalItem({...localItem, expiry: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                                <div><label className="text-xs text-slate-500 block">張數</label><input type="number" value={localItem.contracts} onChange={e=>setLocalItem({...localItem, contracts: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold text-center"/></div>
+                                <div><label className="text-xs text-slate-500 block">權利金</label><input type="number" value={localItem.premium} onChange={e=>setLocalItem({...localItem, premium: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold text-center text-emerald-500"/></div>
+                                <div><label className="text-xs text-slate-500 block">Delta</label><input type="number" value={localItem.delta} onChange={e=>setLocalItem({...localItem, delta: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold text-center"/></div>
+                            </div>
+                            <div className="flex gap-2 mt-4">
+                                <button onClick={()=>onDelete(localItem.id)} className="p-3 bg-red-100 text-red-500 rounded-xl"><Icon name="Trash2"/></button>
+                                <button onClick={()=>onSave(localItem)} className="flex-1 bg-indigo-600 text-white rounded-xl font-bold">儲存</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             );
         };
@@ -210,41 +242,6 @@
             );
         }
 
-        // NEW: EditInventoryModal for Safe Editing
-        const EditInventoryModal = ({ item, onClose, onSave, onDelete }) => {
-            const [localItem, setLocalItem] = useState({...item});
-            return (
-                <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2rem] p-6 shadow-2xl animate-in fade-in">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-black flex gap-2"><Icon name="Edit2"/> 編輯持倉合約</h3>
-                            <button onClick={onClose}><Icon name="X"/></button>
-                        </div>
-                        <div className="space-y-3">
-                            <div className="grid grid-cols-2 gap-2">
-                                <div><label className="text-xs text-slate-500 block">標的</label><input value={localItem.ticker} onChange={e=>setLocalItem({...localItem, ticker: e.target.value.toUpperCase()})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div>
-                                <div><label className="text-xs text-slate-500 block">類型</label><select value={localItem.type} onChange={e=>setLocalItem({...localItem, type: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"><option value="SC">Sell Call</option><option value="SP">Sell Put</option></select></div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div><label className="text-xs text-slate-500 block">Strike</label><input type="number" value={localItem.strike} onChange={e=>setLocalItem({...localItem, strike: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div>
-                                <div><label className="text-xs text-slate-500 block">Expiry</label><input type="date" value={localItem.expiry} onChange={e=>setLocalItem({...localItem, expiry: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2">
-                                <div><label className="text-xs text-slate-500 block">張數</label><input type="number" value={localItem.contracts} onChange={e=>setLocalItem({...localItem, contracts: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold text-center"/></div>
-                                <div><label className="text-xs text-slate-500 block">權利金</label><input type="number" value={localItem.premium} onChange={e=>setLocalItem({...localItem, premium: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold text-center text-emerald-500"/></div>
-                                <div><label className="text-xs text-slate-500 block">Delta</label><input type="number" value={localItem.delta} onChange={e=>setLocalItem({...localItem, delta: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold text-center"/></div>
-                            </div>
-                            <div className="flex gap-2 mt-4">
-                                <button onClick={()=>onDelete(localItem.id)} className="p-3 bg-red-100 text-red-500 rounded-xl"><Icon name="Trash2"/></button>
-                                <button onClick={()=>onSave(localItem)} className="flex-1 bg-indigo-600 text-white rounded-xl font-bold">儲存</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        // --- MAIN APP ---
         const App = () => {
             const [user, setUser] = useState(null);
             const [view, setView] = useState('dashboard');
@@ -272,13 +269,12 @@
             const [customSyncId, setCustomSyncId] = useState(() => localStorage.getItem('qqq_sync_id') || '');
             const [tempSyncId, setTempSyncId] = useState(customSyncId);
             
-            // Options UI State
-            const [openModalType, setOpenModalType] = useState(null); // 'OPEN', 'CLOSE', 'ROLL'
-            const [targetOptionId, setTargetOptionId] = useState(null); // ID of option being acted upon
+            const [openModalType, setOpenModalType] = useState(null); 
+            const [targetOptionId, setTargetOptionId] = useState(null); 
             const [opInputs, setOpInputs] = useState({}); 
 
             const [editingTrade, setEditingTrade] = useState(null); 
-            const [editingInventoryItem, setEditingInventoryItem] = useState(null); // NEW: For Inventory Edit
+            const [editingInventoryItem, setEditingInventoryItem] = useState(null); 
             const fileInputRef = useRef(null);
 
             const [inputs, setInputs] = useState({
@@ -306,8 +302,6 @@
                 options_inventory: [] 
             });
 
-            // Calculate total realized premium from history array
-            // Memoize calculation so it auto-updates when history changes
             const totalRealizedPremium = useMemo(() => {
                 return (inputs.option_history || []).reduce((acc, curr) => acc + (parseFloat(curr.pnl) || 0), 0);
             }, [inputs.option_history]);
@@ -325,7 +319,6 @@
                 syncToCloud('options_matrix', newM);
             };
 
-            // Inventory Actions
             const addOption = () => {
                 const newOpt = { id: Date.now(), type: 'SC', ticker: '', strike: '', expiry: '', contracts: 1, premium: 0, delta: '' };
                 setEditingInventoryItem(newOpt);
@@ -352,118 +345,127 @@
                 showToast("合約已刪除");
             };
             
-            // Helper for removing option from dashboard
             const removeOption = (id) => handleInventoryDelete(id); 
-            // Helper for editing from dashboard
             const updateOption = (id, field, val) => { /* Not used in readonly mode */ };
 
 
-            const executeOptionAction = () => {
-                if (openModalType === 'OPEN') {
-                    const premium = parseFloat(opInputs.newPremium) || 0;
-                    const contracts = parseFloat(opInputs.contracts) || 1;
-                    const totalCredit = premium * contracts * 100;
-                    
-                    const newTrade = {
-                        id: Date.now(),
-                        date: new Date().toISOString(),
-                        ticker: (opInputs.ticker || 'TQQQ').toUpperCase(),
-                        type: 'OPEN',
-                        pnl: totalCredit
-                    };
-                    const newHistory = [newTrade, ...(inputs.option_history || [])];
+            const handleExecute = () => {
+                try {
+                    if (openModalType === 'OPEN') {
+                        const premium = parseFloat(opInputs.newPremium) || 0;
+                        const contracts = parseFloat(opInputs.contracts) || 1;
+                        const totalCredit = premium * contracts * 100;
+                        
+                        const newTrade = {
+                            id: Date.now(),
+                            date: new Date().toISOString(),
+                            ticker: (opInputs.ticker || 'TQQQ').toUpperCase(),
+                            type: 'OPEN',
+                            pnl: totalCredit
+                        };
+                        const newHistory = [newTrade, ...(inputs.option_history || [])];
 
-                    const newOpt = {
-                        id: Date.now(),
-                        type: opInputs.type || 'SC',
-                        ticker: (opInputs.ticker || 'TQQQ').toUpperCase(),
-                        strike: opInputs.newStrike || '',
-                        expiry: opInputs.newExpiry || '',
-                        contracts: contracts,
-                        premium: premium,
-                        delta: opInputs.newDelta || ''
-                    };
-                    const newInv = [...(inputs.options_inventory || []), newOpt];
+                        const newOpt = {
+                            id: Date.now(),
+                            type: opInputs.type || 'SC',
+                            ticker: (opInputs.ticker || 'TQQQ').toUpperCase(),
+                            strike: opInputs.newStrike || '',
+                            expiry: opInputs.newExpiry || '',
+                            contracts: contracts,
+                            premium: premium,
+                            delta: opInputs.newDelta || ''
+                        };
+                        const newInv = [...(inputs.options_inventory || []), newOpt];
 
-                    setInputs(p => ({...p, options_inventory: newInv, option_history: newHistory}));
-                    db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ 
-                        options_inventory: newInv, 
-                        option_history: newHistory 
-                    }, { merge: true });
+                        setInputs(p => ({...p, options_inventory: newInv, option_history: newHistory}));
+                        if (effectiveUserId) {
+                            db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ 
+                                options_inventory: newInv, 
+                                option_history: newHistory 
+                            }, { merge: true });
+                        }
+                        
+                        showToast(`建倉成功！權利金收入: +$${totalCredit.toFixed(0)}`);
+                        setOpenModalType(null);
+                        setOpInputs({});
+                        return;
+                    }
+
+                    const opt = inputs.options_inventory.find(o => o.id === targetOptionId);
+                    if (!opt) return;
+
+                    const exitPrice = parseFloat(opInputs.exitPrice) || 0;
+                    const contracts = parseFloat(opt.contracts);
+                    const totalDebit = -(exitPrice * contracts * 100);
+
+                    if (openModalType === 'CLOSE') {
+                        const newTrade = {
+                            id: Date.now(),
+                            date: new Date().toISOString(),
+                            ticker: opt.ticker,
+                            type: 'CLOSE',
+                            pnl: totalDebit
+                        };
+                        
+                        const newHistory = [newTrade, ...(inputs.option_history || [])];
+                        const newInv = inputs.options_inventory.filter(o => o.id !== targetOptionId);
+
+                        setInputs(p => ({...p, options_inventory: newInv, option_history: newHistory}));
+                        if (effectiveUserId) {
+                            db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ 
+                                options_inventory: newInv, 
+                                option_history: newHistory
+                            }, { merge: true });
+                        }
+
+                        showToast(`平倉成功！支出: $${Math.abs(totalDebit).toFixed(0)}`);
+
+                    } else if (openModalType === 'ROLL') {
+                        const newPremium = parseFloat(opInputs.newPremium) || 0;
+                        const openCredit = newPremium * contracts * 100;
+                        const netCashflow = totalDebit + openCredit;
+
+                        const closeTrade = {
+                            id: Date.now(),
+                            date: new Date().toISOString(),
+                            ticker: opt.ticker,
+                            type: 'ROLL_CLOSE',
+                            pnl: totalDebit
+                        };
+                        const openTrade = {
+                            id: Date.now() + 1,
+                            date: new Date().toISOString(),
+                            ticker: opt.ticker,
+                            type: 'ROLL_OPEN',
+                            pnl: openCredit
+                        };
+                        const newHistory = [openTrade, closeTrade, ...(inputs.option_history || [])];
+
+                        const newInv = inputs.options_inventory.map(o => o.id === targetOptionId ? {
+                            ...o,
+                            strike: opInputs.newStrike || '',
+                            expiry: opInputs.newExpiry || '',
+                            premium: newPremium,
+                            delta: opInputs.newDelta || ''
+                        } : o);
+
+                        setInputs(p => ({...p, options_inventory: newInv, option_history: newHistory}));
+                        if (effectiveUserId) {
+                            db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ 
+                                options_inventory: newInv, 
+                                option_history: newHistory
+                            }, { merge: true });
+                        }
+
+                        showToast(`轉倉成功！淨現金流: $${netCashflow.toFixed(0)}`);
+                    }
                     
-                    showToast(`建倉成功！權利金收入: +$${totalCredit.toFixed(0)}`);
                     setOpenModalType(null);
                     setOpInputs({});
-                    return;
+                } catch (e) {
+                    console.error("Execution Error:", e);
+                    showToast("執行發生錯誤，請稍後再試");
                 }
-
-                const opt = inputs.options_inventory.find(o => o.id === targetOptionId);
-                if (!opt) return;
-
-                const exitPrice = parseFloat(opInputs.exitPrice) || 0;
-                const contracts = parseFloat(opt.contracts);
-                const totalDebit = -(exitPrice * contracts * 100);
-
-                if (openModalType === 'CLOSE') {
-                    const newTrade = {
-                        id: Date.now(),
-                        date: new Date().toISOString(),
-                        ticker: opt.ticker,
-                        type: 'CLOSE',
-                        pnl: totalDebit
-                    };
-                    
-                    const newHistory = [newTrade, ...(inputs.option_history || [])];
-                    const newInv = inputs.options_inventory.filter(o => o.id !== targetOptionId);
-
-                    setInputs(p => ({...p, options_inventory: newInv, option_history: newHistory}));
-                    db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ 
-                        options_inventory: newInv, 
-                        option_history: newHistory
-                    }, { merge: true });
-
-                    showToast(`平倉成功！支出: $${Math.abs(totalDebit).toFixed(0)}`);
-
-                } else if (openModalType === 'ROLL') {
-                    const newPremium = parseFloat(opInputs.newPremium) || 0;
-                    const openCredit = newPremium * contracts * 100;
-                    const netCashflow = totalDebit + openCredit;
-
-                    const closeTrade = {
-                        id: Date.now(),
-                        date: new Date().toISOString(),
-                        ticker: opt.ticker,
-                        type: 'ROLL_CLOSE',
-                        pnl: totalDebit
-                    };
-                    const openTrade = {
-                        id: Date.now() + 1,
-                        date: new Date().toISOString(),
-                        ticker: opt.ticker,
-                        type: 'ROLL_OPEN',
-                        pnl: openCredit
-                    };
-                    const newHistory = [openTrade, closeTrade, ...(inputs.option_history || [])];
-
-                    const newInv = inputs.options_inventory.map(o => o.id === targetOptionId ? {
-                        ...o,
-                        strike: opInputs.newStrike || '',
-                        expiry: opInputs.newExpiry || '',
-                        premium: newPremium,
-                        delta: opInputs.newDelta || ''
-                    } : o);
-
-                    setInputs(p => ({...p, options_inventory: newInv, option_history: newHistory}));
-                    db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ 
-                        options_inventory: newInv, 
-                        option_history: newHistory
-                    }, { merge: true });
-
-                    showToast(`轉倉成功！淨現金流: $${netCashflow.toFixed(0)}`);
-                }
-                
-                setOpenModalType(null);
-                setOpInputs({});
             };
 
             const handleTradeSave = (updatedTrade) => {
@@ -473,6 +475,7 @@
                 } else {
                     newHistory = [updatedTrade, ...inputs.option_history];
                 }
+                
                 setInputs(p => ({...p, option_history: newHistory}));
                 syncToCloud('option_history', newHistory);
                 setEditingTrade(null);
@@ -481,8 +484,13 @@
 
             const handleTradeDelete = (id) => {
                 const newHistory = inputs.option_history.filter(t => t.id !== id);
+                
                 setInputs(p => ({...p, option_history: newHistory}));
-                syncToCloud('option_history', newHistory);
+                
+                db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ 
+                    option_history: newHistory
+                }, { merge: true });
+                
                 setEditingTrade(null);
                 showToast("交易紀錄已刪除");
             };
@@ -526,7 +534,6 @@
                 } catch(e) { console.error(e); } finally { setLoadingPrices(false); }
             }, [inputs.ticker_core_1, inputs.custom_ticker_1, inputs.custom_ticker_2, loadingPrices]);
 
-            // Calculations
             const { totalCapital, performanceStats, rebalanceStatus, scenarioData, bearDefense, qqqDistance, currentLeverage, pieData, calcResults, rsiSuggestion } = useMemo(() => {
                 const getP = (t) => prices[(t || "").toUpperCase()] || 0;
                 const getV = (k) => getNum(inputs[k]);
@@ -839,11 +846,7 @@
 
                                 <div className="flex gap-2 mt-4">
                                     <button onClick={()=>{setOpenModalType(null);setOpInputs({})}} className="flex-1 bg-slate-200 dark:bg-slate-800 text-slate-500 py-3 rounded-xl font-bold">取消</button>
-                                    <button onClick={() => {
-                                        if (openModalType === 'OPEN') handleOpenPosition();
-                                        if (openModalType === 'CLOSE') handleClosePosition();
-                                        if (openModalType === 'ROLL') handleRollPosition();
-                                    }} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold">確認執行</button>
+                                    <button onClick={handleExecute} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold">確認執行</button>
                                 </div>
                             </div>
                         </div>
