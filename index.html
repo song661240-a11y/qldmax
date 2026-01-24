@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Alpha Horizon Dashboard v9.1</title>
+    <title>Alpha Horizon Dashboard v9.7</title>
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
@@ -135,27 +135,11 @@
 
         const EditModal = ({ editingId, editForm, setEditingId, setEditForm, saveEdit }) => {
             if (!editingId || !editForm) return null;
-            
-            // Helper for edit options list inside modal
-            const updateFormOption = (id, field, val) => {
-                 const newInv = editForm.inputs.options_inventory.map(o => o.id === id ? { ...o, [field]: val } : o);
-                 setEditForm(p => ({...p, inputs: {...p.inputs, options_inventory: newInv}}));
-            };
-            const removeFormOption = (id) => {
-                 const newInv = editForm.inputs.options_inventory.filter(o => o.id !== id);
-                 setEditForm(p => ({...p, inputs: {...p.inputs, options_inventory: newInv}}));
-            };
-            const addFormOption = () => {
-                 const newOpt = { id: Date.now(), type: 'SC', ticker: 'TQQQ', strike: '', expiry: '', contracts: 1, premium: 0, delta: '' };
-                 const newInv = [...(editForm.inputs.options_inventory || []), newOpt];
-                 setEditForm(p => ({...p, inputs: {...p.inputs, options_inventory: newInv}}));
-            };
-
             return (
                 <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center">
                     <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl animate-in slide-in-from-bottom-full max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6 border-b pb-4 dark:border-slate-800">
-                            <h3 className="text-xl font-black flex items-center gap-2"><Icon name="Edit2" size={20} className="text-indigo-500" /> 編輯歷史紀錄</h3>
+                            <h3 className="text-xl font-black flex items-center gap-2"><Icon name="Edit2" size={20} className="text-indigo-500" /> 編輯紀錄</h3>
                             <button onClick={() => setEditingId(null)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full"><Icon name="X" size={20} /></button>
                         </div>
                         <div className="space-y-4">
@@ -176,28 +160,15 @@
                             <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
                                 <div className="text-xs font-black text-amber-500 uppercase tracking-widest flex justify-between items-center">
                                     <span>權利金與選擇權</span>
-                                    <button onClick={addFormOption} className="text-[9px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded">+ 合約</button>
                                 </div>
                                 <div className="flex justify-between items-center bg-amber-50 dark:bg-slate-800/50 p-2 px-3 rounded-xl border border-amber-100 dark:border-amber-900/30">
                                     <span className="font-bold text-xs text-amber-600">已實現權利金</span>
-                                    <input type="number" value={editForm.inputs.total_realized_premium || 0} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, total_realized_premium: parseFloat(e.target.value)}}))} className="w-28 bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold text-amber-500" />
+                                    <input type="number" step="any" value={editForm.inputs.total_realized_premium || ''} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, total_realized_premium: e.target.value}}))} className="w-28 bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold text-amber-500" />
                                 </div>
-                                
-                                {/* Historical Options List */}
-                                {(editForm.inputs.options_inventory || []).map((opt, idx) => (
-                                    <div key={idx} className="bg-slate-50 dark:bg-slate-800/30 p-2 rounded-lg text-xs grid grid-cols-12 gap-1 items-center border border-slate-200 dark:border-slate-700">
-                                        <div className="col-span-2"><input value={opt.ticker} onChange={e=>updateFormOption(opt.id,'ticker',e.target.value.toUpperCase())} className="w-full font-bold bg-transparent"/></div>
-                                        <div className="col-span-2"><select value={opt.type} onChange={e=>updateFormOption(opt.id,'type',e.target.value)} className="w-full bg-transparent"><option value="SC">SC</option><option value="SP">SP</option></select></div>
-                                        <div className="col-span-2"><input value={opt.strike} onChange={e=>updateFormOption(opt.id,'strike',e.target.value)} className="w-full text-center bg-transparent" placeholder="Strk"/></div>
-                                        <div className="col-span-2"><input type="number" value={opt.contracts} onChange={e=>updateFormOption(opt.id,'contracts',e.target.value)} className="w-full text-center bg-transparent" placeholder="#"/></div>
-                                        <div className="col-span-2"><input type="number" value={opt.premium} onChange={e=>updateFormOption(opt.id,'premium',e.target.value)} className="w-full text-center bg-transparent" placeholder="$"/></div>
-                                        <div className="col-span-2 text-right"><button onClick={()=>removeFormOption(opt.id)} className="text-red-400"><Icon name="X" size={12}/></button></div>
-                                    </div>
-                                ))}
                             </div>
 
                             <textarea value={editForm.memo || ''} onChange={e => setEditForm(p => ({...p, memo: e.target.value}))} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 text-sm h-20" placeholder="備註..." />
-                            <button onClick={saveEdit} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black flex justify-center gap-2"><Icon name="Save" size={20} /> 保存修正</button>
+                            <button onClick={()=>saveEdit({...editForm, inputs: {...editForm.inputs, total_realized_premium: parseFloat(editForm.inputs.total_realized_premium) || 0}})} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black flex justify-center gap-2"><Icon name="Save" size={20} /> 保存修正</button>
                         </div>
                     </div>
                 </div>
@@ -219,19 +190,59 @@
                                 <div><label className="text-xs text-slate-500 block">標的</label><input value={localTrade.ticker} onChange={e=>setLocalTrade({...localTrade, ticker: e.target.value.toUpperCase()})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
-                                <div><label className="text-xs text-slate-500 block">動作</label><select value={localTrade.type} onChange={e=>setLocalTrade({...localTrade, type: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"><option value="CLOSE">平倉</option><option value="ROLL">轉倉</option><option value="MANUAL">補登</option></select></div>
-                                <div><label className="text-xs text-slate-500 block">損益 ($)</label><input type="number" step="any" value={localTrade.pnl} onChange={e=>setLocalTrade({...localTrade, pnl: parseFloat(e.target.value)})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold text-center" /></div>
+                                <div><label className="text-xs text-slate-500 block">動作</label><select value={localTrade.type} onChange={e=>setLocalTrade({...localTrade, type: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold">
+                                    <option value="OPEN">建倉</option>
+                                    <option value="CLOSE">平倉</option>
+                                    <option value="ROLL_CLOSE">轉倉(平)</option>
+                                    <option value="ROLL_OPEN">轉倉(開)</option>
+                                    <option value="MANUAL">補登</option>
+                                </select></div>
+                                <div><label className="text-xs text-slate-500 block">金額 ($)</label><input type="number" step="any" value={localTrade.pnl} onChange={e=>setLocalTrade({...localTrade, pnl: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold text-center" /></div>
                             </div>
-                            <div className="text-[10px] text-center text-slate-400 mt-1">負數代表虧損 (Loss)，正數代表獲利 (Profit)</div>
+                            <div className="text-[10px] text-center text-slate-400 mt-1">正數 (+) = 收入, 負數 (-) = 支出</div>
                             <div className="flex gap-2 mt-4">
                                 <button onClick={()=>onDelete(localTrade.id)} className="p-3 bg-red-100 text-red-500 rounded-xl"><Icon name="Trash2"/></button>
-                                <button onClick={()=>onSave(localTrade)} className="flex-1 bg-indigo-600 text-white rounded-xl font-bold">儲存</button>
+                                <button onClick={()=>onSave({...localTrade, pnl: parseFloat(localTrade.pnl) || 0})} className="flex-1 bg-indigo-600 text-white rounded-xl font-bold">儲存</button>
                             </div>
                         </div>
                     </div>
                 </div>
             );
         }
+
+        // NEW: EditInventoryModal for Safe Editing
+        const EditInventoryModal = ({ item, onClose, onSave, onDelete }) => {
+            const [localItem, setLocalItem] = useState({...item});
+            return (
+                <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2rem] p-6 shadow-2xl animate-in fade-in">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-black flex gap-2"><Icon name="Edit2"/> 編輯持倉合約</h3>
+                            <button onClick={onClose}><Icon name="X"/></button>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-2">
+                                <div><label className="text-xs text-slate-500 block">標的</label><input value={localItem.ticker} onChange={e=>setLocalItem({...localItem, ticker: e.target.value.toUpperCase()})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div>
+                                <div><label className="text-xs text-slate-500 block">類型</label><select value={localItem.type} onChange={e=>setLocalItem({...localItem, type: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"><option value="SC">Sell Call</option><option value="SP">Sell Put</option></select></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div><label className="text-xs text-slate-500 block">Strike</label><input type="number" value={localItem.strike} onChange={e=>setLocalItem({...localItem, strike: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div>
+                                <div><label className="text-xs text-slate-500 block">Expiry</label><input type="date" value={localItem.expiry} onChange={e=>setLocalItem({...localItem, expiry: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                                <div><label className="text-xs text-slate-500 block">張數</label><input type="number" value={localItem.contracts} onChange={e=>setLocalItem({...localItem, contracts: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold text-center"/></div>
+                                <div><label className="text-xs text-slate-500 block">權利金</label><input type="number" value={localItem.premium} onChange={e=>setLocalItem({...localItem, premium: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold text-center text-emerald-500"/></div>
+                                <div><label className="text-xs text-slate-500 block">Delta</label><input type="number" value={localItem.delta} onChange={e=>setLocalItem({...localItem, delta: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold text-center"/></div>
+                            </div>
+                            <div className="flex gap-2 mt-4">
+                                <button onClick={()=>onDelete(localItem.id)} className="p-3 bg-red-100 text-red-500 rounded-xl"><Icon name="Trash2"/></button>
+                                <button onClick={()=>onSave(localItem)} className="flex-1 bg-indigo-600 text-white rounded-xl font-bold">儲存</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
         // --- MAIN APP ---
         const App = () => {
@@ -260,9 +271,14 @@
             const [darkMode, setDarkMode] = useState(() => localStorage.getItem('qqq_theme') === 'dark');
             const [customSyncId, setCustomSyncId] = useState(() => localStorage.getItem('qqq_sync_id') || '');
             const [tempSyncId, setTempSyncId] = useState(customSyncId);
-            const [opAction, setOpAction] = useState(null); 
+            
+            // Options UI State
+            const [openModalType, setOpenModalType] = useState(null); // 'OPEN', 'CLOSE', 'ROLL'
+            const [targetOptionId, setTargetOptionId] = useState(null); // ID of option being acted upon
             const [opInputs, setOpInputs] = useState({}); 
+
             const [editingTrade, setEditingTrade] = useState(null); 
+            const [editingInventoryItem, setEditingInventoryItem] = useState(null); // NEW: For Inventory Edit
             const fileInputRef = useRef(null);
 
             const [inputs, setInputs] = useState({
@@ -291,6 +307,7 @@
             });
 
             // Calculate total realized premium from history array
+            // Memoize calculation so it auto-updates when history changes
             const totalRealizedPremium = useMemo(() => {
                 return (inputs.option_history || []).reduce((acc, curr) => acc + (parseFloat(curr.pnl) || 0), 0);
             }, [inputs.option_history]);
@@ -308,65 +325,144 @@
                 syncToCloud('options_matrix', newM);
             };
 
+            // Inventory Actions
             const addOption = () => {
                 const newOpt = { id: Date.now(), type: 'SC', ticker: '', strike: '', expiry: '', contracts: 1, premium: 0, delta: '' };
-                const newInv = [...(inputs.options_inventory || []), newOpt];
-                setInputs(p => ({...p, options_inventory: newInv}));
-                syncToCloud('options_inventory', newInv);
+                setEditingInventoryItem(newOpt);
             };
 
-            const removeOption = (id) => {
+            const handleInventorySave = (updatedItem) => {
+                let newInv;
+                if (inputs.options_inventory.find(o => o.id === updatedItem.id)) {
+                    newInv = inputs.options_inventory.map(o => o.id === updatedItem.id ? updatedItem : o);
+                } else {
+                    newInv = [...(inputs.options_inventory || []), updatedItem];
+                }
+                setInputs(p => ({...p, options_inventory: newInv}));
+                syncToCloud('options_inventory', newInv);
+                setEditingInventoryItem(null);
+                showToast("合約已儲存");
+            };
+
+            const handleInventoryDelete = (id) => {
                 const newInv = inputs.options_inventory.filter(o => o.id !== id);
                 setInputs(p => ({...p, options_inventory: newInv}));
                 syncToCloud('options_inventory', newInv);
+                setEditingInventoryItem(null);
+                showToast("合約已刪除");
             };
+            
+            // Helper for removing option from dashboard
+            const removeOption = (id) => handleInventoryDelete(id); 
+            // Helper for editing from dashboard
+            const updateOption = (id, field, val) => { /* Not used in readonly mode */ };
 
-            const updateOption = (id, field, val) => {
-                const newInv = inputs.options_inventory.map(o => o.id === id ? { ...o, [field]: val } : o);
-                setInputs(p => ({...p, options_inventory: newInv}));
-                syncToCloud('options_inventory', newInv);
-            };
 
             const executeOptionAction = () => {
-                const opt = inputs.options_inventory.find(o => o.id === opAction.id);
-                if (!opt) return;
-                
-                const entryP = parseFloat(opt.premium) || 0;
-                const exitP = parseFloat(opInputs.exitPrice) || 0;
-                const newP = parseFloat(opInputs.newPremium) || 0;
-                const ctr = parseFloat(opt.contracts) || 1;
-                
-                const realized = (entryP - exitP) * ctr * 100;
-                const netCashflow = (newP - exitP) * ctr * 100;
+                if (openModalType === 'OPEN') {
+                    const premium = parseFloat(opInputs.newPremium) || 0;
+                    const contracts = parseFloat(opInputs.contracts) || 1;
+                    const totalCredit = premium * contracts * 100;
+                    
+                    const newTrade = {
+                        id: Date.now(),
+                        date: new Date().toISOString(),
+                        ticker: (opInputs.ticker || 'TQQQ').toUpperCase(),
+                        type: 'OPEN',
+                        pnl: totalCredit
+                    };
+                    const newHistory = [newTrade, ...(inputs.option_history || [])];
 
-                const newTrade = {
-                    id: Date.now(),
-                    date: new Date().toISOString(),
-                    ticker: opt.ticker,
-                    type: opAction.type,
-                    pnl: realized
-                };
-                const newHistory = [newTrade, ...(inputs.option_history || [])];
-                const newTotalRealized = (inputs.total_realized_premium || 0) + realized;
+                    const newOpt = {
+                        id: Date.now(),
+                        type: opInputs.type || 'SC',
+                        ticker: (opInputs.ticker || 'TQQQ').toUpperCase(),
+                        strike: opInputs.newStrike || '',
+                        expiry: opInputs.newExpiry || '',
+                        contracts: contracts,
+                        premium: premium,
+                        delta: opInputs.newDelta || ''
+                    };
+                    const newInv = [...(inputs.options_inventory || []), newOpt];
 
-                if (opAction.type === 'CLOSE') {
-                    const newInv = inputs.options_inventory.filter(o => o.id !== opAction.id);
-                    setInputs(p => ({...p, options_inventory: newInv, option_history: newHistory, total_realized_premium: newTotalRealized}));
-                    db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ options_inventory: newInv, option_history: newHistory, total_realized_premium: newTotalRealized }, { merge: true });
-                    showToast(`平倉損益: $${realized.toFixed(0)}`);
-                } else if (opAction.type === 'ROLL') {
-                    const newInv = inputs.options_inventory.map(o => o.id === opAction.id ? { 
-                        ...o, 
-                        premium: opInputs.newPremium, 
-                        strike: opInputs.newStrike, 
-                        expiry: opInputs.newExpiry, 
-                        delta: opInputs.newDelta 
-                    } : o);
-                    setInputs(p => ({...p, options_inventory: newInv, option_history: newHistory, total_realized_premium: newTotalRealized}));
-                    db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ options_inventory: newInv, option_history: newHistory, total_realized_premium: newTotalRealized }, { merge: true });
-                    showToast(`轉倉損益: $${realized.toFixed(0)} | 現金流: $${netCashflow.toFixed(0)}`);
+                    setInputs(p => ({...p, options_inventory: newInv, option_history: newHistory}));
+                    db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ 
+                        options_inventory: newInv, 
+                        option_history: newHistory 
+                    }, { merge: true });
+                    
+                    showToast(`建倉成功！權利金收入: +$${totalCredit.toFixed(0)}`);
+                    setOpenModalType(null);
+                    setOpInputs({});
+                    return;
                 }
-                setOpAction(null);
+
+                const opt = inputs.options_inventory.find(o => o.id === targetOptionId);
+                if (!opt) return;
+
+                const exitPrice = parseFloat(opInputs.exitPrice) || 0;
+                const contracts = parseFloat(opt.contracts);
+                const totalDebit = -(exitPrice * contracts * 100);
+
+                if (openModalType === 'CLOSE') {
+                    const newTrade = {
+                        id: Date.now(),
+                        date: new Date().toISOString(),
+                        ticker: opt.ticker,
+                        type: 'CLOSE',
+                        pnl: totalDebit
+                    };
+                    
+                    const newHistory = [newTrade, ...(inputs.option_history || [])];
+                    const newInv = inputs.options_inventory.filter(o => o.id !== targetOptionId);
+
+                    setInputs(p => ({...p, options_inventory: newInv, option_history: newHistory}));
+                    db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ 
+                        options_inventory: newInv, 
+                        option_history: newHistory
+                    }, { merge: true });
+
+                    showToast(`平倉成功！支出: $${Math.abs(totalDebit).toFixed(0)}`);
+
+                } else if (openModalType === 'ROLL') {
+                    const newPremium = parseFloat(opInputs.newPremium) || 0;
+                    const openCredit = newPremium * contracts * 100;
+                    const netCashflow = totalDebit + openCredit;
+
+                    const closeTrade = {
+                        id: Date.now(),
+                        date: new Date().toISOString(),
+                        ticker: opt.ticker,
+                        type: 'ROLL_CLOSE',
+                        pnl: totalDebit
+                    };
+                    const openTrade = {
+                        id: Date.now() + 1,
+                        date: new Date().toISOString(),
+                        ticker: opt.ticker,
+                        type: 'ROLL_OPEN',
+                        pnl: openCredit
+                    };
+                    const newHistory = [openTrade, closeTrade, ...(inputs.option_history || [])];
+
+                    const newInv = inputs.options_inventory.map(o => o.id === targetOptionId ? {
+                        ...o,
+                        strike: opInputs.newStrike || '',
+                        expiry: opInputs.newExpiry || '',
+                        premium: newPremium,
+                        delta: opInputs.newDelta || ''
+                    } : o);
+
+                    setInputs(p => ({...p, options_inventory: newInv, option_history: newHistory}));
+                    db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ 
+                        options_inventory: newInv, 
+                        option_history: newHistory
+                    }, { merge: true });
+
+                    showToast(`轉倉成功！淨現金流: $${netCashflow.toFixed(0)}`);
+                }
+                
+                setOpenModalType(null);
                 setOpInputs({});
             };
 
@@ -377,36 +473,18 @@
                 } else {
                     newHistory = [updatedTrade, ...inputs.option_history];
                 }
-                // Recalculate total premium after edit
-                const newTotal = newHistory.reduce((acc, curr) => acc + (parseFloat(curr.pnl) || 0), 0);
-                
-                setInputs(p => ({...p, option_history: newHistory, total_realized_premium: newTotal}));
-                
-                // SYNC BOTH HISTORY ARRAY AND TOTAL SCALAR
-                db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ 
-                    option_history: newHistory,
-                    total_realized_premium: newTotal 
-                }, { merge: true });
-                
+                setInputs(p => ({...p, option_history: newHistory}));
+                syncToCloud('option_history', newHistory);
                 setEditingTrade(null);
-                showToast("交易紀錄與總額已更新");
+                showToast("交易紀錄已更新");
             };
 
             const handleTradeDelete = (id) => {
                 const newHistory = inputs.option_history.filter(t => t.id !== id);
-                // Recalculate total premium after delete
-                const newTotal = newHistory.reduce((acc, curr) => acc + (parseFloat(curr.pnl) || 0), 0);
-                
-                setInputs(p => ({...p, option_history: newHistory, total_realized_premium: newTotal}));
-                
-                // SYNC BOTH HISTORY ARRAY AND TOTAL SCALAR
-                db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ 
-                    option_history: newHistory,
-                    total_realized_premium: newTotal 
-                }, { merge: true });
-                
+                setInputs(p => ({...p, option_history: newHistory}));
+                syncToCloud('option_history', newHistory);
                 setEditingTrade(null);
-                showToast("交易紀錄已刪除，總額已更新");
+                showToast("交易紀錄已刪除");
             };
             
             const addNewHistoryTrade = () => {
@@ -417,6 +495,16 @@
                     type: 'MANUAL',
                     pnl: 0
                 });
+            };
+            
+            const saveEdit = async (dataToSave) => { 
+                if (!editingId) return;
+                await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').doc(editingId).update({ 
+                    inputs: dataToSave.inputs, 
+                    memo: dataToSave.memo 
+                }); 
+                setEditingId(null); 
+                showToast("更新成功"); 
             };
 
             const fetchPrices = useCallback(async (force = false) => {
@@ -641,7 +729,7 @@
             useEffect(() => { document.documentElement.className = darkMode ? 'dark' : 'light'; }, [darkMode]);
 
             // Actions
-            const save = async () => { if (!effectiveUserId || isSaving) return; setIsSaving(true); try { await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').add({ date: new Date(inputs.record_date).toISOString(), total_equity: totalCapital, total_realized_premium: inputs.total_realized_premium, prices, inputs, memo: inputs.record_memo }); await syncToCloud('last_save', Date.now()); showToast("同步成功"); setInputs(p=>({...p, record_memo: ''})); } catch(e) { showToast("失敗"); } setIsSaving(false); };
+            const save = async () => { if (!effectiveUserId || isSaving) return; setIsSaving(true); try { await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').add({ date: new Date(inputs.record_date).toISOString(), total_equity: totalCapital, total_realized_premium: totalRealizedPremium, prices, inputs, memo: inputs.record_memo }); await syncToCloud('last_save', Date.now()); showToast("同步成功"); setInputs(p=>({...p, record_memo: ''})); } catch(e) { showToast("失敗"); } setIsSaving(false); };
             const confirmDelete = async (id) => { await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').doc(id).delete(); showToast("已刪除"); };
             const exportData = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({records, inputs})], {type: "application/json"})); a.download = `Backup_${new Date().toISOString().split('T')[0]}.json`; a.click(); };
             const importData = (e) => { const r = new FileReader(); r.onload = (ev) => { const d = JSON.parse(ev.target.result); if(d.inputs) setInputs(p=>({...p,...d.inputs})); if(d.records) setRecords(d.records); alert("匯入成功 (暫存)"); }; if(e.target.files[0]) r.readAsText(e.target.files[0]); };
@@ -674,57 +762,88 @@
                 <div className="pb-40 min-h-screen transition-colors duration-300 font-black text-left select-none overflow-x-hidden">
                     {message && <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-top-4"><div className="bg-indigo-600 text-white px-6 py-3 rounded-full shadow-2xl text-sm flex items-center gap-2"><Icon name="CheckCircle" size={16} /> {message}</div></div>}
                     <EditModal editingId={editingId} editForm={editForm} setEditingId={setEditingId} setEditForm={setEditForm} saveEdit={async () => { await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').doc(editingId).update({ inputs: editForm.inputs, memo: editForm.memo }); setEditingId(null); showToast("更新成功"); }} />
+                    {editingInventoryItem && <EditInventoryModal item={editingInventoryItem} onClose={()=>setEditingInventoryItem(null)} onSave={handleInventorySave} onDelete={handleInventoryDelete} />}
                     {editingTrade && <EditOptionHistoryModal trade={editingTrade} onClose={()=>setEditingTrade(null)} onSave={handleTradeSave} onDelete={handleTradeDelete} />}
 
                     {/* OPTION ACTION MODAL */}
-                    {opAction && (
+                    {openModalType && (
                         <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center">
                             <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl animate-in slide-in-from-bottom-full">
                                 <h3 className="text-xl font-black mb-4 flex items-center gap-2">
-                                    <Icon name={opAction.type==='ROLL'?'RefreshCcw':'CheckCircle'} className="text-indigo-500"/>
-                                    {opAction.type === 'ROLL' ? '選擇權轉倉 (Roll)' : '選擇權平倉 (Close)'}
+                                    <Icon name={openModalType==='OPEN'?'Plus':openModalType==='ROLL'?'RefreshCcw':'CheckCircle'} className="text-indigo-500"/>
+                                    {openModalType === 'OPEN' ? '新建倉位 (Sell Open)' : openModalType === 'ROLL' ? '選擇權轉倉 (Roll)' : '選擇權平倉 (Close)'}
                                 </h3>
-                                <div className="space-y-3">
-                                    <div><label className="text-xs font-bold text-slate-500">平倉價格 (Exit Price)</label><input type="number" autoFocus value={opInputs.exitPrice||''} onChange={e=>setOpInputs({...opInputs, exitPrice:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-3 rounded-xl text-center font-black" /></div>
-                                    {opAction.type === 'ROLL' && (
-                                        <>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div><label className="text-xs font-bold text-slate-500">新合約權利金</label><input type="number" value={opInputs.newPremium||''} onChange={e=>setOpInputs({...opInputs, newPremium:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold" /></div>
-                                                <div><label className="text-xs font-bold text-slate-500">新合約 Strike</label><input type="number" value={opInputs.newStrike||''} onChange={e=>setOpInputs({...opInputs, newStrike:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold" /></div>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div><label className="text-xs font-bold text-slate-500">新合約日期</label><input type="date" value={opInputs.newExpiry||''} onChange={e=>setOpInputs({...opInputs, newExpiry:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold text-xs" /></div>
-                                                <div><label className="text-xs font-bold text-slate-500">新合約 Delta</label><input type="number" value={opInputs.newDelta||''} onChange={e=>setOpInputs({...opInputs, newDelta:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold" /></div>
-                                            </div>
-                                            {/* LIVE CALCULATION DISPLAY */}
-                                            {inputs.options_inventory.find(o => o.id === opAction.id) && (
-                                                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl text-xs space-y-1 border border-slate-200 dark:border-slate-700">
-                                                    <div className="flex justify-between">
-                                                        <span className="text-slate-400">原始賣出價:</span>
-                                                        <span className="font-mono font-bold">${inputs.options_inventory.find(o => o.id === opAction.id).premium}</span>
-                                                    </div>
-                                                    <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-1">
-                                                        <span className="text-slate-400">本腿損益:</span>
-                                                        <span className={`font-mono font-black ${(parseFloat(inputs.options_inventory.find(o => o.id === opAction.id).premium) - (parseFloat(opInputs.exitPrice)||0)) * 100 * parseFloat(inputs.options_inventory.find(o => o.id === opAction.id).contracts) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                            {((parseFloat(inputs.options_inventory.find(o => o.id === opAction.id).premium) - (parseFloat(opInputs.exitPrice)||0)) * 100 * parseFloat(inputs.options_inventory.find(o => o.id === opAction.id).contracts)).toFixed(0)}
-                                                        </span>
-                                                    </div>
-                                                    {opAction.type === 'ROLL' && (
-                                                        <div className="flex justify-between">
-                                                            <span className="text-slate-400">本次轉倉現金流:</span>
-                                                            <span className={`font-mono font-black ${((parseFloat(opInputs.newPremium)||0) - (parseFloat(opInputs.exitPrice)||0)) * 100 * parseFloat(inputs.options_inventory.find(o => o.id === opAction.id).contracts) >= 0 ? 'text-amber-500' : 'text-blue-500'}`}>
-                                                                {(((parseFloat(opInputs.newPremium)||0) - (parseFloat(opInputs.exitPrice)||0)) * 100 * parseFloat(inputs.options_inventory.find(o => o.id === opAction.id).contracts)).toFixed(0)}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-                                    <div className="flex gap-2 mt-4">
-                                        <button onClick={()=>{setOpAction(null);setOpInputs({})}} className="flex-1 bg-slate-200 dark:bg-slate-800 text-slate-500 py-3 rounded-xl font-bold">取消</button>
-                                        <button onClick={executeOptionAction} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold">確認執行</button>
+                                
+                                {openModalType === 'OPEN' && (
+                                    <div className="space-y-3">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div><label className="text-xs font-bold text-slate-500">標的</label><input value={opInputs.ticker||''} onChange={e=>setOpInputs({...opInputs, ticker:e.target.value.toUpperCase()})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-black" placeholder="TQQQ"/></div>
+                                            <div><label className="text-xs font-bold text-slate-500">類型</label><select value={opInputs.type||'SC'} onChange={e=>setOpInputs({...opInputs, type:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"><option value="SC">Sell Call</option><option value="SP">Sell Put</option></select></div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div><label className="text-xs font-bold text-slate-500">履約價</label><input type="number" value={opInputs.newStrike||''} onChange={e=>setOpInputs({...opInputs, newStrike:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"/></div>
+                                            <div><label className="text-xs font-bold text-slate-500">到期日</label><input type="date" value={opInputs.newExpiry||''} onChange={e=>setOpInputs({...opInputs, newExpiry:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold text-xs"/></div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div><label className="text-xs font-bold text-slate-500">張數</label><input type="number" value={opInputs.contracts||''} onChange={e=>setOpInputs({...opInputs, contracts:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"/></div>
+                                            <div><label className="text-xs font-bold text-slate-500">權利金 (單口)</label><input type="number" value={opInputs.newPremium||''} onChange={e=>setOpInputs({...opInputs, newPremium:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"/></div>
+                                        </div>
+                                        <div><label className="text-xs font-bold text-slate-500">Delta</label><input type="number" value={opInputs.newDelta||''} onChange={e=>setOpInputs({...opInputs, newDelta:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"/></div>
+                                        <div className="bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded-lg text-center text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                            預估收入: +${((parseFloat(opInputs.newPremium)||0) * (parseFloat(opInputs.contracts)||0) * 100).toFixed(0)}
+                                        </div>
                                     </div>
+                                )}
+
+                                {openModalType === 'CLOSE' && (
+                                    <div className="space-y-3">
+                                        <div><label className="text-xs font-bold text-slate-500">平倉買回價格 (Buy to Close)</label><input type="number" autoFocus value={opInputs.exitPrice||''} onChange={e=>setOpInputs({...opInputs, exitPrice:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-3 rounded-xl text-center font-black text-xl" /></div>
+                                        {inputs.options_inventory.find(o => o.id === targetOptionId) && (
+                                            <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded-lg text-center text-xs font-bold text-red-500">
+                                                預估支出: -${((parseFloat(opInputs.exitPrice)||0) * inputs.options_inventory.find(o => o.id === targetOptionId).contracts * 100).toFixed(0)}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {openModalType === 'ROLL' && (
+                                    <div className="space-y-3">
+                                        <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg mb-2">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase">Step 1: 平倉舊合約</label>
+                                            <div className="flex justify-between items-center mt-1">
+                                                <span className="text-xs font-bold">買回價格</span>
+                                                <input type="number" autoFocus value={opInputs.exitPrice||''} onChange={e=>setOpInputs({...opInputs, exitPrice:e.target.value})} className="w-24 bg-white dark:bg-slate-700 p-1 rounded text-center font-bold" />
+                                            </div>
+                                        </div>
+                                        <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase">Step 2: 建立新合約</label>
+                                            <div className="grid grid-cols-2 gap-2 mt-1">
+                                                <input type="number" placeholder="新權利金" value={opInputs.newPremium||''} onChange={e=>setOpInputs({...opInputs, newPremium:e.target.value})} className="bg-white dark:bg-slate-700 p-1 rounded text-center text-xs font-bold"/>
+                                                <input type="number" placeholder="新 Strike" value={opInputs.newStrike||''} onChange={e=>setOpInputs({...opInputs, newStrike:e.target.value})} className="bg-white dark:bg-slate-700 p-1 rounded text-center text-xs font-bold"/>
+                                                <input type="date" value={opInputs.newExpiry||''} onChange={e=>setOpInputs({...opInputs, newExpiry:e.target.value})} className="bg-white dark:bg-slate-700 p-1 rounded text-center text-xs font-bold"/>
+                                                <input type="number" placeholder="新 Delta" value={opInputs.newDelta||''} onChange={e=>setOpInputs({...opInputs, newDelta:e.target.value})} className="bg-white dark:bg-slate-700 p-1 rounded text-center text-xs font-bold"/>
+                                            </div>
+                                        </div>
+                                        {inputs.options_inventory.find(o => o.id === targetOptionId) && (
+                                            <div className="grid grid-cols-2 gap-2 text-center text-[10px] font-bold">
+                                                <div className="bg-red-50 dark:bg-red-900/20 p-1 rounded text-red-500">
+                                                    平倉: -${((parseFloat(opInputs.exitPrice)||0) * inputs.options_inventory.find(o => o.id === targetOptionId).contracts * 100).toFixed(0)}
+                                                </div>
+                                                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-1 rounded text-emerald-500">
+                                                    新倉: +${((parseFloat(opInputs.newPremium)||0) * inputs.options_inventory.find(o => o.id === targetOptionId).contracts * 100).toFixed(0)}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className="flex gap-2 mt-4">
+                                    <button onClick={()=>{setOpenModalType(null);setOpInputs({})}} className="flex-1 bg-slate-200 dark:bg-slate-800 text-slate-500 py-3 rounded-xl font-bold">取消</button>
+                                    <button onClick={() => {
+                                        if (openModalType === 'OPEN') handleOpenPosition();
+                                        if (openModalType === 'CLOSE') handleClosePosition();
+                                        if (openModalType === 'ROLL') handleRollPosition();
+                                    }} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold">確認執行</button>
                                 </div>
                             </div>
                         </div>
@@ -796,7 +915,7 @@
                                     <div className="mt-2"><div className="text-4xl font-black font-mono">${totalCapital.toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="text-sm font-mono text-white/50">≈ NT$ {(totalCapital*inputs.exchange_rate).toLocaleString(undefined,{maximumFractionDigits:0})}</div></div>
                                     <div className="mt-4 pt-3 border-t border-white/10 flex justify-between text-xs font-bold z-10 relative">
                                         <div><span className="opacity-40 text-[9px] block">{perfD.l}報酬</span><span className={`text-lg ${perfD.v>=0?'text-emerald-400':'text-red-400'}`}>{perfD.v>0?'+':''}{perfD.v.toFixed(2)}%</span></div>
-                                        <div className="text-center"><span className="opacity-40 text-[9px] block">已實現權利金 (Premium)</span><span className="text-lg text-amber-400 font-mono">${(inputs.total_realized_premium||0).toLocaleString(undefined,{maximumFractionDigits:0})}</span></div>
+                                        <div className="text-center"><span className="opacity-40 text-[9px] block">已實現權利金 (Premium)</span><span className="text-lg text-amber-400 font-mono">${totalRealizedPremium.toLocaleString(undefined,{maximumFractionDigits:0})}</span></div>
                                         <div className="text-right"><span className="opacity-40 text-[9px] block">貸款</span><span className="font-mono text-base text-red-500">${inputs.loan_amount.toLocaleString()}</span></div>
                                     </div>
                                 </Card>
@@ -837,30 +956,32 @@
                                         <div className="pt-4 mt-2 border-t border-slate-200 dark:border-slate-700">
                                             <div className="flex justify-between items-center mb-2">
                                                 <div className="flex gap-2 text-xs font-black text-slate-500 uppercase tracking-widest cursor-pointer" onClick={()=>setSections(p=>({...p,options:!p.options}))}><Icon name="Zap" size={14}/> 選擇權帳本 <Icon name={dashboardSections.options?"ChevronUp":"ChevronDown"} size={12}/></div>
-                                                <button onClick={addOption} className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded font-bold">+ 新增合約</button>
+                                                <button onClick={()=>{setOpenModalType('OPEN');setOpInputs({ticker:'TQQQ',contracts:1,newPremium:0})}} className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded font-bold">+ 新建倉位</button>
                                             </div>
                                             {dashboardSections.options && (
                                                 <div className="space-y-2">
                                                     {(inputs.options_inventory || []).map(opt => (
                                                         <div key={opt.id} className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg text-xs space-y-2 relative border border-slate-100 dark:border-slate-700">
                                                             <div className="flex justify-between items-center">
-                                                                <div className="flex gap-2">
-                                                                    <input value={opt.ticker} onChange={e=>updateOption(opt.id,'ticker',e.target.value.toUpperCase())} className="w-12 font-bold bg-transparent outline-none text-indigo-600" placeholder="TQQQ"/>
-                                                                    <select value={opt.type} onChange={e=>updateOption(opt.id,'type',e.target.value)} className="bg-transparent font-bold"><option value="SC">Sell Call</option><option value="SP">Sell Put</option></select>
+                                                                <div className="flex gap-2 font-bold text-indigo-600 dark:text-indigo-400 text-sm">
+                                                                    {opt.ticker} <span className="bg-slate-200 dark:bg-slate-700 text-slate-500 px-1 rounded text-[10px] self-center">{opt.type}</span>
                                                                 </div>
-                                                                <button onClick={()=>removeOption(opt.id)} className="text-slate-400 hover:text-red-500"><Icon name="X" size={14}/></button>
+                                                                <div className="flex gap-2">
+                                                                    <button onClick={()=>setEditingInventoryItem(opt)} className="text-slate-400 hover:text-indigo-500"><Icon name="Edit2" size={14}/></button>
+                                                                    <button onClick={()=>removeOption(opt.id)} className="text-slate-400 hover:text-red-500"><Icon name="X" size={14}/></button>
+                                                                </div>
                                                             </div>
                                                             <div className="grid grid-cols-4 gap-2 text-center">
-                                                                <div><label className="text-[9px] text-slate-400 block">Strike</label><input value={opt.strike} onChange={e=>updateOption(opt.id,'strike',e.target.value)} className="w-full bg-white dark:bg-slate-700 rounded p-1 text-center font-bold"/></div>
-                                                                <div><label className="text-[9px] text-slate-400 block">Expiry</label><input type="date" value={opt.expiry} onChange={e=>updateOption(opt.id,'expiry',e.target.value)} className="w-full bg-white dark:bg-slate-700 rounded p-1 text-center font-bold text-[9px]"/></div>
-                                                                <div><label className="text-[9px] text-slate-400 block">張數</label><input type="number" value={opt.contracts} onChange={e=>updateOption(opt.id,'contracts',e.target.value)} className="w-full bg-white dark:bg-slate-700 rounded p-1 text-center font-bold"/></div>
-                                                                <div><label className="text-[9px] text-slate-400 block">權利金</label><input type="number" value={opt.premium} onChange={e=>updateOption(opt.id,'premium',e.target.value)} className="w-full bg-white dark:bg-slate-700 rounded p-1 text-center font-bold text-emerald-500"/></div>
+                                                                <div><label className="text-[9px] text-slate-400 block">Strike</label><span className="font-bold">{opt.strike}</span></div>
+                                                                <div><label className="text-[9px] text-slate-400 block">Expiry</label><span className="font-bold">{opt.expiry}</span></div>
+                                                                <div><label className="text-[9px] text-slate-400 block">張數</label><span className="font-bold">{opt.contracts}</span></div>
+                                                                <div><label className="text-[9px] text-slate-400 block">權利金</label><span className="font-bold text-emerald-500">${opt.premium}</span></div>
                                                             </div>
-                                                            <div className="flex justify-between items-center pt-1">
-                                                                <div className="flex items-center gap-1"><span className="text-[9px] text-slate-400">Delta</span><input type="number" value={opt.delta} onChange={e=>updateOption(opt.id,'delta',e.target.value)} className={`w-12 bg-transparent text-center font-bold border-b ${parseFloat(opt.delta)>=0.4?'text-red-500 border-red-500 animate-pulse':'border-slate-300'}`} placeholder="0.30"/></div>
+                                                            <div className="flex justify-between items-center pt-1 border-t border-slate-100 dark:border-slate-700">
+                                                                <div className="flex items-center gap-1"><span className="text-[9px] text-slate-400">Delta</span><span className={`text-xs font-bold ${parseFloat(opt.delta)>=0.4?'text-red-500 animate-pulse':''}`}>{opt.delta}</span></div>
                                                                 <div className="flex gap-2">
-                                                                    <button onClick={()=>{setOpAction({type:'ROLL',id:opt.id});setOpInputs({})}} className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-[9px] font-bold">轉倉</button>
-                                                                    <button onClick={()=>{setOpAction({type:'CLOSE',id:opt.id});setOpInputs({})}} className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-[9px] font-bold">平倉</button>
+                                                                    <button onClick={()=>{setTargetOptionId(opt.id);setOpenModalType('ROLL');setOpInputs({exitPrice:0, newPremium:0, newStrike:opt.strike, newExpiry:'', newDelta:''})}} className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-[9px] font-bold">轉倉</button>
+                                                                    <button onClick={()=>{setTargetOptionId(opt.id);setOpenModalType('CLOSE');setOpInputs({exitPrice:0})}} className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-[9px] font-bold">平倉</button>
                                                                 </div>
                                                             </div>
                                                         </div>
