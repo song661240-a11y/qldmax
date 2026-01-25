@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Alpha Horizon Dashboard v9.9</title>
+    <title>Alpha Horizon Dashboard v10.0</title>
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
@@ -29,6 +29,10 @@
         .dark .holding-input-group { background: rgba(30, 41, 59, 0.5); border-color: #334155; }
         @keyframes pulse-dot { 0%, 100% { opacity: 0.6; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1.1); } }
         .sync-loading { animation: pulse-dot 1.2s infinite ease-in-out; }
+        /* Custom Range Slider */
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #ffffff; cursor: pointer; margin-top: -8px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: rgba(255,255,255,0.3); border-radius: 2px; }
     </style>
 </head>
 <body class="light text-left font-black text-slate-900 dark:text-slate-100">
@@ -189,18 +193,10 @@
                                 <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 px-3 rounded-xl"><span className="font-bold text-xs text-slate-500">現金 (USD)</span><input type="number" value={editForm.inputs.cash_balance} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, cash_balance: e.target.value}}))} className="w-28 bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold" /></div>
                             </div>
                             
-                            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
-                                <div className="text-xs font-black text-amber-500 uppercase tracking-widest flex justify-between items-center">
-                                    <span>權利金與選擇權</span>
-                                </div>
-                                <div className="flex justify-between items-center bg-amber-50 dark:bg-slate-800/50 p-2 px-3 rounded-xl border border-amber-100 dark:border-amber-900/30">
-                                    <span className="font-bold text-xs text-amber-600">已實現權利金</span>
-                                    <input type="number" step="any" value={editForm.inputs.total_realized_premium || ''} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, total_realized_premium: e.target.value}}))} className="w-28 bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold text-amber-500" />
-                                </div>
-                            </div>
-
+                            {/* REMOVED: Redundant total_realized_premium display/edit here since it's calculated from history */}
+                            
                             <textarea value={editForm.memo || ''} onChange={e => setEditForm(p => ({...p, memo: e.target.value}))} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 text-sm h-20" placeholder="備註..." />
-                            <button onClick={()=>saveEdit({...editForm, inputs: {...editForm.inputs, total_realized_premium: parseFloat(editForm.inputs.total_realized_premium) || 0}})} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black flex justify-center gap-2"><Icon name="Save" size={20} /> 保存修正</button>
+                            <button onClick={()=>saveEdit(editForm)} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black flex justify-center gap-2"><Icon name="Save" size={20} /> 保存修正</button>
                         </div>
                     </div>
                 </div>
@@ -229,6 +225,7 @@
                                     <option value="ROLL_OPEN">轉倉(開)</option>
                                     <option value="MANUAL">補登</option>
                                 </select></div>
+                                {/* Fix for negative input */}
                                 <div><label className="text-xs text-slate-500 block">金額 ($)</label><input type="number" step="any" value={localTrade.pnl} onChange={e=>setLocalTrade({...localTrade, pnl: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold text-center" /></div>
                             </div>
                             <div className="text-[10px] text-center text-slate-400 mt-1">正數 (+) = 收入, 負數 (-) = 支出</div>
@@ -242,6 +239,7 @@
             );
         }
 
+        // --- MAIN APP ---
         const App = () => {
             const [user, setUser] = useState(null);
             const [view, setView] = useState('dashboard');
@@ -265,10 +263,13 @@
             const [filterMode, setFilterMode] = useState('all');
             const [visibleCount, setVisibleCount] = useState(20);
             const [expandedYears, setExpandedYears] = useState({});
+            const [historyExpanded, setHistoryExpanded] = useState(false); 
             const [darkMode, setDarkMode] = useState(() => localStorage.getItem('qqq_theme') === 'dark');
             const [customSyncId, setCustomSyncId] = useState(() => localStorage.getItem('qqq_sync_id') || '');
             const [tempSyncId, setTempSyncId] = useState(customSyncId);
-            
+            const [stressSimPct, setStressSimPct] = useState(0); 
+            const [simLeverage, setSimLeverage] = useState(3); 
+
             const [openModalType, setOpenModalType] = useState(null); 
             const [targetOptionId, setTargetOptionId] = useState(null); 
             const [opInputs, setOpInputs] = useState({}); 
@@ -279,15 +280,15 @@
 
             const [inputs, setInputs] = useState({
                 current_rsi: '',
-                total_realized_premium: 0,
-                option_history: [], 
+                qqq_ath: 0,
+                option_history: [], // Source of truth for premium
                 qqq_sma200: 0, qqq_sma20: 0, custom_1_sma40: 0, custom_2_sma20: 0, ibit_sma20: 0,
                 exchange_rate: 32.5, rebalance_sat_cap: 15, rebalance_core_target: 50, rebalance_core_tolerance: 15,
                 tol_up_sat_1: 20, tol_down_sat_1: 10, tol_up_sat_2: 20, tol_down_sat_2: 10, tol_up_ibit: 20, tol_down_ibit: 10,
                 target_sat_1: 10, target_sat_2: 10, target_sat_ibit: 10,
                 calc_alloc_qqq: 40, calc_alloc_tqqq: 40, calc_alloc_c1: 10, calc_alloc_c2: 10, calc_alloc_cash: 0,
                 ticker_core_1: 'QQQ', qty_qqq: 0, qty_tqqq: 0, qty_ibit: 0, qty_sgov: 0, custom_ticker_1: 'TSLA', qty_custom_1: 0, custom_ticker_2: 'IBIT', qty_custom_2: 0,
-                cash_balance: 0, record_date: new Date().toISOString().split('T')[0],
+                cash_balance: 0, record_date: new Date().toISOString().split('T')[0], 
                 loan_amount: 0, loan_rate: 2.0, loan_years: 7, loan_repay_target: 20, loan_entry_valuation: 0, loan_monthly_repay: 0, motto: '', record_memo: '',
                 target_qqq: '', target_tqqq: '', target_ibit: '', target_sgov: '', target_custom_1: '', target_custom_2: '',
                 title_core: "核心策略 (80%) - QQQ/TQQQ (NRA V8.2)", strat_core: "...", 
@@ -302,6 +303,7 @@
                 options_inventory: [] 
             });
 
+            // Calculate total realized premium from history array (SOURCE OF TRUTH)
             const totalRealizedPremium = useMemo(() => {
                 return (inputs.option_history || []).reduce((acc, curr) => acc + (parseFloat(curr.pnl) || 0), 0);
             }, [inputs.option_history]);
@@ -324,6 +326,7 @@
                 setEditingInventoryItem(newOpt);
             };
 
+            // Inventory Actions
             const handleInventorySave = (updatedItem) => {
                 let newInv;
                 if (inputs.options_inventory.find(o => o.id === updatedItem.id)) {
@@ -346,7 +349,7 @@
             };
             
             const removeOption = (id) => handleInventoryDelete(id); 
-            const updateOption = (id, field, val) => { /* Not used in readonly mode */ };
+            const updateOption = (id, field, val) => { /* Readonly */ };
 
 
             const handleExecute = () => {
@@ -484,13 +487,8 @@
 
             const handleTradeDelete = (id) => {
                 const newHistory = inputs.option_history.filter(t => t.id !== id);
-                
                 setInputs(p => ({...p, option_history: newHistory}));
-                
-                db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ 
-                    option_history: newHistory
-                }, { merge: true });
-                
+                syncToCloud('option_history', newHistory);
                 setEditingTrade(null);
                 showToast("交易紀錄已刪除");
             };
@@ -534,14 +532,26 @@
                 } catch(e) { console.error(e); } finally { setLoadingPrices(false); }
             }, [inputs.ticker_core_1, inputs.custom_ticker_1, inputs.custom_ticker_2, loadingPrices]);
 
-            const { totalCapital, performanceStats, rebalanceStatus, scenarioData, bearDefense, qqqDistance, currentLeverage, pieData, calcResults, rsiSuggestion } = useMemo(() => {
+            // Calculations
+            const { totalCapital, performanceStats, rebalanceStatus, scenarioData, bearDefense, qqqDistance, currentLeverage, pieData, calcResults, rsiSuggestion, qqqAthMetrics, graphData, simulatedMetrics } = useMemo(() => {
                 const getP = (t) => prices[(t || "").toUpperCase()] || 0;
                 const getV = (k) => getNum(inputs[k]);
                 
                 let total = getV('cash_balance');
                 HOLDINGS_CONFIG.forEach(c => total += (c.type === 'fixed' ? getP(c.ticker) : getP(inputs[c.tickerKey])) * getV(c.qtyKey));
 
+                // RSI & Options Logic (Moved to Top)
+                const rsi = getNum(inputs.current_rsi);
+                let sug = { cover: 0, delta: 'N/A' };
+                if (rsi > 0 && inputs.options_matrix) {
+                    const rule = inputs.options_matrix.find(r => rsi >= r.min && rsi < r.max);
+                    if (rule) sug = { cover: rule.cover, delta: rule.delta };
+                }
+                const suggestContracts = Math.floor((getV('qty_tqqq') / 100) * (sug.cover / 100));
+
                 let ytd = 0, mtd = 0, tot = 0;
+                let gData = [];
+
                 if (records.length) {
                     const sorted = [...records].sort((a,b) => new Date(a.date) - new Date(b.date));
                     const now = new Date();
@@ -551,6 +561,21 @@
                     ytd = getRet(startY);
                     const startM = sorted.find(r => new Date(r.date).getMonth() === now.getMonth() && new Date(r.date).getFullYear() === now.getFullYear()) || sorted[0];
                     mtd = getRet(startM);
+
+                    // Graph Data Logic
+                    const baseEq = sorted[0].total_equity || 1;
+                    const baseQ = sorted[0].prices?.QQQ || 1;
+                    let maxEq = 0;
+                    
+                    const filteredRecords = sorted.filter(r => { 
+                        const d=new Date(r.date), n=new Date(); 
+                        return filterMode==='all' || (filterMode==='year' && d.getFullYear()===n.getFullYear()) || (filterMode==='month' && d.getMonth()===n.getMonth()); 
+                    });
+
+                    gData = filteredRecords.map(r => {
+                        if(r.total_equity > maxEq) maxEq = r.total_equity;
+                        return { date: r.date, equity: r.total_equity, dd: maxEq>0 ? ((r.total_equity-maxEq)/maxEq)*100 : 0, ret: ((r.total_equity-baseEq)/baseEq)*100, qRet: (((r.prices?.QQQ||0)-baseQ)/baseQ)*100 };
+                    });
                 }
 
                 const tCore = (inputs.ticker_core_1 || "QQQ").toUpperCase();
@@ -563,6 +588,8 @@
                 const valSat1 = getP(inputs.custom_ticker_1) * getV('qty_custom_1');
                 const valSat2 = getP(inputs.custom_ticker_2) * getV('qty_custom_2');
                 const valIbit = getP('IBIT') * getV('qty_ibit');
+
+                const satVal = valSat1 + valSat2 + valIbit;
 
                 const c1W = (valSat1 / (total||1)) * 100;
                 const c2W = (valSat2 / (total||1)) * 100;
@@ -589,10 +616,34 @@
                 const bearData = { isActive: isBear, totalDefensive: getV('cash_balance') + (getP('SGOV') * getV('qty_sgov')), monthlyBuy: (getV('cash_balance') + (getP('SGOV') * getV('qty_sgov'))) / 12 };
 
                 const bearDrop = (benchmarkPrice > 0) ? (sma200 - benchmarkPrice) / benchmarkPrice : 0;
-                const estBearCore = isBear ? 0 : (valQQQ*(1+bearDrop)) + (valTQQQ*(1+(bearDrop*3)));
-                const satVal = valSat1 + valSat2 + valIbit; 
-                const estBearSat = satVal * (1+bearDrop);
-                const estTotalBear = estBearCore + estBearSat + getV('cash_balance') + (getP('SGOV') * getV('qty_sgov'));
+                
+                // Static Bear Defense Est
+                const bearCoreVal = isBear ? 0 : (valQQQ * (1 + bearDrop)) + (valTQQQ * (1 + (bearDrop * 3))); 
+                const bearSatVal = satVal * (1 + bearDrop);
+                const bearCash = getV('cash_balance') + (getP('SGOV') * getV('qty_sgov'));
+                const estTotalBear = bearCoreVal + bearSatVal + bearCash;
+
+                // STRESS TEST SIMULATOR LOGIC
+                // Check if benchmarkPrice is valid
+                const safeBenchmarkPrice = benchmarkPrice > 0 ? benchmarkPrice : 0;
+                
+                const simDrop = stressSimPct / 100;
+                const simPrice = safeBenchmarkPrice * (1 + simDrop);
+                
+                // Estimate Portfolio using safe values
+                // Use fallback of 0 if values are NaN
+                const safeValQQQ = isNaN(valQQQ) ? 0 : valQQQ;
+                const safeValTQQQ = isNaN(valTQQQ) ? 0 : valTQQQ;
+                const safeSatVal = isNaN(satVal) ? 0 : satVal;
+                const safeCash = isNaN(getV('cash_balance')) ? 0 : getV('cash_balance');
+                const safeSGOV = isNaN(getP('SGOV') * getV('qty_sgov')) ? 0 : (getP('SGOV') * getV('qty_sgov'));
+                
+                // Use simLeverage for the TQQQ portion
+                const safeEstCore = isBear ? 0 : (safeValQQQ * (1 + simDrop)) + (safeValTQQQ * (1 + (simDrop * simLeverage)));
+                const safeEstSat = safeSatVal * (1 + simDrop);
+                
+                const safeEstTotalSim = safeEstCore + safeEstSat + safeCash + safeSGOV;
+                const safeSimPnL = safeEstTotalSim - total;
 
                 const exposure = (valTQQQ*3) + valQQQ + satVal;
                 
@@ -632,13 +683,10 @@
                     }
                 }
 
-                const rsi = getNum(inputs.current_rsi);
-                let sug = { cover: 0, delta: 'N/A' };
-                if (rsi > 0 && inputs.options_matrix) {
-                    const rule = inputs.options_matrix.find(r => rsi >= r.min && rsi < r.max);
-                    if (rule) sug = { cover: rule.cover, delta: rule.delta };
-                }
-                const suggestContracts = Math.floor((getV('qty_tqqq') / 100) * (sug.cover / 100));
+                // QQQ ATH Metrics
+                const ath = getV('qqq_ath');
+                const ma200Extension = (sma200 > 0 && benchmarkPrice > 0) ? ((benchmarkPrice - sma200) / sma200) * 100 : null;
+                const distanceToAth = (ath > 0 && benchmarkPrice > 0) ? ((ath - benchmarkPrice) / benchmarkPrice) * 100 : null;
 
                 return {
                     totalCapital: total,
@@ -658,9 +706,29 @@
                     currentLeverage: (total>0 ? exposure/total : 0).toFixed(2),
                     pieData: pie.map(p => ({...p, percentage: ((p.value/pieSum)*100).toFixed(1)})),
                     calcResults: calcRes,
-                    rsiSuggestion: { ...sug, contracts: suggestContracts }
+                    rsiSuggestion: { ...sug, contracts: suggestContracts },
+                    qqqAthMetrics: { ma200Extension, distanceToAth, ath, currentPrice: benchmarkPrice },
+                    graphData: gData,
+                    simulatedMetrics: { 
+                        simPrice: simPrice || 0, 
+                        estTotalSim: safeEstTotalSim || 0, 
+                        simPnL: safeSimPnL || 0 
+                    }
                 };
-            }, [prices, inputs, records, simulatedTotal]);
+            }, [prices, inputs, records, simulatedTotal, filterMode, stressSimPct, simLeverage]); // Added simLeverage dependency
+
+            const handleSimSlider = (e) => {
+                const val = parseFloat(e.target.value);
+                setStressSimPct(val);
+            };
+
+            const handleSimPriceInput = (e) => {
+                const val = parseFloat(e.target.value);
+                if (val > 0 && qqqAthMetrics.currentPrice > 0) {
+                    const pct = ((val - qqqAthMetrics.currentPrice) / qqqAthMetrics.currentPrice) * 100;
+                    setStressSimPct(pct);
+                }
+            };
 
             const historyGroups = useMemo(() => {
                 if (!records || records.length === 0) return [];
@@ -690,6 +758,10 @@
                     return { year, return: yRet, months };
                 });
             }, [records]);
+
+            // History Filtering
+            const allHistory = graphData.slice().reverse();
+            const displayedHistory = historyExpanded ? allHistory : allHistory.slice(0, 5);
 
             const alerts = useMemo(() => {
                 const a = [];
@@ -732,7 +804,19 @@
 
             // Effects
             useEffect(() => { auth.signInAnonymously().catch(console.error); return auth.onAuthStateChanged(setUser); }, []);
-            useEffect(() => { if (!effectiveUserId) return; db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').onSnapshot(s => setRecords(s.docs.map(d => ({id:d.id,...d.data()})))); db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').onSnapshot(s => s.exists && setInputs(p => ({...p, ...s.data()}))); fetchPrices(); }, [effectiveUserId]);
+            useEffect(() => { if (!effectiveUserId) return; db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').onSnapshot(s => setRecords(s.docs.map(d => ({id:d.id,...d.data()})))); 
+                db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').onSnapshot(s => {
+                    if (s.exists) {
+                        const data = s.data();
+                        // FORCE DATE TO TODAY ON LOAD
+                        data.record_date = new Date().toISOString().split('T')[0];
+                        // Ensure option_history is an array
+                        if (!data.option_history) data.option_history = [];
+                        setInputs(p => ({...p, ...data}));
+                    }
+                }); 
+                fetchPrices(); 
+            }, [effectiveUserId]);
             useEffect(() => { document.documentElement.className = darkMode ? 'dark' : 'light'; }, [darkMode]);
 
             // Actions
@@ -744,22 +828,11 @@
             // Render Helpers
             const getPerfDisplay = () => { if(perfView==='MTD') return {l:'本月',v:performanceStats.mtd}; if(perfView==='ALL') return {l:'總計',v:performanceStats.total}; return {l:'今年',v:performanceStats.ytd}; };
             const perfD = getPerfDisplay();
-            const graphData = useMemo(() => {
-                if(!records.length) return [];
-                const sorted = records.filter(r => { const d=new Date(r.date), n=new Date(); return filterMode==='all' || (filterMode==='year' && d.getFullYear()===n.getFullYear()) || (filterMode==='month' && d.getMonth()===n.getMonth()); }).sort((a,b)=>new Date(a.date)-new Date(b.date));
-                if(!sorted.length) return [];
-                const baseEq = sorted[0].total_equity || 1;
-                const baseQ = sorted[0].prices?.QQQ || 1;
-                let maxEq = 0;
-                return sorted.map(r => {
-                    if(r.total_equity > maxEq) maxEq = r.total_equity;
-                    return { date: r.date, equity: r.total_equity, dd: maxEq>0 ? ((r.total_equity-maxEq)/maxEq)*100 : 0, ret: ((r.total_equity-baseEq)/baseEq)*100, qRet: (((r.prices?.QQQ||0)-baseQ)/baseQ)*100 };
-                });
-            }, [records, filterMode]);
 
             const INDICATOR_FIELDS = [
                 {k:'qqq_sma200', l:'QQQ 200 SMA'},
                 {k:'qqq_sma20', l:'QQQ 20 SMA'},
+                {k:'qqq_ath', l:'QQQ 歷史新高 (ATH)'}, 
                 {k:'custom_1_sma40', l:`${inputs.custom_ticker_1||'自選1'} 週線 40 SMA`},
                 {k:'custom_2_sma20', l:`${inputs.custom_ticker_2||'自選2'} 週線 20 SMA`},
                 {k:'ibit_sma20', l:'IBIT 週線 20 SMA'}
@@ -941,7 +1014,81 @@
                                         </div>
                                     </div>
                                     {dashboardSections.simulator && <div className="z-10 relative space-y-4">
-                                        <div><div className="flex justify-between text-xs text-red-300 font-bold mb-1"><span>跌至 200 SMA 剩餘預估</span><span>-{Math.abs(scenarioData.bear.maxLoss).toLocaleString(undefined,{maximumFractionDigits:0})}</span></div><div className="bg-black/30 rounded-xl p-3 border border-white/5"><div className="flex justify-between text-xs"><span className="opacity-70">剩餘總資產</span><span className="font-mono">${scenarioData.bear.estTotal.toLocaleString(undefined,{maximumFractionDigits:0})}</span></div></div></div>
+                                        
+                                        {/* Row 1: Key Price Levels */}
+                                        <div className="grid grid-cols-3 gap-2 text-center items-end border-b border-white/10 pb-3">
+                                            <div className="flex flex-col items-center">
+                                                <span className="text-[10px] opacity-60 uppercase tracking-widest mb-1">MA200 (地板)</span>
+                                                <span className="font-mono text-sm font-bold text-slate-300">${inputs.qqq_sma200}</span>
+                                                <span className={`text-[9px] font-bold ${qqqAthMetrics.ma200Extension > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                    {qqqAthMetrics.ma200Extension ? `+${qqqAthMetrics.ma200Extension.toFixed(2)}%` : '-'}
+                                                </span>
+                                            </div>
+                                            <div className="flex flex-col items-center">
+                                                <span className="text-[10px] opacity-60 uppercase tracking-widest mb-1">QQQ 現價</span>
+                                                <span className="font-mono text-2xl font-black text-white">${qqqAthMetrics.currentPrice}</span>
+                                            </div>
+                                            <div className="flex flex-col items-center">
+                                                <span className="text-[10px] opacity-60 uppercase tracking-widest mb-1">ATH (天花板)</span>
+                                                <span className="font-mono text-sm font-bold text-slate-300">${inputs.qqq_ath}</span>
+                                                <span className={`text-[9px] font-bold ${qqqAthMetrics.distanceToAth > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                                    {qqqAthMetrics.distanceToAth > 0 ? '+' : ''}{qqqAthMetrics.distanceToAth?.toFixed(1)}%
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Row 2: Interactive Simulator */}
+                                        <div className="bg-black/20 rounded-xl p-3 border border-white/5">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest">價格模擬器</span>
+                                                <span className={`text-xs font-black ${simulatedMetrics.simPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                    {simulatedMetrics.simPnL >= 0 ? '+' : ''}{Math.round(simulatedMetrics.simPnL).toLocaleString()} (預估損益)
+                                                </span>
+                                            </div>
+                                            
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <input 
+                                                    type="range" 
+                                                    min="-30" 
+                                                    max="30" 
+                                                    step="0.5" 
+                                                    value={stressSimPct} 
+                                                    onChange={handleSimSlider}
+                                                    className="flex-1 h-1 bg-slate-600 rounded-lg appearance-none cursor-pointer"
+                                                />
+                                                <div className={`w-12 text-right font-mono font-bold text-sm ${stressSimPct > 0 ? 'text-emerald-400' : (stressSimPct < 0 ? 'text-red-400' : 'text-white')}`}>
+                                                    {stressSimPct > 0 ? '+' : ''}{stressSimPct}%
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex justify-between items-center text-xs gap-2">
+                                                <div className="flex items-center gap-2 bg-white/5 p-1 rounded-lg flex-1">
+                                                    <span className="opacity-60 whitespace-nowrap">模擬:</span>
+                                                    <input 
+                                                        type="number" 
+                                                        value={Math.round(simulatedMetrics.simPrice)} 
+                                                        onChange={handleSimPriceInput}
+                                                        className="w-full bg-transparent text-center font-mono font-bold text-white outline-none"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center gap-2 bg-white/5 p-1 rounded-lg flex-1">
+                                                    <span className="opacity-60 whitespace-nowrap">槓桿:</span>
+                                                    <input 
+                                                        type="number" 
+                                                        value={simLeverage} 
+                                                        onChange={(e) => setSimLeverage(parseFloat(e.target.value) || 0)}
+                                                        className="w-full bg-transparent text-center font-mono font-bold text-amber-400 outline-none"
+                                                        step="0.1"
+                                                    />
+                                                    <span className="opacity-60 text-[9px]">x</span>
+                                                </div>
+                                                <div className="flex items-center justify-end gap-1 bg-white/5 p-1 rounded-lg flex-1">
+                                                    <span className="opacity-60 whitespace-nowrap">總資產:</span>
+                                                    <span className="font-mono font-bold text-white">${Math.round(simulatedMetrics.estTotalSim).toLocaleString()}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
                                     </div>}
                                     <div className="absolute -right-6 -top-6 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl"></div>
                                 </Card>
@@ -1074,14 +1221,18 @@
 
                                         <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
                                             <div className="flex items-center gap-2 text-xs font-black text-slate-500 px-1 uppercase tracking-widest"><Icon name="History" size={14}/> 詳細紀錄列表</div>
-                                            {graphData.slice().reverse().slice(0,visibleCount).map(r => { const rec = records.find(x=>x.date===r.date); return (
+                                            {displayedHistory.map(r => { const rec = records.find(x=>x.date===r.date); return (
                                             <Card key={r.date} className="border-none shadow-md p-5 flex justify-between items-center cursor-pointer hover:scale-[1.01]" onClick={()=>{setEditingId(rec.id);setEditForm(JSON.parse(JSON.stringify(rec)));}}>
                                                 <div><div className="text-[10px] text-slate-400 font-bold">{new Date(r.date).toLocaleDateString()}</div><div className="text-xl font-mono">${r.equity.toLocaleString()}</div>
-                                                {rec.total_realized_premium > 0 && <div className="text-xs text-amber-500 font-mono mt-1">Premium: ${rec.total_realized_premium.toLocaleString()}</div>}
                                                 </div>
                                                 <div className="flex gap-2"><button onClick={(e)=>{e.stopPropagation();setEditingId(rec.id);setEditForm(JSON.parse(JSON.stringify(rec)));}} className="p-2 bg-blue-50 dark:bg-slate-800 text-blue-500 rounded-lg"><Icon name="Edit2" size={14}/></button><button onClick={(e)=>{e.stopPropagation();confirmDelete(rec.id)}} className="p-2 bg-red-50 dark:bg-slate-800 text-red-500 rounded-lg"><Icon name="Trash2" size={14}/></button></div>
                                             </Card>
                                             );})}
+                                            {allHistory.length > 5 && (
+                                                <button onClick={() => setHistoryExpanded(!historyExpanded)} className="w-full py-3 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                                                    {historyExpanded ? "收起 (只看 5 筆)" : `顯示全部 (共 ${allHistory.length} 筆)`}
+                                                </button>
+                                            )}
                                         </div>
                                     </>
                                 ) : (
