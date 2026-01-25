@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Alpha Horizon Dashboard v10.0</title>
+    <title>Alpha Horizon Dashboard v10.1</title>
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
@@ -104,6 +104,7 @@
         const Card = ({ children, className = "" }) => <div className={`rounded-[2rem] shadow-xl border p-5 transition-all bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 ${className}`}>{children}</div>;
         const SectionTitle = ({ title, iconName }) => <h2 className="text-[11px] font-black mb-3 flex items-center gap-2 uppercase tracking-widest text-slate-500 dark:text-slate-400"><Icon name={iconName} size={14} /> {title}</h2>;
 
+        // Custom Tooltip
         const CustomTooltip = ({ active, payload }) => {
             if (active && payload && payload.length) {
                 const d = payload[0].payload;
@@ -193,10 +194,19 @@
                                 <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 px-3 rounded-xl"><span className="font-bold text-xs text-slate-500">現金 (USD)</span><input type="number" value={editForm.inputs.cash_balance} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, cash_balance: e.target.value}}))} className="w-28 bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold" /></div>
                             </div>
                             
-                            {/* REMOVED: Redundant total_realized_premium display/edit here since it's calculated from history */}
-                            
+                            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                                <div className="text-xs font-black text-amber-500 uppercase tracking-widest flex justify-between items-center">
+                                    <span>權利金與選擇權</span>
+                                </div>
+                                <div className="flex justify-between items-center bg-amber-50 dark:bg-slate-800/50 p-2 px-3 rounded-xl border border-amber-100 dark:border-amber-900/30">
+                                    <span className="font-bold text-xs text-amber-600">已實現權利金</span>
+                                    {/* Fix for negative input */}
+                                    <input type="number" step="any" value={editForm.inputs.total_realized_premium || ''} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, total_realized_premium: e.target.value}}))} className="w-28 bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold text-amber-500" />
+                                </div>
+                            </div>
+
                             <textarea value={editForm.memo || ''} onChange={e => setEditForm(p => ({...p, memo: e.target.value}))} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 text-sm h-20" placeholder="備註..." />
-                            <button onClick={()=>saveEdit(editForm)} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black flex justify-center gap-2"><Icon name="Save" size={20} /> 保存修正</button>
+                            <button onClick={()=>saveEdit({...editForm, inputs: {...editForm.inputs, total_realized_premium: parseFloat(editForm.inputs.total_realized_premium) || 0}})} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black flex justify-center gap-2"><Icon name="Save" size={20} /> 保存修正</button>
                         </div>
                     </div>
                 </div>
@@ -281,14 +291,15 @@
             const [inputs, setInputs] = useState({
                 current_rsi: '',
                 qqq_ath: 0,
-                option_history: [], // Source of truth for premium
+                // Removed total_realized_premium from here to avoid stale state conflict
+                option_history: [], 
                 qqq_sma200: 0, qqq_sma20: 0, custom_1_sma40: 0, custom_2_sma20: 0, ibit_sma20: 0,
                 exchange_rate: 32.5, rebalance_sat_cap: 15, rebalance_core_target: 50, rebalance_core_tolerance: 15,
                 tol_up_sat_1: 20, tol_down_sat_1: 10, tol_up_sat_2: 20, tol_down_sat_2: 10, tol_up_ibit: 20, tol_down_ibit: 10,
                 target_sat_1: 10, target_sat_2: 10, target_sat_ibit: 10,
                 calc_alloc_qqq: 40, calc_alloc_tqqq: 40, calc_alloc_c1: 10, calc_alloc_c2: 10, calc_alloc_cash: 0,
                 ticker_core_1: 'QQQ', qty_qqq: 0, qty_tqqq: 0, qty_ibit: 0, qty_sgov: 0, custom_ticker_1: 'TSLA', qty_custom_1: 0, custom_ticker_2: 'IBIT', qty_custom_2: 0,
-                cash_balance: 0, record_date: new Date().toISOString().split('T')[0], 
+                cash_balance: 0, record_date: new Date().toISOString().split('T')[0], // Always INIT Today
                 loan_amount: 0, loan_rate: 2.0, loan_years: 7, loan_repay_target: 20, loan_entry_valuation: 0, loan_monthly_repay: 0, motto: '', record_memo: '',
                 target_qqq: '', target_tqqq: '', target_ibit: '', target_sgov: '', target_custom_1: '', target_custom_2: '',
                 title_core: "核心策略 (80%) - QQQ/TQQQ (NRA V8.2)", strat_core: "...", 
@@ -326,12 +337,14 @@
                 setEditingInventoryItem(newOpt);
             };
 
-            // Inventory Actions
+            // NEW: Handle Saving from Inventory Edit Modal
             const handleInventorySave = (updatedItem) => {
                 let newInv;
                 if (inputs.options_inventory.find(o => o.id === updatedItem.id)) {
+                    // Update existing
                     newInv = inputs.options_inventory.map(o => o.id === updatedItem.id ? updatedItem : o);
                 } else {
+                    // Add new
                     newInv = [...(inputs.options_inventory || []), updatedItem];
                 }
                 setInputs(p => ({...p, options_inventory: newInv}));
@@ -348,12 +361,15 @@
                 showToast("合約已刪除");
             };
             
+            // Helper for removing option from dashboard
             const removeOption = (id) => handleInventoryDelete(id); 
-            const updateOption = (id, field, val) => { /* Readonly */ };
+            // Helper for editing from dashboard
+            const updateOption = (id, field, val) => { /* Not used in readonly mode */ };
 
 
             const handleExecute = () => {
                 try {
+                    // If OPEN, we just add to inventory and history
                     if (openModalType === 'OPEN') {
                         const premium = parseFloat(opInputs.newPremium) || 0;
                         const contracts = parseFloat(opInputs.contracts) || 1;
@@ -394,6 +410,7 @@
                         return;
                     }
 
+                    // For CLOSE and ROLL, we need the target option
                     const opt = inputs.options_inventory.find(o => o.id === targetOptionId);
                     if (!opt) return;
 
@@ -1046,7 +1063,7 @@
                                                 </span>
                                             </div>
                                             
-                                            <div className="flex items-center gap-3 mb-2">
+                                            <div className="flex items-center gap-3 mb-3">
                                                 <input 
                                                     type="range" 
                                                     min="-30" 
@@ -1061,31 +1078,39 @@
                                                 </div>
                                             </div>
                                             
-                                            <div className="flex justify-between items-center text-xs gap-2">
-                                                <div className="flex items-center gap-2 bg-white/5 p-1 rounded-lg flex-1">
-                                                    <span className="opacity-60 whitespace-nowrap">模擬:</span>
-                                                    <input 
-                                                        type="number" 
-                                                        value={Math.round(simulatedMetrics.simPrice)} 
-                                                        onChange={handleSimPriceInput}
-                                                        className="w-full bg-transparent text-center font-mono font-bold text-white outline-none"
-                                                    />
+                                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                                <div className="flex flex-col gap-1 bg-white/5 p-2 rounded-xl">
+                                                    <span className="text-[9px] opacity-60 uppercase tracking-wider">模擬價格</span>
+                                                    <div className="flex items-center gap-1">
+                                                         <span className="text-xs font-bold text-slate-400">$</span>
+                                                         <input 
+                                                            type="number" 
+                                                            value={Math.round(simulatedMetrics.simPrice)} 
+                                                            onChange={handleSimPriceInput}
+                                                            className="w-full bg-transparent font-mono font-bold text-white outline-none text-lg"
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-2 bg-white/5 p-1 rounded-lg flex-1">
-                                                    <span className="opacity-60 whitespace-nowrap">槓桿:</span>
-                                                    <input 
-                                                        type="number" 
-                                                        value={simLeverage} 
-                                                        onChange={(e) => setSimLeverage(parseFloat(e.target.value) || 0)}
-                                                        className="w-full bg-transparent text-center font-mono font-bold text-amber-400 outline-none"
-                                                        step="0.1"
-                                                    />
-                                                    <span className="opacity-60 text-[9px]">x</span>
+                                                <div className="flex flex-col gap-1 bg-white/5 p-2 rounded-xl">
+                                                    <span className="text-[9px] opacity-60 uppercase tracking-wider">槓桿倍數</span>
+                                                    <div className="flex items-center gap-1">
+                                                         <input 
+                                                            type="number" 
+                                                            value={simLeverage} 
+                                                            onChange={(e) => setSimLeverage(parseFloat(e.target.value) || 0)}
+                                                            className="w-full bg-transparent font-mono font-bold text-amber-400 outline-none text-lg"
+                                                            step="0.1"
+                                                        />
+                                                        <span className="text-xs font-bold text-slate-400">x</span>
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center justify-end gap-1 bg-white/5 p-1 rounded-lg flex-1">
-                                                    <span className="opacity-60 whitespace-nowrap">總資產:</span>
-                                                    <span className="font-mono font-bold text-white">${Math.round(simulatedMetrics.estTotalSim).toLocaleString()}</span>
-                                                </div>
+                                            </div>
+
+                                            <div className="flex justify-between items-center bg-white/10 p-3 rounded-xl border border-white/5">
+                                                <span className="text-xs opacity-70 font-bold">預估總資產</span>
+                                                <span className="font-mono text-xl font-black text-white tracking-tight">
+                                                    ${Math.round(simulatedMetrics.estTotalSim).toLocaleString()}
+                                                </span>
                                             </div>
                                         </div>
                                         
