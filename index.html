@@ -4,12 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Alpha Horizon Dashboard v10.15</title>
+    <title>Alpha Horizon Dashboard v10.20 (Total Sim)</title>
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-    <!-- Re-added prop-types which is required by Recharts UMD build -->
     <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
     <script src="https://unpkg.com/recharts@2.10.0/umd/Recharts.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -58,7 +57,6 @@
             { id: 'c2', type: 'dynamic', tickerKey: 'custom_ticker_2', qtyKey: 'qty_custom_2', targetKey: 'target_custom_2', defaultTicker: '自選2', color: 'text-amber-500', hex: '#06b6d4' }
         ];
 
-        // --- UTILS ---
         const getNum = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
         const getDiff = (curr, target) => { const c = parseFloat(curr), t = parseFloat(target); return (!c || !t) ? null : ((t - c) / c) * 100; };
         
@@ -88,7 +86,6 @@
             return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name] || <circle cx="12" cy="12" r="10" />}</svg>;
         });
 
-        // --- PURE LOGIC FUNCTIONS (Extracted from Component) ---
         const calculatePortfolioMetrics = (prices, inputs, records, simulatedTotal, filterMode, stressSimPct, simLeverage) => {
             const getP = (t) => prices[(t || "").toUpperCase()] || 0;
             const getV = (k) => getNum(inputs[k]);
@@ -96,7 +93,6 @@
             let total = getV('cash_balance');
             HOLDINGS_CONFIG.forEach(c => total += (c.type === 'fixed' ? getP(c.ticker) : getP(inputs[c.tickerKey])) * getV(c.qtyKey));
 
-            // RSI Suggestion
             const rsi = getNum(inputs.current_rsi);
             let sug = { cover: 0, delta: 'N/A' };
             if (rsi > 0 && inputs.options_matrix) {
@@ -105,7 +101,6 @@
             }
             const suggestContracts = Math.floor((getV('qty_tqqq') / 100) * (sug.cover / 100));
 
-            // Performance & History Graph
             let ytd = 0, mtd = 0, tot = 0, gData = [];
             if (records.length) {
                 const sorted = [...records].sort((a,b) => new Date(a.date) - new Date(b.date));
@@ -129,7 +124,6 @@
                 });
             }
 
-            // Rebalance Logic
             const tCore = (inputs.ticker_core_1 || "QQQ").toUpperCase();
             const valQQQ = getP(tCore) * getV('qty_qqq');
             const valTQQQ = getP('TQQQ') * getV('qty_tqqq');
@@ -156,23 +150,20 @@
             const stat2 = checkSat(c2W, getV('target_sat_2'), inputs.tol_up_sat_2, inputs.tol_down_sat_2);
             const statIbit = checkSat(ibitW, getV('target_sat_ibit'), inputs.tol_up_ibit, inputs.tol_down_ibit);
 
-            // Bear Defense
             const sma200 = getV('qqq_sma200');
             const benchmarkPrice = getP('QQQ'); 
-            const isBear = sma200 > 0 && benchmarkPrice > 0 && benchmarkPrice < sma200; // Strict drop
+            const isBear = sma200 > 0 && benchmarkPrice > 0 && benchmarkPrice < (sma200 * 0.97); 
             const bearData = { isActive: isBear, totalDefensive: getV('cash_balance') + (getP('SGOV') * getV('qty_sgov')), monthlyBuy: (getV('cash_balance') + (getP('SGOV') * getV('qty_sgov'))) / 12 };
 
-            // Stress Test
-            const safeBenchmarkPrice = benchmarkPrice > 0 ? benchmarkPrice : 0;
+            // Stress Test Logic (Updated V10.19)
+            // simDrop = stressSimPct / 100.
+            // PnL = Total * simDrop * simLeverage
             const simDrop = stressSimPct / 100;
+            const safeBenchmarkPrice = benchmarkPrice > 0 ? benchmarkPrice : 0;
             const simPrice = safeBenchmarkPrice * (1 + simDrop);
-            const safeValQQQ = isNaN(valQQQ) ? 0 : valQQQ;
-            const safeValTQQQ = isNaN(valTQQQ) ? 0 : valTQQQ;
-            const safeSatVal = isNaN(satVal) ? 0 : satVal;
-            const safeCash = isNaN(getV('cash_balance')) ? 0 : getV('cash_balance');
-            const safeSGOV = isNaN(getP('SGOV') * getV('qty_sgov')) ? 0 : (getP('SGOV') * getV('qty_sgov'));
-            const safeEstCore = isBear ? 0 : (safeValQQQ * (1 + simDrop)) + (safeValTQQQ * (1 + (simDrop * simLeverage)));
-            const safeEstTotalSim = safeEstCore + (safeSatVal * (1 + simDrop)) + safeCash + safeSGOV;
+            
+            const simulatedPnL = total * simDrop * simLeverage;
+            const simulatedTotalAsset = total + simulatedPnL;
 
             // Calculator
             let calcResults = [];
@@ -180,17 +171,27 @@
                 const inj = parseFloat(simulatedTotal);
                 if (!isNaN(inj)) {
                     const nTot = total + inj;
-                    const rem = nTot - (nTot*getV('target_sat_1')/100) - (nTot*getV('target_sat_2')/100) - (nTot*getV('target_sat_ibit')/100);
-                    const calcDiff = (t, c, ticker) => { const p = getP(ticker); return { ticker, diff: t-c, qty: p>0?(t-c)/p:0, action: (t-c) > 0 ? 'Buy' : 'Sell' }; };
+                    const tSat1 = nTot * (getV('target_sat_1') / 100);
+                    const tSat2 = nTot * (getV('target_sat_2') / 100);
+                    const tIbit = nTot * (getV('target_sat_ibit') / 100);
+                    const remCore = nTot - tSat1 - tSat2 - tIbit;
+                    const tTQQQ = remCore * (coreTarget / 100);
+                    const tQQQ = remCore * (1 - coreTarget / 100);
+                    const calcDiff = (targetVal, currentVal, ticker) => { 
+                        const p = getP(ticker); return { ticker, diff: targetVal - currentVal, qty: p>0 ? (targetVal - currentVal)/p : 0, action: (targetVal - currentVal) > 0 ? 'Buy' : 'Sell' }; 
+                    };
                     calcResults = [
-                        calcDiff(rem*(coreTarget/100), valTQQQ, 'TQQQ'),
-                        calcDiff(rem*(1-coreTarget/100), valQQQ, tCore),
-                        calcDiff(nTot*getV('target_sat_1')/100, valSat1, inputs.custom_ticker_1),
-                        calcDiff(nTot*getV('target_sat_2')/100, valSat2, inputs.custom_ticker_2),
-                        calcDiff(nTot*getV('target_sat_ibit')/100, valIbit, 'IBIT')
+                        calcDiff(tTQQQ, valTQQQ, 'TQQQ'),
+                        calcDiff(tQQQ, valQQQ, tCore),
+                        calcDiff(tSat1, valSat1, inputs.custom_ticker_1),
+                        calcDiff(tSat2, valSat2, inputs.custom_ticker_2),
+                        calcDiff(tIbit, valIbit, 'IBIT')
                     ];
                 }
             }
+
+            const toMA200 = (sma200 > 0 && benchmarkPrice > 0) ? ((sma200 - benchmarkPrice) / benchmarkPrice) * 100 : null;
+            const toATH = (getV('qqq_ath') > 0 && benchmarkPrice > 0) ? ((getV('qqq_ath') - benchmarkPrice) / benchmarkPrice) * 100 : null;
 
             return {
                 totalCapital: total,
@@ -199,7 +200,8 @@
                     tqqqRatio, qqqRatio, valCore, valQQQ, valTQQQ, valSat1, valSat2, valIbit,
                     isCoreImbalanced: Math.abs(tqqqRatio - coreTarget) > getV('rebalance_core_tolerance'), 
                     coreTarget, c1W: c1W.toFixed(1), c2W: c2W.toFixed(1), ibitW: ibitW.toFixed(1), 
-                    stat1, stat2, statIbit, t1: inputs.custom_ticker_1, t2: inputs.custom_ticker_2
+                    stat1, stat2, statIbit, t1: inputs.custom_ticker_1, t2: inputs.custom_ticker_2,
+                    valSat1, valSat2, valIbit
                 },
                 bearDefense: bearData,
                 qqqDistance: (sma200>0 && benchmarkPrice>0) ? ((benchmarkPrice - sma200)/sma200)*100 : null,
@@ -207,13 +209,13 @@
                 pieData: HOLDINGS_CONFIG.map(c => ({ name: c.type==='fixed'?c.ticker:inputs[c.tickerKey]||c.defaultTicker, value: (c.type==='fixed'?getP(c.ticker):getP(inputs[c.tickerKey])) * getV(c.qtyKey), color: c.hex })).concat({name:'現金', value: getV('cash_balance'), color:'#94a3b8'}).filter(x=>x.value>0).map((p,_,arr) => ({...p, percentage: ((p.value/arr.reduce((a,b)=>a+b.value,0))*100).toFixed(1)})),
                 calcResults,
                 rsiSuggestion: { ...sug, contracts: suggestContracts },
-                qqqAthMetrics: { 
-                    ma200Extension: (sma200>0 && benchmarkPrice>0) ? ((benchmarkPrice - sma200)/sma200)*100 : null,
-                    distanceToAth: (getV('qqq_ath')>0 && benchmarkPrice>0) ? ((getV('qqq_ath') - benchmarkPrice)/benchmarkPrice)*100 : null,
-                    ath: getV('qqq_ath'), currentPrice: benchmarkPrice 
-                },
+                qqqAthMetrics: { toMA200, toATH, ath: getV('qqq_ath'), currentPrice: benchmarkPrice, sma200 },
                 graphData: gData,
-                simulatedMetrics: { simPrice, estTotalSim: safeEstTotalSim, simPnL: safeEstTotalSim - total }
+                simulatedMetrics: { 
+                    simPrice, 
+                    simulatedPnL,
+                    simulatedTotalAsset
+                }
             };
         };
 
@@ -247,22 +249,14 @@
         const generateSystemAlerts = (status, bear, total, prices, inputs) => {
             const a = [];
             const getP = (t) => prices[(t || "").toUpperCase()] || 0;
+            const getNum = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
             const getQty = (val, price) => (price > 0 ? Math.abs(val / price) : 0);
 
             if (status.isCoreImbalanced) {
-                const diffVal = (status.valCore * (status.coreTarget / 100)) - status.valTQQQ;
-                a.push({ type: 'warning', title: '【TQQQ】 核心再平衡', msg: `目前 ${status.tqqqRatio.toFixed(1)}% (建議${diffVal>0?'買入':'賣出'} ${getQty(diffVal, getP('TQQQ')).toFixed(0)} 股)`});
+                const targetTQQQVal = status.valCore * (status.coreTarget / 100);
+                const diffVal = targetTQQQVal - status.valTQQQ;
+                a.push({ type: 'warning', title: '【TQQQ】 核心再平衡', msg: `目前 ${status.tqqqRatio.toFixed(1)}% (目標 ${status.coreTarget}%)。建議${diffVal>0?'買入':'賣出'} ${getQty(diffVal, getP('TQQQ')).toFixed(0)} 股 (約 $${Math.abs(diffVal).toFixed(0)})`});
             }
-
-            const checkSatAction = (stat, name, currentW, targetWKey, currentVal, ticker) => {
-                if (stat !== 'ok') {
-                    const diffVal = (total * (getNum(inputs[targetWKey]) / 100)) - currentVal;
-                    a.push({ type: stat==='high'?'opportunity':'warning', title: `【${name}】 ${stat==='high'?'高於上限':'低於下限'}`, msg: `目前 ${currentW}% (建議${diffVal>0?'買入':'賣出'} ${getQty(diffVal, getP(ticker)).toFixed(0)} 股)`});
-                }
-            };
-            checkSatAction(status.stat1, status.t1||'自選1', status.c1W, 'target_sat_1', status.valSat1, status.t1);
-            checkSatAction(status.stat2, status.t2||'自選2', status.c2W, 'target_sat_2', status.valSat2, status.t2);
-            checkSatAction(status.statIbit, 'IBIT', status.ibitW, 'target_sat_ibit', status.valIbit, 'IBIT');
 
             const checkSma = (ticker, sma, label) => {
                 const price = getP(ticker);
@@ -275,7 +269,19 @@
             if(inputs.custom_ticker_2 && inputs.custom_2_sma20) checkSma(inputs.custom_ticker_2, inputs.custom_2_sma20, '20 SMA');
             if(inputs.ibit_sma20) checkSma('IBIT', inputs.ibit_sma20, '20 SMA');
 
-            if (bear.isActive) a.push({ type: 'danger', title: '【QQQ】 熊市防禦', msg: `QQQ < 200 SMA，請轉入防禦資產。本月 DCA 建議投入：$${bear.monthlyBuy.toLocaleString(undefined,{maximumFractionDigits:0})} (總防禦/12)`});
+            const checkSatAction = (stat, name, currentW, targetWKey, currentVal, ticker) => {
+                if (stat !== 'ok') {
+                    const targetVal = total * (getNum(inputs[targetWKey]) / 100);
+                    const diffVal = targetVal - currentVal;
+                    const action = diffVal > 0 ? '買入' : '賣出';
+                    a.push({ type: stat==='high'?'opportunity':'warning', title: `【${name}】 ${stat==='high'?'高於上限':'低於下限'}`, msg: `目前 ${currentW}% (目標${inputs[targetWKey]}%)。建議${action} ${getQty(diffVal, getP(ticker)).toFixed(0)} 股 (約 $${Math.abs(diffVal).toFixed(0)})`});
+                }
+            };
+            checkSatAction(status.stat1, status.t1||'自選1', status.c1W, 'target_sat_1', status.valSat1, status.t1);
+            checkSatAction(status.stat2, status.t2||'自選2', status.c2W, 'target_sat_2', status.valSat2, status.t2);
+            checkSatAction(status.statIbit, 'IBIT', status.ibitW, 'target_sat_ibit', status.valIbit, 'IBIT');
+
+            if (bear.isActive) a.push({ type: 'danger', title: '【QQQ】 熊市防禦', msg: `QQQ < 200 SMA (3% 緩衝)，請轉入防禦資產。本月 DCA 建議投入：$${bear.monthlyBuy.toLocaleString(undefined,{maximumFractionDigits:0})} (總防禦/12)`});
             
             if (inputs.options_inventory) {
                 inputs.options_inventory.forEach(o => {
@@ -287,8 +293,7 @@
             return a;
         };
 
-        // --- SUB-COMPONENTS (Modals & Fragments) ---
-        const Card = ({ children, className = "" }) => <div className={`rounded-[2rem] shadow-xl border p-5 transition-all bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 ${className}`}>{children}</div>;
+        const Card = ({ children, className = "", onClick }) => <div onClick={onClick} className={`rounded-[2rem] shadow-xl border p-5 transition-all bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 ${className} ${onClick ? 'cursor-pointer hover:scale-[1.01]' : ''}`}>{children}</div>;
         const SectionTitle = ({ title, iconName }) => <h2 className="text-[11px] font-black mb-3 flex items-center gap-2 uppercase tracking-widest text-slate-500 dark:text-slate-400"><Icon name={iconName} size={14} /> {title}</h2>;
         const CustomTooltip = ({ active, payload }) => active && payload && payload.length ? <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl shadow-xl text-xs font-black"><p className="mb-1 text-slate-500">{payload[0].payload.name}</p><p className="text-lg mb-2 text-slate-800 dark:text-slate-100 font-mono">${payload[0].payload.value.toLocaleString()}</p><p className="text-slate-400">{payload[0].payload.percentage}%</p></div> : null;
         
@@ -321,38 +326,15 @@
         const TradeActionModal = ({ type, targetId, inputs, prices, onClose, onExecute }) => {
             const [local, setLocal] = useState({ ticker:'TQQQ', type:'SC', contracts:1, newPremium:0, exitPrice:0, newStrike:'', newExpiry:'', newDelta:'' });
             useEffect(() => { if(type==='ROLL' || type==='CLOSE') { const t = inputs.options_inventory.find(o=>o.id===targetId); if(t) setLocal(p=>({...p, ticker:t.ticker, contracts:t.contracts, newStrike:t.strike})); } }, [targetId]);
-            
             return (
                 <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center">
                     <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl animate-in slide-in-from-bottom-full">
-                        <h3 className="text-xl font-black mb-4 flex items-center gap-2"><Icon name={type==='OPEN'?'Plus':type==='ROLL'?'RefreshCcw':'CheckCircle'} className="text-indigo-500"/> {type==='OPEN'?'新建倉位 (Sell Open)':type==='ROLL'?'選擇權轉倉 (Roll)':'選擇權平倉 (Close)'}</h3>
+                        <h3 className="text-xl font-black mb-4 flex items-center gap-2"><Icon name={type==='OPEN'?'Plus':type==='ROLL'?'RefreshCcw':'CheckCircle'} className="text-indigo-500"/> {type==='OPEN'?'新建倉位':type==='ROLL'?'選擇權轉倉':'選擇權平倉'}</h3>
                         {type === 'OPEN' && (
-                            <div className="space-y-3">
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div><label className="text-xs font-bold text-slate-500">標的</label><input value={local.ticker} onChange={e=>setLocal({...local,ticker:e.target.value.toUpperCase()})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-black"/></div>
-                                    <div><label className="text-xs font-bold text-slate-500">類型</label><select value={local.type} onChange={e=>setLocal({...local,type:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"><option value="SC">Sell Call</option><option value="SP">Sell Put</option></select></div>
-                                </div>
-                                {local.type === 'SP' && <div className={`p-2 rounded-lg text-center text-xs font-bold ${prices['QQQ']>inputs.qqq_sma20?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}`}>{prices['QQQ']>inputs.qqq_sma20?'🔥 強勢盤：建議 Delta -0.30':'🌊 震盪盤：建議 Delta -0.20'}</div>}
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input type="number" placeholder="Strike" value={local.newStrike} onChange={e=>setLocal({...local,newStrike:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"/>
-                                    <input type="date" value={local.newExpiry} onChange={e=>setLocal({...local,newExpiry:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold text-xs"/>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input type="number" placeholder="張數" value={local.contracts} onChange={e=>setLocal({...local,contracts:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"/>
-                                    <input type="number" placeholder="權利金" value={local.newPremium} onChange={e=>setLocal({...local,newPremium:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"/>
-                                </div>
-                                <input type="number" placeholder="Delta" value={local.newDelta} onChange={e=>setLocal({...local,newDelta:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"/>
-                            </div>
+                            <div className="space-y-3"><div className="grid grid-cols-2 gap-2"><div><label className="text-xs font-bold text-slate-500">標的</label><input value={local.ticker} onChange={e=>setLocal({...local,ticker:e.target.value.toUpperCase()})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-black"/></div><div><label className="text-xs font-bold text-slate-500">類型</label><select value={local.type} onChange={e=>setLocal({...local,type:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"><option value="SC">Sell Call</option><option value="SP">Sell Put</option></select></div></div>{local.type === 'SP' && <div className={`p-2 rounded-lg text-center text-xs font-bold ${prices['QQQ']>inputs.qqq_sma20?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}`}>{prices['QQQ']>inputs.qqq_sma20?'🔥 強勢盤：Delta -0.30':'🌊 震盪盤：Delta -0.20'}</div>}<div className="grid grid-cols-2 gap-2"><input type="number" placeholder="Strike" value={local.newStrike} onChange={e=>setLocal({...local,newStrike:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"/><input type="date" value={local.newExpiry} onChange={e=>setLocal({...local,newExpiry:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold text-xs"/></div><div className="grid grid-cols-2 gap-2"><input type="number" placeholder="張數" value={local.contracts} onChange={e=>setLocal({...local,contracts:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"/><input type="number" placeholder="權利金" value={local.newPremium} onChange={e=>setLocal({...local,newPremium:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"/></div><input type="number" placeholder="Delta" value={local.newDelta} onChange={e=>setLocal({...local,newDelta:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"/></div>
                         )}
-                        {type === 'CLOSE' && (
-                            <div><label className="text-xs font-bold text-slate-500">買回價格</label><input type="number" autoFocus value={local.exitPrice} onChange={e=>setLocal({...local,exitPrice:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-3 rounded-xl text-center font-black text-xl" /></div>
-                        )}
-                        {type === 'ROLL' && (
-                            <div className="space-y-3">
-                                <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg mb-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Step 1: 平倉舊合約</label><div className="flex justify-between items-center mt-1"><span className="text-xs font-bold">買回價格</span><input type="number" autoFocus value={local.exitPrice} onChange={e=>setLocal({...local,exitPrice:e.target.value})} className="w-24 bg-white dark:bg-slate-700 p-1 rounded text-center font-bold" /></div></div>
-                                <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg"><label className="text-[10px] font-bold text-slate-400 uppercase">Step 2: 建立新合約</label><div className="grid grid-cols-2 gap-2 mt-1"><input type="number" placeholder="新權利金" value={local.newPremium} onChange={e=>setLocal({...local,newPremium:e.target.value})} className="bg-white dark:bg-slate-700 p-1 rounded text-center text-xs font-bold"/><input type="number" placeholder="新 Strike" value={local.newStrike} onChange={e=>setLocal({...local,newStrike:e.target.value})} className="bg-white dark:bg-slate-700 p-1 rounded text-center text-xs font-bold"/><input type="date" value={local.newExpiry} onChange={e=>setLocal({...local,newExpiry:e.target.value})} className="bg-white dark:bg-slate-700 p-1 rounded text-center text-xs font-bold"/><input type="number" placeholder="新 Delta" value={local.newDelta} onChange={e=>setLocal({...local,newDelta:e.target.value})} className="bg-white dark:bg-slate-700 p-1 rounded text-center text-xs font-bold"/></div></div>
-                            </div>
-                        )}
+                        {type === 'CLOSE' && <div><label className="text-xs font-bold text-slate-500">買回價格</label><input type="number" autoFocus value={local.exitPrice} onChange={e=>setLocal({...local,exitPrice:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-3 rounded-xl text-center font-black text-xl" /></div>}
+                        {type === 'ROLL' && <div className="space-y-3"><div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg mb-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Step 1: 平倉舊合約</label><div className="flex justify-between items-center mt-1"><span className="text-xs font-bold">買回價格</span><input type="number" autoFocus value={local.exitPrice} onChange={e=>setLocal({...local,exitPrice:e.target.value})} className="w-24 bg-white dark:bg-slate-700 p-1 rounded text-center font-bold" /></div></div><div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg"><label className="text-[10px] font-bold text-slate-400 uppercase">Step 2: 建立新合約</label><div className="grid grid-cols-2 gap-2 mt-1"><input type="number" placeholder="新權利金" value={local.newPremium} onChange={e=>setLocal({...local,newPremium:e.target.value})} className="bg-white dark:bg-slate-700 p-1 rounded text-center text-xs font-bold"/><input type="number" placeholder="新 Strike" value={local.newStrike} onChange={e=>setLocal({...local,newStrike:e.target.value})} className="bg-white dark:bg-slate-700 p-1 rounded text-center text-xs font-bold"/><input type="date" value={local.newExpiry} onChange={e=>setLocal({...local,newExpiry:e.target.value})} className="bg-white dark:bg-slate-700 p-1 rounded text-center text-xs font-bold"/><input type="number" placeholder="新 Delta" value={local.newDelta} onChange={e=>setLocal({...local,newDelta:e.target.value})} className="bg-white dark:bg-slate-700 p-1 rounded text-center text-xs font-bold"/></div></div></div>}
                         <div className="flex gap-2 mt-4"><button onClick={onClose} className="flex-1 bg-slate-200 dark:bg-slate-800 text-slate-500 py-3 rounded-xl font-bold">取消</button><button onClick={()=>onExecute(type, local)} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold">確認執行</button></div>
                     </div>
                 </div>
@@ -370,6 +352,23 @@
                             <div className="grid grid-cols-2 gap-2"><input type="number" value={l.strike} onChange={e=>setL({...l,strike:e.target.value})} className="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg font-bold"/><input type="date" value={l.expiry} onChange={e=>setL({...l,expiry:e.target.value})} className="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg font-bold"/></div>
                             <div className="grid grid-cols-3 gap-2"><input type="number" value={l.contracts} onChange={e=>setL({...l,contracts:e.target.value})} className="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg font-bold text-center"/><input type="number" value={l.premium} onChange={e=>setL({...l,premium:e.target.value})} className="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg font-bold text-center"/><input type="number" value={l.delta} onChange={e=>setL({...l,delta:e.target.value})} className="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg font-bold text-center"/></div>
                             <div className="flex gap-2 mt-4"><button onClick={()=>onDelete(l.id)} className="p-3 bg-red-100 text-red-500 rounded-xl"><Icon name="Trash2"/></button><button onClick={()=>onSave(l)} className="flex-1 bg-indigo-600 text-white rounded-xl font-bold">儲存</button></div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const EditOptionHistoryModal = ({ trade, onClose, onSave, onDelete }) => {
+            const [localTrade, setLocalTrade] = useState({...trade});
+            return (
+                <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2rem] p-6 shadow-2xl animate-in fade-in">
+                        <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-black flex gap-2"><Icon name="Edit2"/> 編輯交易</h3><button onClick={onClose}><Icon name="X"/></button></div>
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-2"><div><label className="text-xs text-slate-500 block">日期</label><input type="date" value={localTrade.date?.split('T')[0]} onChange={e=>setLocalTrade({...localTrade, date: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div><div><label className="text-xs text-slate-500 block">標的</label><input value={localTrade.ticker} onChange={e=>setLocalTrade({...localTrade, ticker: e.target.value.toUpperCase()})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div></div>
+                            <div className="grid grid-cols-2 gap-2"><div><label className="text-xs text-slate-500 block">動作</label><select value={localTrade.type} onChange={e=>setLocalTrade({...localTrade, type: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"><option value="OPEN">建倉</option><option value="CLOSE">平倉</option><option value="ROLL_CLOSE">轉倉(平)</option><option value="ROLL_OPEN">轉倉(開)</option><option value="MANUAL">補登</option></select></div><div><label className="text-xs text-slate-500 block">金額 ($)</label><input type="number" step="any" value={localTrade.pnl} onChange={e=>setLocalTrade({...localTrade, pnl: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold text-center" /></div></div>
+                            <div className="text-[10px] text-center text-slate-400 mt-1">正數 (+) = 收入, 負數 (-) = 支出</div>
+                            <div className="flex gap-2 mt-4"><button onClick={()=>onDelete(localTrade.id)} className="p-3 bg-red-100 text-red-500 rounded-xl"><Icon name="Trash2"/></button><button onClick={()=>onSave({...localTrade, pnl: parseFloat(localTrade.pnl) || 0})} className="flex-1 bg-indigo-600 text-white rounded-xl font-bold">儲存</button></div>
                         </div>
                     </div>
                 </div>
@@ -419,6 +418,7 @@
             const [filterMode, setFilterMode] = useState('all');
             const [expandedYears, setExpandedYears] = useState({});
             const [historyExpanded, setHistoryExpanded] = useState(false); 
+            const [optionHistoryExpanded, setOptionHistoryExpanded] = useState(false);
             const [darkMode, setDarkMode] = useState(() => localStorage.getItem('qqq_theme') === 'dark');
             const [customSyncId, setCustomSyncId] = useState(() => localStorage.getItem('qqq_sync_id') || '');
             const [tempSyncId, setTempSyncId] = useState(customSyncId);
@@ -440,14 +440,10 @@
                 cash_balance: 0, record_date: new Date().toISOString().split('T')[0],
                 loan_amount: 0, loan_rate: 2.0, loan_years: 7, loan_repay_target: 20, loan_entry_valuation: 0, loan_monthly_repay: 0, motto: '', record_memo: '',
                 target_qqq: '', target_tqqq: '', target_ibit: '', target_sgov: '', target_custom_1: '', target_custom_2: '',
-                title_core: "核心策略 (Core) - QQQ/TQQQ (NRA V8.4)", 
-                strat_core: "【核心部位 (80%)】\n目標：40% TQQQ + 40% QQQ\n\nA. 趨勢總開關\n監測：QQQ 日線 200 SMA\n進攻 (Risk-On)：QQQ > 200 SMA -> 持有正股，啟動收益增強。\n防禦 (Risk-Off)：QQQ < 200 SMA -> 轉為現金或 SGOV，停止賣 Call。", 
-                title_custom: "衛星策略 (Satellite) - TSLA/IBIT", 
-                strat_custom: "【衛星部位 (20%)】\n目標：10% TSLA + 10% IBIT\n原則：Buy & Hold，禁止賣 Call。\n\n操作週期：每週五收盤前確認週線。\nTSLA：跌破週線 40 SMA 出場 / 站上入場。\nIBIT：跌破週線 20 SMA 出場 / 站上入場。", 
-                title_ibit: "備用欄位", 
-                strat_ibit: "",
-                title_options: "選擇權策略 (Options) - NRA V8.4",
-                strat_options: "【收益增強：週薪防禦系統】\n標的：TQQQ Weekly Options\n\nRSI-Delta 動態網：\n(1) RSI < 40：禁止開倉 (或 Delta < 0.05)\n(2) RSI 40-60：Delta 0.10-0.12\n(3) RSI 60-75：Delta 0.12-0.15\n(4) RSI > 75：Delta 0.20-0.25\n\n戰術防禦 (雙倍 Delta)：\n觸發：Delta 飆升至 0.25。\n動作：Roll Up & Out (轉下週更高價)。\n鐵律：必須收錢 (Net Credit) 或零成本。僅限一次。\n棄守：轉倉後 Delta > 0.40 或 ITM -> 接股票。\n\n輪式循環 (The Wheel)：\n若被履約，下週賣 Put 接回。\n強勢盤 (QQQ > 20MA)：賣 Delta -0.30\n震盪盤 (QQQ < 20MA)：賣 Delta -0.20",
+                title_core: "核心策略 (Core) - QQQ/TQQQ (NRA V8.4)", strat_core: "【核心部位 (80%)】\n目標：40% TQQQ + 40% QQQ\n\nA. 趨勢總開關\n監測：QQQ 日線 200 SMA\n進攻 (Risk-On)：QQQ > 200 SMA -> 持有正股，啟動收益增強。\n防禦 (Risk-Off)：QQQ < 200 SMA -> 轉為現金或 SGOV，停止賣 Call。", 
+                title_custom: "衛星策略 (Satellite) - TSLA/IBIT", strat_custom: "【衛星部位 (20%)】\n目標：10% TSLA + 10% IBIT\n原則：Buy & Hold，禁止賣 Call。\n\n操作週期：每週五收盤前確認週線。\nTSLA：跌破週線 40 SMA 出場 / 站上入場。\nIBIT：跌破週線 20 SMA 出場 / 站上入場。", 
+                title_ibit: "備用欄位", strat_ibit: "",
+                title_options: "選擇權策略 (Options) - NRA V8.4", strat_options: "【收益增強：週薪防禦系統】\n標的：TQQQ Weekly Options\n\nRSI-Delta 動態網：\n(1) RSI < 40：禁止開倉 (或 Delta < 0.05)\n(2) RSI 40-60：Delta 0.10-0.12\n(3) RSI 60-75：Delta 0.12-0.15\n(4) RSI > 75：Delta 0.20-0.25\n\n戰術防禦 (雙倍 Delta)：\n觸發：Delta 飆升至 0.25。\n動作：Roll Up & Out (轉下週更高價)。\n鐵律：必須收錢 (Net Credit) 或零成本。僅限一次。\n棄守：轉倉後 Delta > 0.40 或 ITM -> 接股票。\n\n輪式循環 (The Wheel)：\n若被履約，下週賣 Put 接回。\n強勢盤 (QQQ > 20MA)：賣 Delta -0.30\n震盪盤 (QQQ < 20MA)：賣 Delta -0.20",
                 options_matrix: [ { min: 0, max: 40, cover: 0, delta: '< 0.05 (禁止)' }, { min: 40, max: 60, cover: 30, delta: '0.10 - 0.12' }, { min: 60, max: 75, cover: 50, delta: '0.12 - 0.15' }, { min: 75, max: 100, cover: 70, delta: '0.20 - 0.25' } ],
                 options_inventory: [] 
             });
@@ -464,11 +460,12 @@
             }, [effectiveUserId]);
             useEffect(() => { document.documentElement.className = darkMode ? 'dark' : 'light'; }, [darkMode]);
 
-            // Data Processing (Memoized calls to extracted logic)
+            // Data Processing
             const metrics = useMemo(() => calculatePortfolioMetrics(prices, inputs, records, simulatedTotal, filterMode, stressSimPct, simLeverage), [prices, inputs, records, simulatedTotal, filterMode, stressSimPct, simLeverage]);
             const historyGroups = useMemo(() => processHistoryData(records, inputs.option_history || []), [records, inputs.option_history]);
             const alerts = useMemo(() => generateSystemAlerts(metrics.rebalanceStatus, metrics.bearDefense, metrics.totalCapital, prices, inputs), [metrics, prices, inputs]);
             const totalRealizedPremium = useMemo(() => (inputs.option_history || []).reduce((acc, curr) => acc + (parseFloat(curr.pnl) || 0), 0), [inputs.option_history]);
+            const ltv = inputs.loan_amount > 0 && metrics.totalCapital > 0 ? (inputs.loan_amount / metrics.totalCapital) * 100 : 0;
 
             // Handlers
             const showToast = (txt) => { setMessage(txt); setTimeout(() => setMessage(null), 3000); };
@@ -491,52 +488,23 @@
                 let newInv = [...(inputs.options_inventory||[])], newHist = [...(inputs.option_history||[])];
                 const now = new Date().toISOString();
                 const p = parseFloat(data.newPremium)||0, c = parseFloat(data.contracts)||1, ep = parseFloat(data.exitPrice)||0;
-                
-                if (type === 'OPEN') {
-                    newHist.unshift({ id: Date.now(), date: now, ticker: data.ticker, type: 'OPEN', pnl: p*c*100 });
-                    newInv.push({ id: Date.now(), type: data.type, ticker: data.ticker, strike: data.newStrike, expiry: data.newExpiry, contracts: c, premium: p, delta: data.newDelta });
-                    showToast(`建倉成功！收入: +$${(p*c*100).toFixed(0)}`);
-                } else if (type === 'CLOSE') {
-                    const opt = newInv.find(o => o.id === targetOptionId); if(!opt) return;
-                    newHist.unshift({ id: Date.now(), date: now, ticker: opt.ticker, type: 'CLOSE', pnl: -(ep*opt.contracts*100) });
-                    newInv = newInv.filter(o => o.id !== targetOptionId);
-                    showToast(`平倉成功！支出: $${(ep*opt.contracts*100).toFixed(0)}`);
-                } else if (type === 'ROLL') {
-                    const opt = newInv.find(o => o.id === targetOptionId); if(!opt) return;
-                    newHist.unshift({ id: Date.now()+1, date: now, ticker: opt.ticker, type: 'ROLL_OPEN', pnl: p*opt.contracts*100 });
-                    newHist.unshift({ id: Date.now(), date: now, ticker: opt.ticker, type: 'ROLL_CLOSE', pnl: -(ep*opt.contracts*100) });
-                    newInv = newInv.map(o => o.id === targetOptionId ? { ...o, strike: data.newStrike, expiry: data.newExpiry, premium: p, delta: data.newDelta } : o);
-                    showToast(`轉倉成功！`);
-                }
+                if (type === 'OPEN') { newHist.unshift({ id: Date.now(), date: now, ticker: data.ticker, type: 'OPEN', pnl: p*c*100 }); newInv.push({ id: Date.now(), type: data.type, ticker: data.ticker, strike: data.newStrike, expiry: data.newExpiry, contracts: c, premium: p, delta: data.newDelta }); showToast(`建倉成功！收入: +$${(p*c*100).toFixed(0)}`); }
+                else if (type === 'CLOSE') { const opt = newInv.find(o => o.id === targetOptionId); if(!opt) return; newHist.unshift({ id: Date.now(), date: now, ticker: opt.ticker, type: 'CLOSE', pnl: -(ep*opt.contracts*100) }); newInv = newInv.filter(o => o.id !== targetOptionId); showToast(`平倉成功！支出: $${(ep*opt.contracts*100).toFixed(0)}`); }
+                else if (type === 'ROLL') { const opt = newInv.find(o => o.id === targetOptionId); if(!opt) return; newHist.unshift({ id: Date.now()+1, date: now, ticker: opt.ticker, type: 'ROLL_OPEN', pnl: p*opt.contracts*100 }); newHist.unshift({ id: Date.now(), date: now, ticker: opt.ticker, type: 'ROLL_CLOSE', pnl: -(ep*opt.contracts*100) }); newInv = newInv.map(o => o.id === targetOptionId ? { ...o, strike: data.newStrike, expiry: data.newExpiry, premium: p, delta: data.newDelta } : o); showToast(`轉倉成功！`); }
                 setInputs(prev => ({...prev, options_inventory: newInv, option_history: newHist}));
                 if (effectiveUserId) db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ options_inventory: newInv, option_history: newHist }, { merge: true });
                 setOpenModalType(null);
             };
 
             const confirmDelete = async (id) => { await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').doc(id).delete(); showToast("已刪除"); };
-            const handleTradeSave = (updatedTrade) => {
-                let newHistory = inputs.option_history.map(t => t.id === updatedTrade.id ? updatedTrade : t);
-                setInputs(p => ({...p, option_history: newHistory}));
-                syncToCloud('option_history', newHistory);
-                setEditingTrade(null);
-                showToast("交易紀錄已更新");
-            };
-            const handleTradeDelete = (id) => {
-                const newHistory = inputs.option_history.filter(t => t.id !== id);
-                setInputs(p => ({...p, option_history: newHistory}));
-                syncToCloud('option_history', newHistory);
-                setEditingTrade(null);
-                showToast("交易紀錄已刪除");
-            };
-
+            const handleTradeSave = (updatedTrade) => { let newHistory = inputs.option_history.map(t => t.id === updatedTrade.id ? updatedTrade : t); setInputs(p => ({...p, option_history: newHistory})); syncToCloud('option_history', newHistory); setEditingTrade(null); showToast("交易紀錄已更新"); };
+            const handleTradeDelete = (id) => { const newHistory = inputs.option_history.filter(t => t.id !== id); setInputs(p => ({...p, option_history: newHistory})); syncToCloud('option_history', newHistory); setEditingTrade(null); showToast("交易紀錄已刪除"); };
             const save = async () => { if (!effectiveUserId || isSaving) return; setIsSaving(true); try { await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').add({ date: new Date(inputs.record_date).toISOString(), total_equity: metrics.totalCapital, total_realized_premium, prices, inputs, memo: inputs.record_memo }); await syncToCloud('last_save', Date.now()); showToast("同步成功"); setInputs(p=>({...p, record_memo: ''})); } catch(e) { showToast("失敗"); } setIsSaving(false); };
             const perfD = perfView==='MTD' ? {l:'本月',v:metrics.performanceStats.mtd} : (perfView==='ALL' ? {l:'總計',v:metrics.performanceStats.total} : {l:'今年',v:metrics.performanceStats.ytd});
 
             return (
                 <div className="pb-40 min-h-screen transition-colors duration-300 font-black text-left select-none overflow-x-hidden">
                     {message && <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-top-4"><div className="bg-indigo-600 text-white px-6 py-3 rounded-full shadow-2xl text-sm flex items-center gap-2"><Icon name="CheckCircle" size={16} /> {message}</div></div>}
-                    
-                    {/* MODALS */}
                     <EditRecordModal editingId={editingId} editForm={editForm} setEditingId={setEditingId} setEditForm={setEditForm} saveEdit={async () => { await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').doc(editingId).update({ inputs: editForm.inputs, memo: editForm.memo }); setEditingId(null); showToast("更新成功"); }} />
                     {editingInventoryItem && <EditInventoryModal item={editingInventoryItem} onClose={()=>setEditingInventoryItem(null)} onSave={(i)=>{const nInv = inputs.options_inventory.some(o=>o.id===i.id)?inputs.options_inventory.map(o=>o.id===i.id?i:o):[...inputs.options_inventory,i]; setInputs(p=>({...p,options_inventory:nInv})); syncToCloud('options_inventory',nInv); setEditingInventoryItem(null);}} onDelete={(id)=>{const nInv=inputs.options_inventory.filter(o=>o.id!==id); setInputs(p=>({...p,options_inventory:nInv})); syncToCloud('options_inventory',nInv); setEditingInventoryItem(null);}} />}
                     {editingTrade && <EditOptionHistoryModal trade={editingTrade} onClose={()=>setEditingTrade(null)} onSave={handleTradeSave} onDelete={handleTradeDelete} />}
@@ -551,10 +519,7 @@
                         {view === 'dashboard' && (
                             <div className="space-y-6 animate-in fade-in">
                                 <Card className="p-4 bg-gradient-to-r from-slate-800 to-indigo-900 text-white border-none">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div className="flex gap-2 opacity-80"><Icon name={isAlertsView ? "ShieldAlert" : "Quote"} size={16} /><span className="text-[10px] tracking-widest font-bold">{isAlertsView ? "策略警示" : "投資座右銘"}</span></div>
-                                        <div className="flex gap-2">{!isAlertsView && <button onClick={() => setIsMottoLocked(!isMottoLocked)} className="p-1 bg-white/20 rounded-full"><Icon name={isMottoLocked?"Lock":"Unlock"} size={12}/></button>}<button onClick={() => setIsAlertsView(!isAlertsView)} className={`p-1 bg-white/20 rounded-full ${alerts.length>0?'bg-red-500/80':''}`}><Icon name="AlertCircle" size={14}/></button></div>
-                                    </div>
+                                    <div className="flex justify-between items-start mb-2"><div className="flex gap-2 opacity-80"><Icon name={isAlertsView ? "ShieldAlert" : "Quote"} size={16} /><span className="text-[10px] tracking-widest font-bold">{isAlertsView ? "策略警示" : "投資座右銘"}</span></div><div className="flex gap-2">{!isAlertsView && <button onClick={() => setIsMottoLocked(!isMottoLocked)} className="p-1 bg-white/20 rounded-full"><Icon name={isMottoLocked?"Lock":"Unlock"} size={10}/></button>}<button onClick={() => setIsAlertsView(!isAlertsView)} className={`p-1 bg-white/20 rounded-full ${alerts.length>0?'bg-red-500/80':''}`}><Icon name="AlertCircle" size={12}/></button></div></div>
                                     {isAlertsView ? (alerts.length ? alerts.map((a,i)=><div key={i} className={`p-3 rounded-xl mb-2 text-xs font-bold border-l-4 shadow-sm ${a.type==='danger'?'bg-red-50 text-red-800 border-red-500 dark:bg-red-900/30 dark:text-red-200':a.type==='opportunity'?'bg-emerald-50 text-emerald-800 border-emerald-500 dark:bg-emerald-900/30 dark:text-emerald-200':'bg-amber-50 text-amber-800 border-amber-500 dark:bg-amber-900/30 dark:text-amber-200'}`}>{a.type==='danger'?'🔴':(a.type==='opportunity'?'🟢':'🟡')} {a.title}<div className="font-medium opacity-80 mt-1 ml-5 leading-relaxed">{a.msg}</div></div>) : <div className="text-center opacity-70 text-xs py-4">目前無策略警示</div>) : <textarea value={inputs.motto} readOnly={isMottoLocked} onChange={e=>handleInputChange('motto',e.target.value)} onBlur={e=>syncToCloud('motto',e.target.value)} className={`w-full bg-transparent text-lg font-black text-center outline-none resize-none ${isMottoLocked?'':'bg-white/10 rounded-xl'}`} rows="5" placeholder="輸入心法..." />}
                                 </Card>
                                 {metrics.bearDefense.isActive && <div className="bg-red-500 text-white rounded-[2rem] p-5 shadow-xl border-4 border-red-400 text-center relative overflow-hidden"><div className="absolute top-0 right-0 p-4 opacity-20"><Icon name="Shield" size={80} /></div><div className="inline-flex items-center gap-2 mb-2 bg-red-700/50 px-4 py-1 rounded-full text-xs font-black">進入熊市防禦</div><div className="text-3xl font-black">${metrics.bearDefense.monthlyBuy.toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="text-xs opacity-90 mb-4">本月定投額 (1/12)</div></div>}
@@ -562,43 +527,37 @@
                                 <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 border-2 border-slate-200 dark:border-slate-700 shadow-lg">
                                     <div className="flex justify-between mb-3"><div className="flex gap-2 text-xs font-black text-slate-400"><Icon name="Scale" size={14} /> 再平衡檢測</div><button onClick={()=>setSections(p=>({...p,rebalance:!p.rebalance}))}><Icon name={dashboardSections.rebalance?"ChevronUp":"ChevronDown"} size={16} /></button></div>
                                     {dashboardSections.rebalance && <div className="space-y-4">
-                                        <div className="space-y-1">
-                                            <div className="flex justify-between text-xs font-bold mb-1"><span className="text-indigo-600">TQQQ {metrics.rebalanceStatus.tqqqRatio.toFixed(1)}%</span><span className="text-orange-500">{inputs.ticker_core_1} {metrics.rebalanceStatus.qqqRatio.toFixed(1)}%</span></div>
-                                            <div className="h-4 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden flex relative"><div className="h-full bg-indigo-600 flex items-center justify-center text-[9px] text-white/80" style={{width: `${metrics.rebalanceStatus.tqqqRatio}%`}}></div><div className="h-full bg-orange-500 flex items-center justify-center text-[9px] text-white/80" style={{width: `${metrics.rebalanceStatus.qqqRatio}%`}}></div><div className="absolute top-0 bottom-0 w-0.5 bg-white z-10" style={{left: `${metrics.rebalanceStatus.coreTarget}%`}}></div></div>
-                                            <div className="text-center text-[10px] text-slate-400 font-mono">(${metrics.rebalanceStatus.valCore.toLocaleString(undefined,{maximumFractionDigits:0})})</div>
-                                        </div>
-                                        {['c1W','c2W','ibitW'].map((k,i) => { 
-                                            const tName = k==='ibitW' ? 'IBIT' : metrics.rebalanceStatus[k==='c1W'?'t1':'t2']; 
-                                            const status = k==='ibitW' ? metrics.rebalanceStatus.statIbit : metrics.rebalanceStatus[k==='c1W'?'stat1':'stat2'];
-                                            return <div key={k} className="space-y-1"><div className="flex justify-between text-xs font-bold"><span className="text-slate-600 dark:text-slate-300">{tName}</span><span className={status!=='ok'?'text-red-500':'text-emerald-500'}>{metrics.rebalanceStatus[k]}%</span></div><div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden relative"><div className={`h-full ${status==='high'?'bg-red-500':(status==='low'?'bg-indigo-400':'bg-emerald-500')}`} style={{width:`${Math.min((metrics.rebalanceStatus[k]/20)*100,100)}%`}}></div></div></div>; 
-                                        })}
+                                        <div className="space-y-1"><div className="flex justify-between text-xs font-bold mb-1"><span className="text-indigo-600">TQQQ {metrics.rebalanceStatus.tqqqRatio.toFixed(1)}%</span><span className="text-orange-500">{inputs.ticker_core_1} {metrics.rebalanceStatus.qqqRatio.toFixed(1)}%</span></div><div className="h-4 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden flex relative"><div className="h-full bg-indigo-600 flex items-center justify-center text-[9px] text-white/80" style={{width: `${metrics.rebalanceStatus.tqqqRatio}%`}}></div><div className="h-full bg-orange-500 flex items-center justify-center text-[9px] text-white/80" style={{width: `${metrics.rebalanceStatus.qqqRatio}%`}}></div><div className="absolute top-0 bottom-0 w-0.5 bg-white z-10" style={{left: `${metrics.rebalanceStatus.coreTarget}%`}}></div></div><div className="text-center text-[10px] text-slate-400 font-mono">(${metrics.rebalanceStatus.valCore.toLocaleString(undefined,{maximumFractionDigits:0})})</div></div>
+                                        {['c1W','c2W','ibitW'].map((k,i) => { const tName = k==='ibitW' ? 'IBIT' : metrics.rebalanceStatus[k==='c1W'?'t1':'t2']; const status = k==='ibitW' ? metrics.rebalanceStatus.statIbit : metrics.rebalanceStatus[k==='c1W'?'stat1':'stat2']; return <div key={k} className="space-y-1"><div className="flex justify-between text-xs font-bold"><span className="text-slate-600 dark:text-slate-300">{tName}</span><span className={status!=='ok'?'text-red-500':'text-emerald-500'}>{metrics.rebalanceStatus[k]}%</span></div><div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden relative"><div className={`h-full ${status==='high'?'bg-red-500':(status==='low'?'bg-indigo-400':'bg-emerald-500')}`} style={{width:`${Math.min((metrics.rebalanceStatus[k]/20)*100,100)}%`}}></div></div></div>; })}
                                     </div>}
                                 </div>
                                 
-                                <Card className="bg-gradient-to-br from-slate-900 via-indigo-950 to-indigo-900 text-white border-none p-7 relative overflow-hidden group">
-                                    <div className="absolute -right-4 -bottom-4 opacity-10 rotate-12"><Icon name="TrendingUp" size={160} /></div>
-                                    <div className="flex justify-between"><label className="text-[10px] opacity-50 uppercase tracking-widest">總資產</label><button onClick={(e)=>{e.stopPropagation();setPerfView(perfView==='MTD'?'YTD':(perfView==='YTD'?'ALL':'MTD'))}} className="bg-white/10 p-2 rounded-full"><Icon name="Repeat" size={14}/></button></div>
-                                    <div className="mt-2"><div className="text-4xl font-black font-mono">${metrics.totalCapital.toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="text-sm font-mono text-white/50">≈ NT$ {(metrics.totalCapital*inputs.exchange_rate).toLocaleString(undefined,{maximumFractionDigits:0})}</div></div>
-                                    <div className="mt-4 pt-3 border-t border-white/10 flex justify-between text-xs font-bold z-10 relative"><div><span className="opacity-40 text-[9px] block">{perfD.l}報酬</span><span className={`text-lg ${perfD.v>=0?'text-emerald-400':'text-red-400'}`}>{perfD.v>0?'+':''}{perfD.v.toFixed(2)}%</span></div><div className="text-center"><span className="opacity-40 text-[9px] block">已實現權利金</span><span className="text-lg text-amber-400 font-mono">${totalRealizedPremium.toLocaleString(undefined,{maximumFractionDigits:0})}</span></div><div className="text-right"><span className="opacity-40 text-[9px] block">貸款</span><span className="font-mono text-base text-red-500">${inputs.loan_amount.toLocaleString()}</span></div></div>
-                                </Card>
+                                <Card className="bg-gradient-to-br from-slate-900 via-indigo-950 to-indigo-900 text-white border-none p-7 relative overflow-hidden group"><div className="absolute -right-4 -bottom-4 opacity-10 rotate-12"><Icon name="TrendingUp" size={160} /></div><div className="flex justify-between"><label className="text-[10px] opacity-50 uppercase tracking-widest">總資產</label><button onClick={(e)=>{e.stopPropagation();setPerfView(perfView==='MTD'?'YTD':(perfView==='YTD'?'ALL':'MTD'))}} className="bg-white/10 p-2 rounded-full"><Icon name="Repeat" size={14}/></button></div><div className="mt-2"><div className="text-4xl font-black font-mono">${metrics.totalCapital.toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="text-sm font-mono text-white/50">≈ NT$ {(metrics.totalCapital*inputs.exchange_rate).toLocaleString(undefined,{maximumFractionDigits:0})}</div></div><div className="mt-4 pt-3 border-t border-white/10 flex justify-between text-xs font-bold z-10 relative"><div><span className="opacity-40 text-[9px] block">{perfD.l}報酬</span><span className={`text-lg ${perfD.v>=0?'text-emerald-400':'text-red-400'}`}>{perfD.v>0?'+':''}{perfD.v.toFixed(2)}%</span></div><div className="text-center"><span className="opacity-40 text-[9px] block">已實現權利金</span><span className="text-lg text-amber-400 font-mono">${totalRealizedPremium.toLocaleString(undefined,{maximumFractionDigits:0})}</span></div><div className="text-right"><span className="opacity-40 text-[9px] block">貸款</span><span className="font-mono text-base text-red-500">${inputs.loan_amount.toLocaleString()}</span></div></div></Card>
 
-                                <Card className="p-4 text-center">
-                                    <div className="flex justify-between mb-2"><SectionTitle title="資產分配" iconName="PieChartIcon" /><div className="flex gap-2 items-center"><span className="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200 px-2 py-1 rounded-lg">L: {metrics.currentLeverage}x</span><button onClick={()=>setSections(p=>({...p,pie:!p.pie}))}><Icon name={dashboardSections.pie?"ChevronUp":"ChevronDown"} size={16}/></button></div></div>
-                                    {dashboardSections.pie && <div className="h-64 w-full"><ResponsiveContainer><PieChart><Pie data={metrics.pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value" label={({percentage})=>`${percentage}%`}>{metrics.pieData.map((e,i)=><Cell key={i} fill={e.color} stroke="none"/>)}</Pie><Tooltip content={<CustomTooltip/>}/><Legend verticalAlign="bottom"/></PieChart></ResponsiveContainer></div>}
-                                </Card>
+                                <Card className="p-4 text-center"><div className="flex justify-between mb-2"><SectionTitle title="資產分配" iconName="PieChartIcon" /><div className="flex gap-2 items-center"><span className="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200 px-2 py-1 rounded-lg">L: {metrics.currentLeverage}x</span><button onClick={()=>setSections(p=>({...p,pie:!p.pie}))}><Icon name={dashboardSections.pie?"ChevronUp":"ChevronDown"} size={16}/></button></div></div>{dashboardSections.pie && <div className="h-64 w-full"><ResponsiveContainer><PieChart><Pie data={metrics.pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value" label={({percentage})=>`${percentage}%`}>{metrics.pieData.map((e,i)=><Cell key={i} fill={e.color} stroke="none"/>)}</Pie><Tooltip content={<CustomTooltip/>}/><Legend verticalAlign="bottom"/></PieChart></ResponsiveContainer></div>}</Card>
 
                                 <Card className="p-5 bg-gradient-to-br from-slate-800 to-indigo-900 text-white border-none relative overflow-hidden">
                                     <div className="flex justify-between items-center mb-4 z-10 relative"><div className="flex gap-2 text-xs font-black opacity-80 items-center"><Icon name="Activity" size={16} /> 壓力測試</div><button onClick={()=>setSections(p=>({...p,simulator:!p.simulator}))}><Icon name={dashboardSections.simulator?"ChevronUp":"ChevronDown"} size={16}/></button></div>
                                     {dashboardSections.simulator && <div className="z-10 relative space-y-4">
                                         <div className="grid grid-cols-3 gap-2 text-center items-end border-b border-white/10 pb-3">
-                                            <div className="flex flex-col items-center"><span className="text-[10px] opacity-60 uppercase tracking-widest mb-1">MA200</span><span className="font-mono text-sm font-bold text-slate-300">${inputs.qqq_sma200}</span><span className={`text-[9px] font-bold ${metrics.qqqAthMetrics.ma200Extension > 0 ? 'text-emerald-400' : 'text-red-400'}`}>{metrics.qqqAthMetrics.ma200Extension ? `+${metrics.qqqAthMetrics.ma200Extension.toFixed(2)}%` : '-'}</span></div>
-                                            <div className="flex flex-col items-center"><span className="text-[10px] opacity-60 uppercase tracking-widest mb-1">QQQ</span><span className="font-mono text-2xl font-black text-white">${metrics.qqqAthMetrics.currentPrice}</span></div>
-                                            <div className="flex flex-col items-center"><span className="text-[10px] opacity-60 uppercase tracking-widest mb-1">ATH</span><span className="font-mono text-sm font-bold text-slate-300">${inputs.qqq_ath}</span><span className={`text-[9px] font-bold ${metrics.qqqAthMetrics.distanceToAth > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{metrics.qqqAthMetrics.distanceToAth > 0 ? '+' : ''}{metrics.qqqAthMetrics.distanceToAth?.toFixed(1)}%</span></div>
+                                            {metrics.qqqAthMetrics.toMA200 < 0 ? (
+                                                <><div className="flex flex-col items-center"><span className="text-[10px] opacity-60 uppercase tracking-widest mb-1">跌至 MA200</span><span className="font-mono text-sm font-bold text-slate-300">${inputs.qqq_sma200}</span><span className="text-[9px] font-bold text-red-400">{metrics.qqqAthMetrics.toMA200?.toFixed(2)}%</span></div><div className="flex flex-col items-center"><span className="text-[10px] opacity-60 uppercase tracking-widest mb-1">QQQ</span><span className="font-mono text-2xl font-black text-white">${metrics.qqqAthMetrics.currentPrice}</span></div><div className="flex flex-col items-center"><span className="text-[10px] opacity-60 uppercase tracking-widest mb-1">漲至 ATH</span><span className="font-mono text-sm font-bold text-slate-300">${inputs.qqq_ath}</span><span className="text-[9px] font-bold text-emerald-400">+{metrics.qqqAthMetrics.toATH?.toFixed(1)}%</span></div></>
+                                            ) : (
+                                                <><div className="flex flex-col items-center"><span className="text-[10px] opacity-60 uppercase tracking-widest mb-1">QQQ</span><span className="font-mono text-2xl font-black text-white">${metrics.qqqAthMetrics.currentPrice}</span></div><div className="flex flex-col items-center"><span className="text-[10px] opacity-60 uppercase tracking-widest mb-1">漲至 MA200</span><span className="font-mono text-sm font-bold text-slate-300">${inputs.qqq_sma200}</span><span className="text-[9px] font-bold text-emerald-400">+{metrics.qqqAthMetrics.toMA200?.toFixed(2)}%</span></div><div className="flex flex-col items-center"><span className="text-[10px] opacity-60 uppercase tracking-widest mb-1">再漲至 ATH</span><span className="font-mono text-sm font-bold text-slate-300">${inputs.qqq_ath}</span><span className="text-[9px] font-bold text-emerald-400">+{Math.abs((inputs.qqq_ath-inputs.qqq_sma200)/inputs.qqq_sma200*100).toFixed(1)}%</span></div></>
+                                            )}
                                         </div>
-                                        <div className="bg-black/20 rounded-xl p-3 border border-white/5">
-                                            <div className="flex justify-between items-center mb-2"><span className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest">模擬器</span><span className={`text-xs font-black ${metrics.simulatedMetrics.simPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{metrics.simulatedMetrics.simPnL >= 0 ? '+' : ''}{Math.round(metrics.simulatedMetrics.simPnL).toLocaleString()} (損益)</span></div>
-                                            <div className="flex items-center gap-3 mb-3"><input type="range" min="-30" max="30" step="0.5" value={stressSimPct} onChange={e=>setStressSimPct(parseFloat(e.target.value))} className="flex-1 h-1 bg-slate-600 rounded-lg appearance-none cursor-pointer"/><div className={`w-12 text-right font-mono font-bold text-sm ${stressSimPct > 0 ? 'text-emerald-400' : (stressSimPct < 0 ? 'text-red-400' : 'text-white')}`}>{stressSimPct > 0 ? '+' : ''}{stressSimPct}%</div></div>
-                                            <div className="grid grid-cols-2 gap-3 mb-3"><div className="flex flex-col gap-1 bg-white/5 p-2 rounded-xl"><span className="text-[9px] opacity-60 uppercase tracking-wider">模擬價格</span><div className="flex items-center gap-1"><span className="text-xs font-bold text-slate-400">$</span><input type="number" value={Math.round(metrics.simulatedMetrics.simPrice)} onChange={(e)=>{const v=parseFloat(e.target.value);if(v>0&&metrics.qqqAthMetrics.currentPrice>0)setStressSimPct(((v-metrics.qqqAthMetrics.currentPrice)/metrics.qqqAthMetrics.currentPrice)*100);}} className="w-full bg-transparent font-mono font-bold text-white outline-none text-lg"/></div></div><div className="flex flex-col gap-1 bg-white/5 p-2 rounded-xl"><span className="text-[9px] opacity-60 uppercase tracking-wider">槓桿倍數</span><div className="flex items-center gap-1"><input type="number" value={simLeverage} onChange={(e) => setSimLeverage(parseFloat(e.target.value) || 0)} className="w-full bg-transparent font-mono font-bold text-amber-400 outline-none text-lg" step="0.1"/><span className="text-xs font-bold text-slate-400">x</span></div></div></div>
+                                        <div className="bg-black/20 rounded-xl p-3 border border-white/5 space-y-3">
+                                            <div className="flex justify-between items-center"><span className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest">市場模擬器</span><span className="text-[9px] text-slate-400">即時連動</span></div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="flex flex-col gap-1 bg-white/5 p-2 rounded-xl"><span className="text-[9px] opacity-60 uppercase tracking-wider">預期 QQQ 股價</span><div className="flex items-center gap-1"><span className="text-xs font-bold text-slate-400">$</span><input type="number" value={Math.round(metrics.simulatedMetrics.simPrice)} onChange={(e)=>{const v=parseFloat(e.target.value);if(v>0&&metrics.qqqAthMetrics.currentPrice>0)setStressSimPct(((v-metrics.qqqAthMetrics.currentPrice)/metrics.qqqAthMetrics.currentPrice)*100);}} className="w-full bg-transparent font-mono font-bold text-white outline-none text-lg text-center"/></div></div>
+                                                <div className="flex flex-col gap-1 bg-white/5 p-2 rounded-xl"><span className="text-[9px] opacity-60 uppercase tracking-wider">預期漲跌幅 %</span><div className="flex items-center gap-1"><input type="number" value={Math.round(stressSimPct*100)/100} onChange={e=>setStressSimPct(parseFloat(e.target.value)||0)} className={`w-full bg-transparent font-mono font-bold outline-none text-lg text-center ${stressSimPct>=0?'text-emerald-400':'text-red-400'}`}/><span className="text-xs font-bold text-slate-400">%</span></div></div>
+                                            </div>
+                                            <div className="flex flex-col gap-1 bg-white/5 p-2 rounded-xl"><span className="text-[9px] opacity-60 uppercase tracking-wider">設定總資產槓桿倍數</span><div className="flex items-center justify-center gap-1"><input type="number" value={simLeverage} onChange={(e) => setSimLeverage(parseFloat(e.target.value) || 0)} className="w-20 bg-transparent font-mono font-bold text-amber-400 outline-none text-xl text-center" step="0.01"/><span className="text-xs font-bold text-slate-400">x</span></div></div>
+                                            <div className="flex items-center gap-2"><input type="range" min="-30" max="30" step="0.5" value={stressSimPct} onChange={e=>setStressSimPct(parseFloat(e.target.value))} className="w-full h-1 bg-slate-600 rounded-lg appearance-none cursor-pointer opacity-50 hover:opacity-100"/></div>
+                                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/10">
+                                                <div className="flex flex-col items-center"><span className="text-[9px] opacity-60 uppercase tracking-wider mb-1">預估損益</span><span className={`text-lg font-black font-mono ${metrics.simulatedMetrics.simulatedPnL>=0?'text-emerald-400':'text-red-400'}`}>{metrics.simulatedMetrics.simulatedPnL>=0?'+':''}{Math.round(metrics.simulatedMetrics.simulatedPnL).toLocaleString()}</span></div>
+                                                <div className="flex flex-col items-center"><span className="text-[9px] opacity-60 uppercase tracking-wider mb-1">預估總資產</span><span className="text-lg font-black font-mono text-white">${Math.round(metrics.simulatedMetrics.simulatedTotalAsset).toLocaleString()}</span></div>
+                                            </div>
                                         </div>
                                     </div>}
                                     <div className="absolute -right-6 -top-6 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl"></div>
@@ -735,7 +694,7 @@
                                     </div>}
                                 </div>
                                 <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 overflow-hidden">
-                                    <button onClick={()=>setSettings(p=>({...p,strategy:!p.strategy}))} className="w-full p-4 flex justify-between bg-slate-50 dark:bg-slate-800/50"><div className="flex items-center gap-3 font-black"><Icon name="BookOpen" className="text-amber-500"/> 策略手冊</div><Icon name={openSettings.strategy?"ChevronUp":"ChevronDown"} size={14}/></button>
+                                    <button onClick={()=>setSettings(p=>({...p,strategy:!p.strategy}))} className="w-full p-3 flex justify-between bg-slate-50 dark:bg-slate-800/50"><div className="flex items-center gap-3 font-black"><Icon name="BookOpen" className="text-amber-500"/> 策略手冊</div><Icon name={openSettings.strategy?"ChevronUp":"ChevronDown"} size={14}/></button>
                                     {openSettings.strategy && <div className="p-5 pt-0"><button onClick={()=>setIsStrategyEditing(!isStrategyEditing)} className="mb-2 text-[10px] bg-slate-100 px-2 py-0.5 rounded ml-auto block">{isStrategyEditing?"鎖定":"編輯"}</button>{['core','custom','ibit','options'].map(k=><div key={k} className="mb-2"><input value={inputs[`title_${k}`]} readOnly={!isStrategyEditing} onChange={e=>handleInputChange(`title_${k}`,e.target.value)} className="text-indigo-600 font-bold mb-1 w-full text-left" /><textarea value={inputs[`strat_${k}`]} readOnly={!isStrategyEditing} onChange={e=>handleInputChange(`strat_${k}`,e.target.value)} className="strategy-textarea w-full text-xs p-2" /></div>)}</div>}
                                 </div>
                             </div>
