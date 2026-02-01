@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Alpha Horizon Dashboard v10.40 (UI Fix)</title>
+    <title>Alpha Horizon Dashboard v10.41</title>
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
@@ -455,13 +455,38 @@
 
         const EditRecordModal = ({ editingId, editForm, setEditingId, setEditForm, saveEdit }) => {
             if (!editingId || !editForm) return null;
+            
+            // Helper for cash toggle in history edit
+            const toggleCashSign = () => {
+                setEditForm(prev => {
+                    const currentVal = parseFloat(prev.inputs.cash_balance);
+                    if (!isNaN(currentVal)) {
+                         return { ...prev, inputs: { ...prev.inputs, cash_balance: currentVal * -1 } };
+                    }
+                    return prev;
+                });
+            };
+
             return (
                 <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center">
                     <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
                         <div className="flex justify-between items-center mb-6 border-b pb-4 dark:border-slate-800"><h3 className="text-xl font-black flex items-center gap-2"><Icon name="Edit2" size={20} className="text-indigo-500" /> 編輯紀錄</h3><button onClick={() => setEditingId(null)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full"><Icon name="X" size={20} /></button></div>
                         <div className="space-y-2">
                             {HOLDINGS_CONFIG.map(c => { const t=c.type==='fixed'?c.ticker:(editForm.inputs[c.tickerKey]||c.defaultTicker); return <div key={c.id} className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 px-3 rounded-xl border border-slate-100 dark:border-slate-700"><span className={`font-bold text-xs ${c.color}`}>{t}</span><input type="number" value={editForm.inputs[c.qtyKey]} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, [c.qtyKey]: e.target.value}}))} className="w-24 bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold" /></div>; })}
-                            <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 px-3 rounded-xl"><span className="font-bold text-xs text-slate-500">現金</span><input type="number" value={editForm.inputs.cash_balance} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, cash_balance: e.target.value}}))} className="w-28 bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold" /></div>
+                            
+                            <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 px-3 rounded-xl">
+                                <span className="font-bold text-xs text-slate-500">現金</span>
+                                <div className="relative w-32">
+                                    <input 
+                                        type="text" 
+                                        inputMode="decimal"
+                                        value={editForm.inputs.cash_balance} 
+                                        onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, cash_balance: e.target.value}}))} 
+                                        className={`w-full bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold ${parseFloat(editForm.inputs.cash_balance) < 0 ? 'text-red-500' : ''}`} 
+                                    />
+                                    <button onClick={toggleCashSign} className="absolute left-1 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold bg-slate-200 dark:bg-slate-700 px-1 rounded active:scale-95">+/-</button>
+                                </div>
+                            </div>
                             
                             <textarea value={editForm.memo || ''} onChange={e => setEditForm(p => ({...p, memo: e.target.value}))} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 text-sm h-20 mt-2" placeholder="備註..." />
                             <button onClick={()=>saveEdit({...editForm, inputs: {...editForm.inputs, total_realized_premium: parseFloat(editForm.inputs.total_realized_premium) || 0}})} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black flex justify-center gap-2 mt-2"><Icon name="Save" size={20} /> 保存修正</button>
@@ -569,20 +594,13 @@
             const showToast = (txt) => { setMessage(txt); setTimeout(() => setMessage(null), 3000); };
             const handleInputChange = (f, v) => setInputs(p => ({ ...p, [f]: v })); // Simplified for text input
             
-            // Toggle sign function for the +/- button (Fix for Samsung)
+            // Toggle sign function for the +/- button (Fix for Samsung) - Removed side effect
             const toggleCashSign = () => {
-                setInputs(prev => {
-                    const currentVal = prev.cash_balance;
-                    // If it's a number, negate it. If it's a string, try to parse then negate.
-                    const numVal = parseFloat(currentVal);
-                    if (!isNaN(numVal)) {
-                        const newVal = numVal * -1;
-                        // IMPORTANT: Force sync to cloud immediately to prevent race condition
-                        syncToCloud('cash_balance', newVal);
-                        return { ...prev, cash_balance: newVal };
-                    }
-                    return prev;
-                });
+                const currentVal = parseFloat(inputs.cash_balance);
+                if (!isNaN(currentVal)) {
+                    const newVal = currentVal * -1;
+                    setInputs(prev => ({ ...prev, cash_balance: newVal }));
+                }
             };
 
             const handleMatrixChange = (idx, field, val) => { const newM = [...inputs.options_matrix]; newM[idx][field] = val; setInputs(p => ({...p, options_matrix: newM})); syncToCloud('options_matrix', newM); };
@@ -613,7 +631,7 @@
 
                     await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').add(payload); 
                     
-                    // Force sync current inputs to config to ensure persistence (Fix for positive revert issue)
+                    // Force sync current inputs to config to ensure persistence
                     await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set(cleanInputs, { merge: true });
 
                     await syncToCloud('last_save', Date.now()); 
