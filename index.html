@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Alpha Horizon Dashboard v10.37 (Cash Fix)</title>
+    <title>Alpha Horizon Dashboard v10.38 (Strategy Decoupling)</title>
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
@@ -222,6 +222,17 @@
                 }
             }
 
+            // Strategy Decoupling Logic (v10.38)
+            // Use ref_ticker_X if present, otherwise fallback to holding ticker
+            const getRefPrice = (refTicker, holdingTicker) => {
+                const target = refTicker && refTicker.trim() !== '' ? refTicker : holdingTicker;
+                return getP(target);
+            };
+
+            const priceRef1 = getRefPrice(inputs.ref_ticker_1, inputs.custom_ticker_1);
+            const priceRef2 = getRefPrice(inputs.ref_ticker_2, inputs.custom_ticker_2);
+            const priceRefIBIT = getRefPrice(inputs.ref_ticker_ibit, 'IBIT');
+
             const toMA200 = (sma200 > 0 && benchmarkPrice > 0) ? ((sma200 - benchmarkPrice) / benchmarkPrice) * 100 : null;
             const toATH = (getV('qqq_ath') > 0 && benchmarkPrice > 0) ? ((getV('qqq_ath') - benchmarkPrice) / benchmarkPrice) * 100 : null;
 
@@ -247,6 +258,11 @@
                     simPrice, 
                     simulatedPnL,
                     simulatedTotalAsset
+                },
+                strategyRefs: {
+                    priceRef1,
+                    priceRef2,
+                    priceRefIBIT
                 }
             };
         };
@@ -290,16 +306,31 @@
                 a.push({ type: 'warning', title: '【TQQQ】 核心再平衡', msg: `目前 ${status.tqqqRatio.toFixed(1)}% (目標 ${status.coreTarget}%)。建議${diffVal>0?'買入':'賣出'} ${getQty(diffVal, getP('TQQQ')).toFixed(0)} 股 (約 $${Math.abs(diffVal).toFixed(0)})`});
             }
 
-            const checkSma = (ticker, sma, label) => {
+            // Updated SMA check using Ref Tickers (Strategy Decoupling)
+            const checkSma = (ticker, sma, label, holdingTicker) => {
                 const price = getP(ticker);
                 const smaVal = getNum(sma);
+                const isRef = ticker !== holdingTicker;
                 if (price > 0 && smaVal > 0 && price < smaVal) {
-                    a.push({ type: 'danger', title: `【${ticker}】 跌破關鍵週線`, msg: `現價 $${price} 已跌破 ${label} ($${smaVal})，策略建議：出場觀望。` });
+                    a.push({ 
+                        type: 'danger', 
+                        title: `【${ticker}】 ${isRef ? '(對標) ' : ''}跌破關鍵週線`, 
+                        msg: `現價 $${price} 已跌破 ${label} ($${smaVal})，建議檢查【${holdingTicker}】持倉。` 
+                    });
                 }
             };
-            if(inputs.custom_ticker_1 && inputs.custom_1_sma40) checkSma(inputs.custom_ticker_1, inputs.custom_1_sma40, '40 SMA');
-            if(inputs.custom_ticker_2 && inputs.custom_2_sma20) checkSma(inputs.custom_ticker_2, inputs.custom_2_sma20, '20 SMA');
-            if(inputs.ibit_sma20) checkSma('IBIT', inputs.ibit_sma20, '20 SMA');
+            
+            // Check 1: Custom 1
+            const target1 = inputs.ref_ticker_1 && inputs.ref_ticker_1.trim() !== '' ? inputs.ref_ticker_1 : inputs.custom_ticker_1;
+            if(target1 && inputs.custom_1_sma40) checkSma(target1, inputs.custom_1_sma40, '40 SMA', inputs.custom_ticker_1);
+
+            // Check 2: Custom 2
+            const target2 = inputs.ref_ticker_2 && inputs.ref_ticker_2.trim() !== '' ? inputs.ref_ticker_2 : inputs.custom_ticker_2;
+            if(target2 && inputs.custom_2_sma20) checkSma(target2, inputs.custom_2_sma20, '20 SMA', inputs.custom_ticker_2);
+
+            // Check 3: IBIT
+            const targetIBIT = inputs.ref_ticker_ibit && inputs.ref_ticker_ibit.trim() !== '' ? inputs.ref_ticker_ibit : 'IBIT';
+            if(inputs.ibit_sma20) checkSma(targetIBIT, inputs.ibit_sma20, '20 SMA', 'IBIT');
 
             const checkSatAction = (stat, name, currentW, targetWKey, currentVal, ticker) => {
                 if (stat !== 'ok') {
@@ -362,13 +393,40 @@
 
         const EditOptionHistoryModal = ({ trade, onClose, onSave, onDelete }) => {
             const [localTrade, setLocalTrade] = useState({...trade});
+
+            // Helper to toggle sign
+            const toggleSign = () => {
+                setLocalTrade(prev => {
+                    const val = parseFloat(prev.pnl);
+                    if (!isNaN(val)) {
+                        return { ...prev, pnl: val * -1 };
+                    }
+                    return prev;
+                });
+            };
+
             return (
                 <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2rem] p-6 shadow-2xl animate-in fade-in">
                         <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-black flex gap-2"><Icon name="Edit2"/> 編輯交易</h3><button onClick={onClose}><Icon name="X"/></button></div>
                         <div className="space-y-3">
                             <div className="grid grid-cols-2 gap-2"><div><label className="text-xs text-slate-500 block">日期</label><input type="date" value={localTrade.date?.split('T')[0]} onChange={e=>setLocalTrade({...localTrade, date: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div><div><label className="text-xs text-slate-500 block">標的</label><input value={localTrade.ticker} onChange={e=>setLocalTrade({...localTrade, ticker: e.target.value.toUpperCase()})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div></div>
-                            <div className="grid grid-cols-2 gap-2"><div><label className="text-xs text-slate-500 block">動作</label><select value={localTrade.type} onChange={e=>setLocalTrade({...localTrade, type: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"><option value="OPEN">建倉</option><option value="CLOSE">平倉</option><option value="ROLL_CLOSE">轉倉(平)</option><option value="ROLL_OPEN">轉倉(開)</option><option value="MANUAL">補登</option></select></div><div><label className="text-xs text-slate-500 block">金額 ($)</label><input type="number" step="any" value={localTrade.pnl} onChange={e=>setLocalTrade({...localTrade, pnl: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold text-center" /></div></div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div><label className="text-xs text-slate-500 block">動作</label><select value={localTrade.type} onChange={e=>setLocalTrade({...localTrade, type: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"><option value="OPEN">建倉</option><option value="CLOSE">平倉</option><option value="ROLL_CLOSE">轉倉(平)</option><option value="ROLL_OPEN">轉倉(開)</option><option value="MANUAL">補登</option></select></div>
+                                <div>
+                                    <label className="text-xs text-slate-500 block">金額 ($)</label>
+                                    <div className="relative">
+                                        <input 
+                                            type="text" 
+                                            inputMode="decimal"
+                                            value={localTrade.pnl} 
+                                            onChange={e=>setLocalTrade({...localTrade, pnl: e.target.value})} 
+                                            className={`w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold text-center ${parseFloat(localTrade.pnl) < 0 ? 'text-red-500' : 'text-emerald-500'}`} 
+                                        />
+                                        <button onClick={toggleSign} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 bg-slate-200 dark:bg-slate-700 rounded text-[10px] font-bold text-slate-500 active:scale-95 shadow-sm">+/-</button>
+                                    </div>
+                                </div>
+                            </div>
                             <div className="text-[10px] text-center text-slate-400 mt-1">正數 (+) = 收入, 負數 (-) = 支出</div>
                             <div className="flex gap-2 mt-4"><button onClick={()=>onDelete(localTrade.id)} className="p-3 bg-red-100 text-red-500 rounded-xl"><Icon name="Trash2"/></button><button onClick={()=>onSave({...localTrade, pnl: parseFloat(localTrade.pnl) || 0})} className="flex-1 bg-indigo-600 text-white rounded-xl font-bold">儲存</button></div>
                         </div>
@@ -380,7 +438,7 @@
         const EditRecordModal = ({ editingId, editForm, setEditingId, setEditForm, saveEdit }) => {
             if (!editingId || !editForm) return null;
             
-            // Helper for cash toggle
+            // Helper for cash toggle in history edit
             const toggleCashSign = () => {
                 setEditForm(prev => {
                     const currentVal = parseFloat(prev.inputs.cash_balance);
@@ -471,7 +529,11 @@
                 title_ibit: "備用欄位", strat_ibit: "",
                 title_options: "選擇權策略 (Options) - NRA V8.4", strat_options: "【收益增強：週薪防禦系統】\n標的：TQQQ Weekly Options\n\nRSI-Delta 動態網：\n(1) RSI < 40：禁止開倉 (或 Delta < 0.05)\n(2) RSI 40-60：Delta 0.10-0.12\n(3) RSI 60-75：Delta 0.12-0.15\n(4) RSI > 75：Delta 0.20-0.25\n\n戰術防禦 (雙倍 Delta)：\n觸發：Delta 飆升至 0.25。\n動作：Roll Up & Out (轉下週更高價)。\n鐵律：必須收錢 (Net Credit) 或零成本。僅限一次。\n棄守：轉倉後 Delta > 0.40 或 ITM -> 接股票。\n\n輪式循環 (The Wheel)：\n若被履約，下週賣 Put 接回。\n強勢盤 (QQQ > 20MA)：賣 Delta -0.30\n震盪盤 (QQQ < 20MA)：賣 Delta -0.20",
                 options_matrix: [ { min: 0, max: 40, cover: 0, delta: '< 0.05 (禁止)' }, { min: 40, max: 60, cover: 30, delta: '0.10 - 0.12' }, { min: 60, max: 75, cover: 50, delta: '0.12 - 0.15' }, { min: 75, max: 100, cover: 70, delta: '0.20 - 0.25' } ],
-                options_inventory: [] 
+                options_inventory: [],
+                // Default ref tickers if undefined
+                ref_ticker_1: '',
+                ref_ticker_2: '',
+                ref_ticker_ibit: 'IBIT'
             });
 
             // Effects (Auth Fix Applied)
@@ -529,7 +591,7 @@
             const handleMatrixChange = (idx, field, val) => { const newM = [...inputs.options_matrix]; newM[idx][field] = val; setInputs(p => ({...p, options_matrix: newM})); syncToCloud('options_matrix', newM); };
             const syncToCloud = async (f, v) => { if (user) await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ [f]: v }, { merge: true }); };
             const toggleYear = (y) => setExpandedYears(prev => ({...prev, [y]: !prev[y]}));
-            const fetchPrices = useCallback(async (force = false) => { if (loadingPrices) return; const CACHE_KEY = 'qqq_price_cache_v7'; const syms = [...new Set(['QQQ', 'QQQM', 'TQQQ', 'IBIT', 'SGOV', (inputs.ticker_core_1||"QQQ"), (inputs.custom_ticker_1||""), (inputs.custom_ticker_2||"")].filter(Boolean).map(s=>s.trim().toUpperCase()))]; if (!force) { const c = localStorage.getItem(CACHE_KEY); if (c) { const { timestamp, data } = JSON.parse(c); if (Date.now() - timestamp < 300000 && syms.every(s => data[s] !== undefined)) { setPrices(data); return; } } } setLoadingPrices(true); try { const res = await Promise.allSettled(syms.map(s => fetch(`https://finnhub.io/api/v1/quote?symbol=${s}&token=${FINNHUB_KEY}`).then(r => r.json()).then(d => ({s, p: d.c})))); setPrices(p => { const upd = {...p, ...res.reduce((acc, curr) => (curr.status === 'fulfilled' && curr.value.p > 0 ? {...acc, [curr.value.s]: curr.value.p} : acc), {})}; localStorage.setItem(CACHE_KEY, JSON.stringify({timestamp: Date.now(), data: upd})); return upd; }); } catch(e) { console.error(e); } finally { setLoadingPrices(false); } }, [inputs.ticker_core_1, inputs.custom_ticker_1, inputs.custom_ticker_2, loadingPrices]);
+            const fetchPrices = useCallback(async (force = false) => { if (loadingPrices) return; const CACHE_KEY = 'qqq_price_cache_v7'; const syms = [...new Set(['QQQ', 'QQQM', 'TQQQ', 'IBIT', 'SGOV', (inputs.ticker_core_1||"QQQ"), (inputs.custom_ticker_1||""), (inputs.custom_ticker_2||""), (inputs.ref_ticker_1||""), (inputs.ref_ticker_2||""), (inputs.ref_ticker_ibit||"")].filter(Boolean).map(s=>s.trim().toUpperCase()))]; if (!force) { const c = localStorage.getItem(CACHE_KEY); if (c) { const { timestamp, data } = JSON.parse(c); if (Date.now() - timestamp < 300000 && syms.every(s => data[s] !== undefined)) { setPrices(data); return; } } } setLoadingPrices(true); try { const res = await Promise.allSettled(syms.map(s => fetch(`https://finnhub.io/api/v1/quote?symbol=${s}&token=${FINNHUB_KEY}`).then(r => r.json()).then(d => ({s, p: d.c})))); setPrices(p => { const upd = {...p, ...res.reduce((acc, curr) => (curr.status === 'fulfilled' && curr.value.p > 0 ? {...acc, [curr.value.s]: curr.value.p} : acc), {})}; localStorage.setItem(CACHE_KEY, JSON.stringify({timestamp: Date.now(), data: upd})); return upd; }); } catch(e) { console.error(e); } finally { setLoadingPrices(false); } }, [inputs.ticker_core_1, inputs.custom_ticker_1, inputs.custom_ticker_2, inputs.ref_ticker_1, inputs.ref_ticker_2, inputs.ref_ticker_ibit, loadingPrices]);
             const handleExecuteTrade = (type, data) => { let newInv = [...(inputs.options_inventory||[])], newHist = [...(inputs.option_history||[])]; const now = new Date().toISOString(); const p = parseFloat(data.newPremium)||0, c = parseFloat(data.contracts)||1, ep = parseFloat(data.exitPrice)||0; if (type === 'OPEN') { newHist.unshift({ id: Date.now(), date: now, ticker: data.ticker, type: 'OPEN', pnl: p*c*100 }); newInv.push({ id: Date.now(), type: data.type, ticker: data.ticker, strike: data.newStrike, expiry: data.newExpiry, contracts: c, premium: p, delta: data.newDelta }); showToast(`建倉成功！收入: +$${(p*c*100).toFixed(0)}`); } else if (type === 'CLOSE') { const opt = newInv.find(o => o.id === targetOptionId); if(!opt) return; newHist.unshift({ id: Date.now(), date: now, ticker: opt.ticker, type: 'CLOSE', pnl: -(ep*opt.contracts*100) }); newInv = newInv.filter(o => o.id !== targetOptionId); showToast(`平倉成功！支出: $${(ep*opt.contracts*100).toFixed(0)}`); } else if (type === 'ROLL') { const opt = newInv.find(o => o.id === targetOptionId); if(!opt) return; newHist.unshift({ id: Date.now()+1, date: now, ticker: opt.ticker, type: 'ROLL_OPEN', pnl: p*opt.contracts*100 }); newHist.unshift({ id: Date.now(), date: now, ticker: opt.ticker, type: 'ROLL_CLOSE', pnl: -(ep*opt.contracts*100) }); newInv = newInv.map(o => o.id === targetOptionId ? { ...o, strike: data.newStrike, expiry: data.newExpiry, premium: p, delta: data.newDelta } : o); showToast(`轉倉成功！`); } setInputs(prev => ({...prev, options_inventory: newInv, option_history: newHist})); if (user) db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ options_inventory: newInv, option_history: newHist }, { merge: true }); setOpenModalType(null); };
             const confirmDelete = async (id) => { await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').doc(id).delete(); showToast("已刪除"); };
             const handleTradeSave = (updatedTrade) => { let newHistory = inputs.option_history.map(t => t.id === updatedTrade.id ? updatedTrade : t); setInputs(p => ({...p, option_history: newHistory})); syncToCloud('option_history', newHistory); setEditingTrade(null); showToast("交易紀錄已更新"); };
@@ -541,10 +603,7 @@
                 try {
                     const cleanInputs = JSON.parse(JSON.stringify(inputs));
                     const cleanPrices = JSON.parse(JSON.stringify(prices));
-                    
-                    // Force ensure date exists
                     if (!cleanInputs.record_date) cleanInputs.record_date = new Date().toISOString().split('T')[0];
-
                     const payload = { 
                         date: new Date(cleanInputs.record_date).toISOString(), 
                         total_equity: metrics.totalCapital || 0, 
@@ -553,7 +612,6 @@
                         inputs: cleanInputs, 
                         memo: cleanInputs.record_memo || '' 
                     };
-
                     await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').add(payload); 
                     
                     // Force sync current inputs to config to ensure persistence (Fix for positive revert issue)
@@ -663,7 +721,62 @@
                                             <div className="flex items-center justify-between mb-2"><label className="text-xs font-black text-indigo-500 uppercase tracking-widest">QQQ 日線 RSI</label><input type="number" placeholder="輸入..." value={inputs.current_rsi} onChange={e=>handleInputChange('current_rsi',e.target.value)} className="w-20 bg-white dark:bg-slate-700 rounded-lg p-1.5 text-center font-black text-lg shadow-inner" /></div>
                                             {inputs.current_rsi > 0 && <div className="bg-white dark:bg-slate-700/50 p-2 rounded-lg text-xs flex justify-between items-center"><span className="font-bold text-slate-600 dark:text-slate-300">TQQQ 建議: {metrics.rsiSuggestion.cover}% 覆蓋</span><span className="font-mono text-indigo-500">賣 {metrics.rsiSuggestion.contracts} 張 (Delta {metrics.rsiSuggestion.delta})</span></div>}
                                         </div>
-                                        <div className="grid grid-cols-2 gap-3">{[{k:'qqq_sma200', l:'QQQ 200 SMA'},{k:'qqq_sma20', l:'QQQ 20 SMA'},{k:'qqq_ath', l:'QQQ 歷史新高'},{k:'custom_1_sma40', l:`${inputs.custom_ticker_1||'自選1'} 週線 40 SMA`},{k:'custom_2_sma20', l:`${inputs.custom_ticker_2||'自選2'} 週線 20 SMA`},{k:'ibit_sma20', l:'IBIT 週線 20 SMA'}].map(f => <div key={f.k} className="space-y-1"><label className="text-[10px] uppercase text-center block text-slate-500 truncate">{f.l}</label><input type="number" value={inputs[f.k]} onChange={e=>handleInputChange(f.k,e.target.value)} onBlur={e=>syncToCloud(f.k,e.target.value)} className="bg-slate-50 dark:bg-slate-800 border rounded-xl p-2 text-center" /></div>)}</div>
+                                        <div className="space-y-2">
+                                            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">大盤指標 (QQQ)</div>
+                                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                                {[{k:'qqq_sma200', l:'MA 200'},{k:'qqq_sma20', l:'MA 20'},{k:'qqq_ath', l:'ATH (歷史高)'}].map(f => (
+                                                    <div key={f.k} className="flex flex-col bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
+                                                        <label className="text-[9px] uppercase text-center text-slate-400 mb-1">{f.l}</label>
+                                                        <input type="number" value={inputs[f.k]} onChange={e=>handleInputChange(f.k,e.target.value)} onBlur={e=>syncToCloud(f.k,e.target.value)} className="bg-transparent text-center font-bold text-sm w-full outline-none" />
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">個股策略 (Satellite)</div>
+                                            <div className="space-y-2">
+                                                {/* Custom 1 */}
+                                                <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700 grid grid-cols-12 gap-2 items-center">
+                                                    <div className="col-span-3 text-[10px] font-bold text-emerald-500 truncate">{inputs.custom_ticker_1 || '自選1'}</div>
+                                                    <div className="col-span-3 flex flex-col">
+                                                        <span className="text-[8px] text-slate-400">對標代號</span>
+                                                        <input type="text" value={inputs.ref_ticker_1} onChange={e=>handleInputChange('ref_ticker_1', e.target.value.toUpperCase())} onBlur={e=>syncToCloud('ref_ticker_1', e.target.value)} className="text-[10px] font-bold bg-slate-50 dark:bg-slate-900 rounded px-1 text-center uppercase" placeholder="如 TSLA" />
+                                                    </div>
+                                                    <div className="col-span-3 text-center text-[10px] font-mono text-slate-400">${metrics.strategyRefs.priceRef1 ? metrics.strategyRefs.priceRef1.toFixed(1) : '-'}</div>
+                                                    <div className="col-span-3 flex flex-col">
+                                                        <span className="text-[8px] text-slate-400">週線 40MA</span>
+                                                        <input type="number" value={inputs.custom_1_sma40} onChange={e=>handleInputChange('custom_1_sma40', e.target.value)} onBlur={e=>syncToCloud('custom_1_sma40', e.target.value)} className="text-[10px] font-bold bg-slate-50 dark:bg-slate-900 rounded px-1 text-center" />
+                                                    </div>
+                                                </div>
+
+                                                {/* Custom 2 */}
+                                                <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700 grid grid-cols-12 gap-2 items-center">
+                                                    <div className="col-span-3 text-[10px] font-bold text-amber-500 truncate">{inputs.custom_ticker_2 || '自選2'}</div>
+                                                    <div className="col-span-3 flex flex-col">
+                                                        <span className="text-[8px] text-slate-400">對標代號</span>
+                                                        <input type="text" value={inputs.ref_ticker_2} onChange={e=>handleInputChange('ref_ticker_2', e.target.value.toUpperCase())} onBlur={e=>syncToCloud('ref_ticker_2', e.target.value)} className="text-[10px] font-bold bg-slate-50 dark:bg-slate-900 rounded px-1 text-center uppercase" placeholder="代號" />
+                                                    </div>
+                                                    <div className="col-span-3 text-center text-[10px] font-mono text-slate-400">${metrics.strategyRefs.priceRef2 ? metrics.strategyRefs.priceRef2.toFixed(1) : '-'}</div>
+                                                    <div className="col-span-3 flex flex-col">
+                                                        <span className="text-[8px] text-slate-400">週線 20MA</span>
+                                                        <input type="number" value={inputs.custom_2_sma20} onChange={e=>handleInputChange('custom_2_sma20', e.target.value)} onBlur={e=>syncToCloud('custom_2_sma20', e.target.value)} className="text-[10px] font-bold bg-slate-50 dark:bg-slate-900 rounded px-1 text-center" />
+                                                    </div>
+                                                </div>
+
+                                                {/* IBIT */}
+                                                <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700 grid grid-cols-12 gap-2 items-center">
+                                                    <div className="col-span-3 text-[10px] font-bold text-orange-500">IBIT</div>
+                                                    <div className="col-span-3 flex flex-col">
+                                                        <span className="text-[8px] text-slate-400">對標代號</span>
+                                                        <input type="text" value={inputs.ref_ticker_ibit} onChange={e=>handleInputChange('ref_ticker_ibit', e.target.value.toUpperCase())} onBlur={e=>syncToCloud('ref_ticker_ibit', e.target.value)} className="text-[10px] font-bold bg-slate-50 dark:bg-slate-900 rounded px-1 text-center uppercase" placeholder="IBIT" />
+                                                    </div>
+                                                    <div className="col-span-3 text-center text-[10px] font-mono text-slate-400">${metrics.strategyRefs.priceRefIBIT ? metrics.strategyRefs.priceRefIBIT.toFixed(1) : '-'}</div>
+                                                    <div className="col-span-3 flex flex-col">
+                                                        <span className="text-[8px] text-slate-400">週線 20MA</span>
+                                                        <input type="number" value={inputs.ibit_sma20} onChange={e=>handleInputChange('ibit_sma20', e.target.value)} onBlur={e=>syncToCloud('ibit_sma20', e.target.value)} className="text-[10px] font-bold bg-slate-50 dark:bg-slate-900 rounded px-1 text-center" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>}
                                 </Card>
 
