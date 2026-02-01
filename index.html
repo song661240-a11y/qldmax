@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Alpha Horizon Dashboard v10.38 (Strategy Decoupling)</title>
+    <title>Alpha Horizon Dashboard v10.40 (UI Fix)</title>
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
@@ -100,6 +100,15 @@
             const ticker = conf.type === 'fixed' ? conf.ticker : (inputs[conf.tickerKey] || conf.defaultTicker).toUpperCase();
             const price = prices[ticker] || 0;
             const diff = getDiff(price, inputs[conf.targetKey]);
+            
+            // Helper to toggle sign for Samsung phones
+            const toggleSign = () => {
+                const val = parseFloat(inputs[conf.qtyKey]);
+                if (!isNaN(val)) {
+                    onChange(conf.qtyKey, val * -1);
+                }
+            };
+
             return (
                 <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1">
                     <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
@@ -306,31 +315,40 @@
                 a.push({ type: 'warning', title: '【TQQQ】 核心再平衡', msg: `目前 ${status.tqqqRatio.toFixed(1)}% (目標 ${status.coreTarget}%)。建議${diffVal>0?'買入':'賣出'} ${getQty(diffVal, getP('TQQQ')).toFixed(0)} 股 (約 $${Math.abs(diffVal).toFixed(0)})`});
             }
 
-            // Updated SMA check using Ref Tickers (Strategy Decoupling)
-            const checkSma = (ticker, sma, label, holdingTicker) => {
+            // Updated SMA check using Ref Tickers (Strategy Decoupling) & Custom Alerts
+            const checkSma = (ticker, sma, periodLabel, holdingTicker, actionMsg) => {
                 const price = getP(ticker);
                 const smaVal = getNum(sma);
                 const isRef = ticker !== holdingTicker;
+                const defaultMsg = `建議檢查【${holdingTicker}】持倉。`;
+                const finalAction = actionMsg && actionMsg.trim() !== '' ? actionMsg : defaultMsg;
+                
                 if (price > 0 && smaVal > 0 && price < smaVal) {
                     a.push({ 
                         type: 'danger', 
-                        title: `【${ticker}】 ${isRef ? '(對標) ' : ''}跌破關鍵週線`, 
-                        msg: `現價 $${price} 已跌破 ${label} ($${smaVal})，建議檢查【${holdingTicker}】持倉。` 
+                        title: `【${ticker}】 ${isRef ? '(對標) ' : ''}跌破關鍵週線 (${periodLabel})`, 
+                        msg: `現價 $${price} < 均線 $${smaVal}。策略建議：${finalAction}` 
                     });
                 }
             };
             
             // Check 1: Custom 1
             const target1 = inputs.ref_ticker_1 && inputs.ref_ticker_1.trim() !== '' ? inputs.ref_ticker_1 : inputs.custom_ticker_1;
-            if(target1 && inputs.custom_1_sma40) checkSma(target1, inputs.custom_1_sma40, '40 SMA', inputs.custom_ticker_1);
+            const period1 = inputs.custom_1_ma_period || '40';
+            const action1 = inputs.custom_1_action_msg;
+            if(target1 && inputs.custom_1_sma40) checkSma(target1, inputs.custom_1_sma40, `${period1} MA`, inputs.custom_ticker_1, action1);
 
             // Check 2: Custom 2
             const target2 = inputs.ref_ticker_2 && inputs.ref_ticker_2.trim() !== '' ? inputs.ref_ticker_2 : inputs.custom_ticker_2;
-            if(target2 && inputs.custom_2_sma20) checkSma(target2, inputs.custom_2_sma20, '20 SMA', inputs.custom_ticker_2);
+            const period2 = inputs.custom_2_ma_period || '20';
+            const action2 = inputs.custom_2_action_msg;
+            if(target2 && inputs.custom_2_sma20) checkSma(target2, inputs.custom_2_sma20, `${period2} MA`, inputs.custom_ticker_2, action2);
 
             // Check 3: IBIT
             const targetIBIT = inputs.ref_ticker_ibit && inputs.ref_ticker_ibit.trim() !== '' ? inputs.ref_ticker_ibit : 'IBIT';
-            if(inputs.ibit_sma20) checkSma(targetIBIT, inputs.ibit_sma20, '20 SMA', 'IBIT');
+            const periodIBIT = inputs.ibit_ma_period || '20';
+            const actionIBIT = inputs.ibit_action_msg;
+            if(inputs.ibit_sma20) checkSma(targetIBIT, inputs.ibit_sma20, `${periodIBIT} MA`, 'IBIT', actionIBIT);
 
             const checkSatAction = (stat, name, currentW, targetWKey, currentVal, ticker) => {
                 if (stat !== 'ok') {
@@ -437,38 +455,13 @@
 
         const EditRecordModal = ({ editingId, editForm, setEditingId, setEditForm, saveEdit }) => {
             if (!editingId || !editForm) return null;
-            
-            // Helper for cash toggle in history edit
-            const toggleCashSign = () => {
-                setEditForm(prev => {
-                    const currentVal = parseFloat(prev.inputs.cash_balance);
-                    if (!isNaN(currentVal)) {
-                         return { ...prev, inputs: { ...prev.inputs, cash_balance: currentVal * -1 } };
-                    }
-                    return prev;
-                });
-            };
-
             return (
                 <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center">
                     <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
                         <div className="flex justify-between items-center mb-6 border-b pb-4 dark:border-slate-800"><h3 className="text-xl font-black flex items-center gap-2"><Icon name="Edit2" size={20} className="text-indigo-500" /> 編輯紀錄</h3><button onClick={() => setEditingId(null)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full"><Icon name="X" size={20} /></button></div>
                         <div className="space-y-2">
                             {HOLDINGS_CONFIG.map(c => { const t=c.type==='fixed'?c.ticker:(editForm.inputs[c.tickerKey]||c.defaultTicker); return <div key={c.id} className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 px-3 rounded-xl border border-slate-100 dark:border-slate-700"><span className={`font-bold text-xs ${c.color}`}>{t}</span><input type="number" value={editForm.inputs[c.qtyKey]} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, [c.qtyKey]: e.target.value}}))} className="w-24 bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold" /></div>; })}
-                            
-                            <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 px-3 rounded-xl">
-                                <span className="font-bold text-xs text-slate-500">現金</span>
-                                <div className="relative w-32">
-                                    <input 
-                                        type="text" 
-                                        inputMode="decimal"
-                                        value={editForm.inputs.cash_balance} 
-                                        onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, cash_balance: e.target.value}}))} 
-                                        className={`w-full bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold ${parseFloat(editForm.inputs.cash_balance) < 0 ? 'text-red-500' : ''}`} 
-                                    />
-                                    <button onClick={toggleCashSign} className="absolute left-1 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold bg-slate-200 dark:bg-slate-700 px-1 rounded active:scale-95">+/-</button>
-                                </div>
-                            </div>
+                            <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 px-3 rounded-xl"><span className="font-bold text-xs text-slate-500">現金</span><input type="number" value={editForm.inputs.cash_balance} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, cash_balance: e.target.value}}))} className="w-28 bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold" /></div>
                             
                             <textarea value={editForm.memo || ''} onChange={e => setEditForm(p => ({...p, memo: e.target.value}))} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 text-sm h-20 mt-2" placeholder="備註..." />
                             <button onClick={()=>saveEdit({...editForm, inputs: {...editForm.inputs, total_realized_premium: parseFloat(editForm.inputs.total_realized_premium) || 0}})} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black flex justify-center gap-2 mt-2"><Icon name="Save" size={20} /> 保存修正</button>
@@ -533,7 +526,11 @@
                 // Default ref tickers if undefined
                 ref_ticker_1: '',
                 ref_ticker_2: '',
-                ref_ticker_ibit: 'IBIT'
+                ref_ticker_ibit: 'IBIT',
+                // Default custom actions if undefined
+                custom_1_action_msg: '避險賣出',
+                custom_2_action_msg: '避險賣出',
+                ibit_action_msg: '避險賣出'
             });
 
             // Effects (Auth Fix Applied)
@@ -604,6 +601,7 @@
                     const cleanInputs = JSON.parse(JSON.stringify(inputs));
                     const cleanPrices = JSON.parse(JSON.stringify(prices));
                     if (!cleanInputs.record_date) cleanInputs.record_date = new Date().toISOString().split('T')[0];
+
                     const payload = { 
                         date: new Date(cleanInputs.record_date).toISOString(), 
                         total_equity: metrics.totalCapital || 0, 
@@ -612,6 +610,7 @@
                         inputs: cleanInputs, 
                         memo: cleanInputs.record_memo || '' 
                     };
+
                     await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').add(payload); 
                     
                     // Force sync current inputs to config to ensure persistence (Fix for positive revert issue)
@@ -643,7 +642,7 @@
                         {view === 'dashboard' && (
                             <div className="space-y-6 animate-in fade-in">
                                 <Card className="p-4 bg-gradient-to-r from-slate-800 to-indigo-900 text-white border-none">
-                                    <div className="flex justify-between items-start mb-2"><div className="flex gap-2 opacity-80"><Icon name={isAlertsView ? "ShieldAlert" : "Quote"} size={16} /><span className="text-[10px] tracking-widest font-bold">{isAlertsView ? "策略警示" : "投資座右銘"}</span></div><div className="flex gap-2">{!isAlertsView && <button onClick={() => setIsMottoLocked(!isMottoLocked)} className="p-1 bg-white/20 rounded-full"><Icon name={isMottoLocked?"Lock":"Unlock"} size={10}/></button>}<button onClick={() => setIsAlertsView(!isAlertsView)} className={`p-1 bg-white/20 rounded-full ${alerts.length>0?'bg-red-500/80':''}`}><Icon name="AlertCircle" size={12}/></button></div></div>
+                                    <div className="flex justify-between items-start mb-2"><div className="flex gap-2 opacity-80"><Icon name={isAlertsView ? "ShieldAlert" : "Quote"} size={16} /><span className="text-[10px] tracking-widest font-bold">{isAlertsView ? "策略警示" : "投資座右銘"}</span></div><div className="flex gap-2">{!isAlertsView && <button onClick={() => setIsMottoLocked(!isMottoLocked)} className="flex items-center justify-center w-7 h-7 bg-white/20 rounded-full"><Icon name={isMottoLocked?"Lock":"Unlock"} size={10}/></button>}<button onClick={() => setIsAlertsView(!isAlertsView)} className={`flex items-center justify-center w-7 h-7 bg-white/20 rounded-full ${alerts.length>0?'bg-red-500/80':''}`}><Icon name="AlertCircle" size={12}/></button></div></div>
                                     {isAlertsView ? (alerts.length ? alerts.map((a,i)=><div key={i} className={`p-3 rounded-xl mb-2 text-xs font-bold border-l-4 shadow-sm ${a.type==='danger'?'bg-red-50 text-red-800 border-red-500 dark:bg-red-900/30 dark:text-red-200':a.type==='opportunity'?'bg-emerald-50 text-emerald-800 border-emerald-500 dark:bg-emerald-900/30 dark:text-emerald-200':'bg-amber-50 text-amber-800 border-amber-500 dark:bg-amber-900/30 dark:text-amber-200'}`}>{a.type==='danger'?'🔴':(a.type==='opportunity'?'🟢':'🟡')} {a.title}<div className="font-medium opacity-80 mt-1 ml-5 leading-relaxed">{a.msg}</div></div>) : <div className="text-center opacity-70 text-xs py-4">目前無策略警示</div>) : <textarea value={inputs.motto} readOnly={isMottoLocked} onChange={e=>handleInputChange('motto',e.target.value)} onBlur={e=>syncToCloud('motto',e.target.value)} className={`w-full bg-transparent text-lg font-black text-center outline-none resize-none ${isMottoLocked?'':'bg-white/10 rounded-xl'}`} rows="5" placeholder="輸入心法..." />}
                                 </Card>
                                 {metrics.bearDefense.isActive && <div className="bg-red-500 text-white rounded-[2rem] p-5 shadow-xl border-4 border-red-400 text-center relative overflow-hidden"><div className="absolute top-0 right-0 p-4 opacity-20"><Icon name="Shield" size={80} /></div><div className="inline-flex items-center gap-2 mb-2 bg-red-700/50 px-4 py-1 rounded-full text-xs font-black">進入熊市防禦</div><div className="text-3xl font-black">${metrics.bearDefense.monthlyBuy.toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="text-xs opacity-90 mb-4">本月定投額 (1/12)</div></div>}
@@ -741,10 +740,21 @@
                                                         <span className="text-[8px] text-slate-400">對標代號</span>
                                                         <input type="text" value={inputs.ref_ticker_1} onChange={e=>handleInputChange('ref_ticker_1', e.target.value.toUpperCase())} onBlur={e=>syncToCloud('ref_ticker_1', e.target.value)} className="text-[10px] font-bold bg-slate-50 dark:bg-slate-900 rounded px-1 text-center uppercase" placeholder="如 TSLA" />
                                                     </div>
-                                                    <div className="col-span-3 text-center text-[10px] font-mono text-slate-400">${metrics.strategyRefs.priceRef1 ? metrics.strategyRefs.priceRef1.toFixed(1) : '-'}</div>
                                                     <div className="col-span-3 flex flex-col">
-                                                        <span className="text-[8px] text-slate-400">週線 40MA</span>
+                                                        <span className="text-[8px] text-slate-400">MA 週期</span>
+                                                        <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded px-1">
+                                                            <input type="number" value={inputs.custom_1_ma_period || 40} onChange={e=>handleInputChange('custom_1_ma_period', e.target.value)} onBlur={e=>syncToCloud('custom_1_ma_period', e.target.value)} className="text-[10px] font-bold bg-transparent w-full text-center" />
+                                                            <span className="text-[8px] text-slate-400 ml-0.5">MA</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="col-span-3 flex flex-col">
+                                                        <span className="text-[8px] text-slate-400">均線價格</span>
                                                         <input type="number" value={inputs.custom_1_sma40} onChange={e=>handleInputChange('custom_1_sma40', e.target.value)} onBlur={e=>syncToCloud('custom_1_sma40', e.target.value)} className="text-[10px] font-bold bg-slate-50 dark:bg-slate-900 rounded px-1 text-center" />
+                                                    </div>
+                                                    <div className="col-span-12 flex items-center gap-2 mt-1">
+                                                        <span className="text-[9px] text-slate-400">策略動作:</span>
+                                                        <input type="text" value={inputs.custom_1_action_msg} onChange={e=>handleInputChange('custom_1_action_msg', e.target.value)} onBlur={e=>syncToCloud('custom_1_action_msg', e.target.value)} className="flex-1 text-[10px] font-bold bg-slate-50 dark:bg-slate-900 rounded px-2 py-1 text-left placeholder-slate-300" placeholder="例如: 減碼一半" />
+                                                        <span className="text-[9px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded">現價: ${metrics.strategyRefs.priceRef1 ? metrics.strategyRefs.priceRef1.toFixed(1) : '-'}</span>
                                                     </div>
                                                 </div>
 
@@ -755,10 +765,21 @@
                                                         <span className="text-[8px] text-slate-400">對標代號</span>
                                                         <input type="text" value={inputs.ref_ticker_2} onChange={e=>handleInputChange('ref_ticker_2', e.target.value.toUpperCase())} onBlur={e=>syncToCloud('ref_ticker_2', e.target.value)} className="text-[10px] font-bold bg-slate-50 dark:bg-slate-900 rounded px-1 text-center uppercase" placeholder="代號" />
                                                     </div>
-                                                    <div className="col-span-3 text-center text-[10px] font-mono text-slate-400">${metrics.strategyRefs.priceRef2 ? metrics.strategyRefs.priceRef2.toFixed(1) : '-'}</div>
                                                     <div className="col-span-3 flex flex-col">
-                                                        <span className="text-[8px] text-slate-400">週線 20MA</span>
+                                                        <span className="text-[8px] text-slate-400">MA 週期</span>
+                                                        <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded px-1">
+                                                            <input type="number" value={inputs.custom_2_ma_period || 20} onChange={e=>handleInputChange('custom_2_ma_period', e.target.value)} onBlur={e=>syncToCloud('custom_2_ma_period', e.target.value)} className="text-[10px] font-bold bg-transparent w-full text-center" />
+                                                            <span className="text-[8px] text-slate-400 ml-0.5">MA</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="col-span-3 flex flex-col">
+                                                        <span className="text-[8px] text-slate-400">均線價格</span>
                                                         <input type="number" value={inputs.custom_2_sma20} onChange={e=>handleInputChange('custom_2_sma20', e.target.value)} onBlur={e=>syncToCloud('custom_2_sma20', e.target.value)} className="text-[10px] font-bold bg-slate-50 dark:bg-slate-900 rounded px-1 text-center" />
+                                                    </div>
+                                                    <div className="col-span-12 flex items-center gap-2 mt-1">
+                                                        <span className="text-[9px] text-slate-400">策略動作:</span>
+                                                        <input type="text" value={inputs.custom_2_action_msg} onChange={e=>handleInputChange('custom_2_action_msg', e.target.value)} onBlur={e=>syncToCloud('custom_2_action_msg', e.target.value)} className="flex-1 text-[10px] font-bold bg-slate-50 dark:bg-slate-900 rounded px-2 py-1 text-left placeholder-slate-300" placeholder="例如: 清倉觀望" />
+                                                        <span className="text-[9px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded">現價: ${metrics.strategyRefs.priceRef2 ? metrics.strategyRefs.priceRef2.toFixed(1) : '-'}</span>
                                                     </div>
                                                 </div>
 
@@ -769,10 +790,21 @@
                                                         <span className="text-[8px] text-slate-400">對標代號</span>
                                                         <input type="text" value={inputs.ref_ticker_ibit} onChange={e=>handleInputChange('ref_ticker_ibit', e.target.value.toUpperCase())} onBlur={e=>syncToCloud('ref_ticker_ibit', e.target.value)} className="text-[10px] font-bold bg-slate-50 dark:bg-slate-900 rounded px-1 text-center uppercase" placeholder="IBIT" />
                                                     </div>
-                                                    <div className="col-span-3 text-center text-[10px] font-mono text-slate-400">${metrics.strategyRefs.priceRefIBIT ? metrics.strategyRefs.priceRefIBIT.toFixed(1) : '-'}</div>
                                                     <div className="col-span-3 flex flex-col">
-                                                        <span className="text-[8px] text-slate-400">週線 20MA</span>
+                                                        <span className="text-[8px] text-slate-400">MA 週期</span>
+                                                        <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded px-1">
+                                                            <input type="number" value={inputs.ibit_ma_period || 20} onChange={e=>handleInputChange('ibit_ma_period', e.target.value)} onBlur={e=>syncToCloud('ibit_ma_period', e.target.value)} className="text-[10px] font-bold bg-transparent w-full text-center" />
+                                                            <span className="text-[8px] text-slate-400 ml-0.5">MA</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="col-span-3 flex flex-col">
+                                                        <span className="text-[8px] text-slate-400">均線價格</span>
                                                         <input type="number" value={inputs.ibit_sma20} onChange={e=>handleInputChange('ibit_sma20', e.target.value)} onBlur={e=>syncToCloud('ibit_sma20', e.target.value)} className="text-[10px] font-bold bg-slate-50 dark:bg-slate-900 rounded px-1 text-center" />
+                                                    </div>
+                                                    <div className="col-span-12 flex items-center gap-2 mt-1">
+                                                        <span className="text-[9px] text-slate-400">策略動作:</span>
+                                                        <input type="text" value={inputs.ibit_action_msg} onChange={e=>handleInputChange('ibit_action_msg', e.target.value)} onBlur={e=>syncToCloud('ibit_action_msg', e.target.value)} className="flex-1 text-[10px] font-bold bg-slate-50 dark:bg-slate-900 rounded px-2 py-1 text-left placeholder-slate-300" placeholder="例如: 買入反向" />
+                                                        <span className="text-[9px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded">現價: ${metrics.strategyRefs.priceRefIBIT ? metrics.strategyRefs.priceRefIBIT.toFixed(1) : '-'}</span>
                                                     </div>
                                                 </div>
                                             </div>
