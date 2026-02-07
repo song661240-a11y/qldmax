@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Alpha Horizon v13.3</title>
+    <title>Alpha Horizon v13.8 (Final Stable)</title>
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
@@ -42,7 +42,6 @@
         const { useState, useEffect, useMemo, useCallback, useRef, memo } = React;
         const { ComposedChart, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Line } = Recharts;
 
-        // --- CONSTANTS & CONFIG ---
         const FINNHUB_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
         const firebaseConfig = { apiKey: "AIzaSyBpax3wlTwHTe6G3niZajtTxpoUWbgvX80", authDomain: "qldmax.firebaseapp.com", projectId: "qldmax", storageBucket: "qldmax.firebasestorage.app", messagingSenderId: "752199866954", appId: "1:752199866954:web:50d17ae522095c363d64b3" };
         const APP_ID = "qqq-strategic-production-v1";
@@ -50,10 +49,8 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore(); const auth = firebase.auth();
 
-        // Safe Data Handler
         const sanitizeForFirestore = (data) => JSON.parse(JSON.stringify(data, (k, v) => v === undefined ? null : v));
 
-        // Fixed Config
         const FIXED_HOLDINGS = [
             { id: 'core', type: 'dynamic', tickerKey: 'ticker_core_1', qtyKey: 'qty_qqq', targetKey: 'target_qqq', defaultTicker: 'QQQ', color: 'text-indigo-600', hex: '#4f46e5' },
             { id: 'tqqq', type: 'fixed', ticker: 'TQQQ', qtyKey: 'qty_tqqq', targetKey: 'target_tqqq', color: 'text-purple-600', hex: '#c084fc' },
@@ -61,14 +58,13 @@
             { id: 'sgov', type: 'fixed', ticker: 'SGOV', qtyKey: 'qty_sgov', targetKey: 'target_sgov', color: 'text-slate-500', hex: '#64748b' }
         ];
 
-        // Helpers
         const getNum = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
         const getDiff = (curr, target) => { const c = parseFloat(curr), t = parseFloat(target); return (!c || !t) ? null : ((t - c) / c) * 100; };
+        const getQty = (val, price) => (price > 0 ? Math.abs(val / price) : 0);
         
-        // --- BASE COMPONENTS ---
         const Icon = memo(({ name, size = 20, className = "" }) => {
             const icons = { 
-                TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>, Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 1-2 2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>, 
+                TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>, Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 1-2 2a2 2 0 0 1 2-2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>, 
                 RefreshCcw: <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 4a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16m-18-8h5V3m13 18h-5v5"/>, LayoutDashboard: <g><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></g>, 
                 History: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 0V3m0 5h5M12 7v5l4 2"/>, Landmark: <g><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 11 4 11 12 2"/></g>, 
                 Save: <g><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></g>, Quote: <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5zM16 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-2c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5zM16 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-2c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5z"/>, 
@@ -93,52 +89,77 @@
             return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name] || <circle cx="12" cy="12" r="10" />}</svg>;
         });
 
-        // --- COMPONENTS ---
         const Card = ({ children, className = "", onClick }) => <div onClick={onClick} className={`rounded-[2rem] shadow-xl border p-5 transition-all bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 ${className} ${onClick ? 'cursor-pointer hover:scale-[1.01]' : ''}`}>{children}</div>;
         const SectionTitle = ({ title, iconName }) => <h2 className="text-[11px] font-black mb-3 flex items-center gap-2 uppercase tracking-widest text-slate-500 dark:text-slate-400"><Icon name={iconName} size={14} /> {title}</h2>;
         const CustomTooltip = ({ active, payload }) => active && payload && payload.length ? <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl shadow-xl text-xs font-black"><p className="mb-1 text-slate-500">{payload[0].payload.name}</p><p className="text-lg mb-2 text-slate-800 dark:text-slate-100 font-mono">${payload[0].payload.value.toLocaleString()}</p><p className="text-slate-400">{payload[0].payload.percentage}%</p></div> : null;
 
+        // Holding Row in Dashboard - Shows HELD Ticker
         const HoldingRow = memo(({ conf, inputs, prices, onChange, onBlur, isDynamic = false }) => {
             let ticker = '';
+            let trackingTicker = '';
             if (isDynamic) {
                 ticker = (conf.ticker || 'N/A').toUpperCase();
+                trackingTicker = (conf.trackingTicker || ticker).toUpperCase();
             } else if (conf.type === 'fixed') {
                 ticker = conf.ticker;
+                trackingTicker = ticker;
             } else {
                 ticker = (inputs[conf.tickerKey] || conf.defaultTicker).toUpperCase();
+                trackingTicker = ticker; // Core tracking logic handled separately
             }
+
             const price = prices[ticker] || 0;
             const targetPrice = isDynamic ? conf.targetPrice : inputs[conf.targetKey];
             const diff = getDiff(price, targetPrice);
+            
             const handleTickerChange = (v) => isDynamic ? onChange(conf.id, 'ticker', v.toUpperCase()) : onChange(conf.tickerKey, v.toUpperCase());
             const handleQtyChange = (v) => isDynamic ? onChange(conf.id, 'qty', v) : onChange(conf.qtyKey, v);
             const handleTargetPriceChange = (v) => isDynamic ? onChange(conf.id, 'targetPrice', v) : onChange(conf.targetKey, v);
             const handleBlur = (field, v) => isDynamic ? onBlur() : onBlur(field, v);
+
             const colorClass = isDynamic ? 'text-emerald-500' : (conf.color || 'text-slate-500');
 
             return (
                 <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1 relative group">
                     <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
-                        {(!isDynamic && conf.type === 'fixed') ? <span className={`text-xs font-black font-mono tracking-tight text-slate-700 dark:text-slate-200`}>{ticker}</span> : <input type="text" value={isDynamic ? conf.ticker : inputs[conf.tickerKey]} onChange={e => handleTickerChange(e.target.value)} onBlur={() => handleBlur('ticker')} className={`w-full text-xs font-black bg-transparent p-0 outline-none text-left font-mono tracking-tight uppercase ${colorClass}`} placeholder={isDynamic ? "代號" : conf.defaultTicker} />}
+                        {(!isDynamic && conf.type === 'fixed') ? 
+                            <span className={`text-xs font-black font-mono tracking-tight text-slate-700 dark:text-slate-200`}>{ticker}</span> : 
+                            <input type="text" value={isDynamic ? conf.ticker : inputs[conf.tickerKey]} onChange={e => handleTickerChange(e.target.value)} onBlur={() => handleBlur('ticker')} className={`w-full text-xs font-black bg-transparent p-0 outline-none text-left font-mono tracking-tight uppercase ${colorClass}`} placeholder={isDynamic ? "代號" : conf.defaultTicker} />
+                        }
                         <span className={`text-[9px] font-mono ${colorClass}`}>${price.toFixed(1)}</span>
                     </div>
                     <input type="number" placeholder="0" value={isDynamic ? conf.qty : inputs[conf.qtyKey]} onChange={e => handleQtyChange(e.target.value)} onBlur={() => handleBlur('qty')} className="col-span-3 bg-transparent font-black text-sm h-10 font-mono focus:bg-white dark:focus:bg-slate-800" />
                     <input type="number" placeholder="-" value={targetPrice} onChange={e => handleTargetPriceChange(e.target.value)} onBlur={() => handleBlur('target')} className={`col-span-3 bg-transparent font-bold text-xs h-10 font-mono ${colorClass} focus:bg-white dark:focus:bg-slate-800`} />
-                    <div className={`col-span-3 text-center text-xs font-black font-mono ${diff && diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>{diff ? `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%` : '-'}</div>
+                    <div className={`col-span-3 text-center text-xs font-black font-mono ${diff && diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                        {diff ? `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%` : '-'}
+                    </div>
                 </div>
             );
         });
 
+        // Parameters Row - Shows Both HELD and TRACKING inputs
         const SatSettingsRow = ({ item, onChange, onDelete, onBlur }) => (
              <div className="grid grid-cols-12 gap-2 text-center items-center mb-2 relative bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
-                <div className="col-span-12 flex justify-between items-center mb-1"><div className="flex gap-2 items-center"><div className="flex flex-col text-left"><label className="text-[9px] text-slate-400">持倉 (Held)</label><input value={item.ticker} onChange={e=>onChange(item.id, 'ticker', e.target.value.toUpperCase())} onBlur={onBlur} className="font-black text-xs w-16 bg-transparent outline-none uppercase text-emerald-600 dark:text-emerald-400" placeholder="TSLL"/></div><div className="text-slate-300">/</div><div className="flex flex-col text-left"><label className="text-[9px] text-slate-400">對標 (Track)</label><input value={item.trackingTicker || item.ticker} onChange={e=>onChange(item.id, 'trackingTicker', e.target.value.toUpperCase())} onBlur={onBlur} className="font-black text-xs w-16 bg-transparent outline-none uppercase text-indigo-600 dark:text-indigo-400" placeholder="TSLA"/></div></div><button onClick={() => onDelete(item.id)} className="w-6 h-6 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center hover:bg-red-200"><Icon name="X" size={12}/></button></div>
+                <div className="col-span-12 flex justify-between items-center mb-1">
+                    <div className="flex gap-2 items-center">
+                        <div className="flex flex-col text-left">
+                            <label className="text-[9px] text-slate-400">持倉 (Held)</label>
+                            <input value={item.ticker} onChange={e=>onChange(item.id, 'ticker', e.target.value.toUpperCase())} onBlur={onBlur} className="font-black text-xs w-16 bg-transparent outline-none uppercase text-emerald-600 dark:text-emerald-400" placeholder="TSLL"/>
+                        </div>
+                        <div className="text-slate-300">/</div>
+                        <div className="flex flex-col text-left">
+                            <label className="text-[9px] text-slate-400">對標 (Track)</label>
+                            <input value={item.trackingTicker || item.ticker} onChange={e=>onChange(item.id, 'trackingTicker', e.target.value.toUpperCase())} onBlur={onBlur} className="font-black text-xs w-16 bg-transparent outline-none uppercase text-indigo-600 dark:text-indigo-400" placeholder="TSLA"/>
+                        </div>
+                    </div>
+                    <button onClick={() => onDelete(item.id)} className="w-6 h-6 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center hover:bg-red-200"><Icon name="X" size={12}/></button>
+                </div>
                 <div className="col-span-4 flex flex-col"><label className="text-[9px] text-slate-400">佔比%</label><input type="number" value={item.target_pct} onChange={e=>onChange(item.id, 'target_pct', e.target.value)} onBlur={onBlur} className="bg-white dark:bg-slate-700 p-1 rounded-lg text-center w-full text-xs font-bold"/></div>
                 <div className="col-span-4 flex flex-col"><label className="text-[9px] text-slate-400">均線</label><input type="number" placeholder="SMA" value={item.sma_track} onChange={e=>onChange(item.id, 'sma_track', e.target.value)} onBlur={onBlur} className="bg-white dark:bg-slate-700 p-1 rounded-lg text-center w-full text-xs font-bold"/></div>
                 <div className="col-span-4 flex flex-col"><label className="text-[9px] text-slate-400">容許%</label><div className="flex gap-1"><input type="number" value={item.tol_up} onChange={e=>onChange(item.id, 'tol_up', e.target.value)} onBlur={onBlur} className="bg-white dark:bg-slate-700 p-1 rounded-lg text-center w-full text-[10px] text-red-400"/><input type="number" value={item.tol_down} onChange={e=>onChange(item.id, 'tol_down', e.target.value)} onBlur={onBlur} className="bg-white dark:bg-slate-700 p-1 rounded-lg text-center w-full text-[10px] text-blue-400"/></div></div>
             </div>
         );
 
-        // --- MODALS ---
         const TradeActionModal = ({ type, targetId, inputs, prices, onClose, onExecute }) => {
             const [local, setLocal] = useState({ ticker:'TQQQ', type:'SC', contracts:1, newPremium:0, exitPrice:0, newStrike:'', newExpiry:'', newDelta:'' });
             useEffect(() => { if(type==='ROLL' || type==='CLOSE') { const t = inputs.options_inventory.find(o=>o.id===targetId); if(t) setLocal(p=>({...p, ticker:t.ticker, contracts:t.contracts, newStrike:t.strike})); } }, [targetId]);
@@ -208,7 +229,6 @@
                         <div className="space-y-2">
                             {FIXED_HOLDINGS.map(c => { const t=c.type==='fixed'?c.ticker:(editForm.inputs[c.tickerKey]||c.defaultTicker); return <div key={c.id} className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 px-3 rounded-xl border border-slate-100 dark:border-slate-700"><span className={`font-bold text-xs ${c.color}`}>{t}</span><input type="number" value={editForm.inputs[c.qtyKey]} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, [c.qtyKey]: e.target.value}}))} className="w-24 bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold" /></div>; })}
                             
-                            {/* Migration Safety: Check if satellites exist */}
                             {(editForm.inputs.satellites || []).map(s => (
                                 <div key={s.id} className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 px-3 rounded-xl border border-slate-100 dark:border-slate-700">
                                     <span className="font-bold text-xs text-emerald-500">{s.ticker}</span>
@@ -393,33 +413,103 @@
         const generateSystemAlerts = (status, bear, total, prices, inputs) => {
             const a = [];
             const getP = (t) => prices[(t || "").toUpperCase()] || 0;
+            const getNum = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
             const getQty = (val, price) => (price > 0 ? Math.abs(val / price) : 0);
 
+            // 1. Core Rebalance (Strict Logic)
             if (status.isCoreImbalanced) {
                 const targetTQQQVal = status.valCore * (status.tqqqInCoreTarget / 100);
                 const diffVal = targetTQQQVal - status.valTQQQ;
-                a.push({ type: 'warning', title: '【TQQQ】 核心再平衡', msg: `目前 ${status.tqqqRatio.toFixed(1)}% (目標 ${status.tqqqInCoreTarget}%)。`});
+                const isTooHigh = status.tqqqRatio > status.tqqqInCoreTarget;
+                const action = isTooHigh ? '賣出' : '買入';
+                const type = isTooHigh ? 'opportunity' : 'warning';
+                a.push({ 
+                    type: type, 
+                    title: `【TQQQ】 核心配置${isTooHigh ? '過高' : '過低'}`, 
+                    msg: `目前 ${status.tqqqRatio.toFixed(1)}% (目標 ${status.tqqqInCoreTarget}%)。建議${action} ${getQty(diffVal, getP('TQQQ')).toFixed(0)} 股。`
+                });
             }
+
+            // 2. Whipsaw Protection Logic (Buffer)
+            const buyBuffer = getNum(inputs.global_sma_buffer_buy) || 0;
+            const sellBuffer = getNum(inputs.global_sma_buffer_sell) || 0;
 
             const checkSma = (ticker, sma) => {
                 const price = getP(ticker);
                 const smaVal = getNum(sma);
-                if (price > 0 && smaVal > 0 && price < smaVal) {
-                    a.push({ type: 'danger', title: `【${ticker}】 跌破均線`, msg: `對標 ${ticker} 現價 $${price} 已跌破設定均線 ($${smaVal})。` });
+                if (price > 0 && smaVal > 0) {
+                    const dist = ((price - smaVal) / smaVal) * 100;
+                    const triggerSell = smaVal * (1 - sellBuffer/100);
+                    const triggerBuy = smaVal * (1 + buyBuffer/100);
+
+                    // Sell Signal
+                    if (price < triggerSell) {
+                        a.push({ 
+                            type: 'danger', 
+                            title: `【${ticker}】 跌破均線 (防禦)`, 
+                            msg: `現價 $${price} (距均線 ${dist.toFixed(2)}%) < SMA $${smaVal}。已低於觸發價 $${triggerSell.toFixed(2)} (緩衝 -${sellBuffer}%)。建議清倉。` 
+                        });
+                    }
+                    // Buy Signal
+                    else if (price > triggerBuy) {
+                        a.push({ 
+                            type: 'opportunity', 
+                            title: `【${ticker}】 站上均線 (進攻)`, 
+                            msg: `現價 $${price} (距均線 +${dist.toFixed(2)}%) > SMA $${smaVal}。已高於觸發價 $${triggerBuy.toFixed(2)} (緩衝 +${buyBuffer}%)。建議進場。` 
+                        });
+                    }
                 }
             };
 
+            // 3. Dynamic Satellite Checks (Strict High/Low + SMA)
             if (status.satellites) {
                 status.satellites.forEach(s => {
                     if (s.sma_track) checkSma(s.trackTicker, s.sma_track);
-                    if (s.status !== 'ok') {
-                        a.push({ type: s.status==='high'?'opportunity':'warning', title: `【${s.ticker}】 ${s.status==='high'?'高於上限':'低於下限'}`, msg: `目前 ${s.weight.toFixed(1)}% (目標${s.target_pct}%)。`});
+                    
+                    const targetVal = total * (getNum(s.target_pct) / 100);
+                    const diffVal = targetVal - s.val;
+
+                    // Strict Upper Bound
+                    const upperLimit = s.target_pct * (1 + (s.tol_up / 100));
+                    if (s.weight > upperLimit) {
+                         a.push({ 
+                             type: 'opportunity', 
+                             title: `【${s.ticker}】 獲利了結`, 
+                             msg: `佔比 ${s.weight.toFixed(1)}% > 上限 ${upperLimit.toFixed(1)}%。建議賣出 ${getQty(Math.abs(diffVal), getP(s.ticker)).toFixed(0)} 股。`
+                         });
+                    }
+
+                    // Strict Lower Bound
+                    const lowerLimit = s.target_pct * (1 - (s.tol_down / 100));
+                    if (s.weight < lowerLimit) {
+                         a.push({ 
+                             type: 'warning', 
+                             title: `【${s.ticker}】 逢低加碼`, 
+                             msg: `佔比 ${s.weight.toFixed(1)}% < 下限 ${lowerLimit.toFixed(1)}%。建議買入 ${getQty(Math.abs(diffVal), getP(s.ticker)).toFixed(0)} 股。`
+                         });
                     }
                 });
             }
 
+            // 4. IBIT Check (Strict)
             if (inputs.ibit_sma20) checkSma('IBIT', inputs.ibit_sma20);
-            if (bear.isActive) a.push({ type: 'danger', title: '【QQQ】 熊市防禦', msg: `QQQ < 200 SMA`});
+            const ibitTarget = getNum(inputs.target_sat_ibit);
+            const ibitUp = ibitTarget * (1 + (inputs.tol_up_ibit / 100));
+            const ibitDown = ibitTarget * (1 - (inputs.tol_down_ibit / 100));
+            
+            const targetIbitVal = total * (ibitTarget / 100);
+            const diffIbitVal = targetIbitVal - status.valIbit;
+
+            if (status.ibitW > ibitUp) {
+                a.push({ type: 'opportunity', title: `【IBIT】 獲利了結`, msg: `佔比 ${status.ibitW}% > 上限 ${ibitUp.toFixed(1)}%。建議賣出 ${getQty(Math.abs(diffIbitVal), getP('IBIT')).toFixed(0)} 股。`});
+            }
+            if (status.ibitW < ibitDown) {
+                a.push({ type: 'warning', title: `【IBIT】 逢低加碼`, msg: `佔比 ${status.ibitW}% < 下限 ${ibitDown.toFixed(1)}%。建議買入 ${getQty(Math.abs(diffIbitVal), getP('IBIT')).toFixed(0)} 股。`});
+            }
+
+            // Core SMA Check (QQQ)
+            if (inputs.qqq_sma200) checkSma('QQQ', inputs.qqq_sma200);
+
             return a;
         };
 
@@ -442,7 +532,8 @@
             const [customSyncId, setCustomSyncId] = useState(() => localStorage.getItem('qqq_sync_id') || '');
             const [tempSyncId, setTempSyncId] = useState(customSyncId);
             
-            const [openSettings, setSettings] = useState({ account: true, system: false });
+            // --- STATE VARIABLES ---
+            const [openSettings, setSettings] = useState({ account: true, system: false, strategy: false, rsi_matrix: false });
             const [isAlertsView, setIsAlertsView] = useState(false);
             const [isMottoLocked, setIsMottoLocked] = useState(true);
             const [isStrategyEditing, setIsStrategyEditing] = useState(false);
@@ -452,6 +543,7 @@
             const [stressSimPct, setStressSimPct] = useState(0); 
             const [simLeverage, setSimLeverage] = useState(3); 
 
+            // --- MODAL STATE ---
             const [openModalType, setOpenModalType] = useState(null);
             const [targetOptionId, setTargetOptionId] = useState(null);
             const [editingTrade, setEditingTrade] = useState(null);
@@ -461,12 +553,16 @@
 
             const [inputs, setInputs] = useState({
                 current_rsi: '', qqq_ath: 0, option_history: [], qqq_sma200: 0, qqq_sma20: 0, ibit_sma20: 0,
+                global_sma_buffer_buy: 3, global_sma_buffer_sell: 3, // Global Buffers
                 exchange_rate: 32.5, rebalance_core_target: 50, rebalance_core_tolerance: 15,
                 tol_up_ibit: 20, tol_down_ibit: 10, target_sat_ibit: 10,
                 ticker_core_1: 'QQQ', qty_qqq: 0, qty_tqqq: 0, qty_ibit: 0, qty_sgov: 0,
                 cash_balance: 0, record_date: new Date().toISOString().split('T')[0],
                 loan_amount: 0, loan_rate: 2.0, loan_years: 7, loan_repay_target: 20, loan_entry_valuation: 0,
                 satellites: [], 
+                title_core: "核心策略 (Core) - QQQ/TQQQ", strat_core: "目標：40% TQQQ + 40% QQQ\n監測：QQQ > 200 SMA 持有正股，< 200 SMA 轉防禦。", 
+                title_custom: "衛星策略 (Satellite)", strat_custom: "原則：Buy & Hold。\n跌破均線 (SMA) 建議出場。\n佔比超過目標上限建議再平衡。", 
+                title_options: "選擇權策略 (Options)", strat_options: "標的：TQQQ Weekly Options\nRSI < 40：禁止開倉\nRSI 40-60：Delta 0.10-0.12\nRSI > 75：Delta 0.20-0.25",
                 options_matrix: [ { min: 0, max: 40, cover: 0, delta: '< 0.05 (禁止)' }, { min: 40, max: 60, cover: 30, delta: '0.10 - 0.12' }, { min: 60, max: 75, cover: 50, delta: '0.12 - 0.15' }, { min: 75, max: 100, cover: 70, delta: '0.20 - 0.25' } ],
                 options_inventory: [] 
             });
@@ -504,6 +600,7 @@
             const handleMatrixChange = (idx, field, val) => { const newM = [...inputs.options_matrix]; newM[idx][field] = val; setInputs(p => ({...p, options_matrix: newM})); syncToCloud('options_matrix', newM); };
             const syncToCloud = async (f, v) => { if (user) { const safeV = sanitizeForFirestore(v); await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ [f]: safeV }, { merge: true }); } };
             
+            // Satellites
             const addSatellite = () => { const newSat = { id: Date.now().toString(), ticker: '', trackingTicker: '', qty: 0, targetPrice: '', target_pct: 5, tol_up: 20, tol_down: 10, sma_track: '' }; const newSats = [...(inputs.satellites || []), newSat]; setInputs(p => ({ ...p, satellites: newSats })); syncToCloud('satellites', newSats); };
             const updateSatellite = (id, field, value) => { 
                 const safeValue = value === undefined ? '' : value; 
@@ -627,7 +724,7 @@
                                     )}
                                 </Card>
 
-                                {/* --- RSI Helper Card --- */}
+                                {/* --- RSI Helper Card (Collapsible) --- */}
                                 <Card className="mt-4 border-2 border-indigo-100 dark:border-slate-800">
                                   <div className="flex justify-between items-center mb-2 cursor-pointer" onClick={()=>setSections(p=>({...p,rsiHelper:!p.rsiHelper}))}>
                                     <div className="flex items-center gap-2">
@@ -689,6 +786,7 @@
 
                                 <Card className="bg-gradient-to-br from-slate-900 via-indigo-950 to-indigo-900 text-white border-none p-7 relative overflow-hidden group"><div className="absolute -right-4 -bottom-4 opacity-10 rotate-12"><Icon name="TrendingUp" size={160} /></div><div className="flex justify-between"><label className="text-[10px] opacity-50 uppercase tracking-widest">總資產</label></div><div className="mt-2"><div className="text-4xl font-black font-mono">${metrics.totalCapital.toLocaleString(undefined,{maximumFractionDigits:0})}{inputs.cash_balance < 0 && <span className="text-sm font-bold text-red-300 ml-2">(融資: -${Math.abs(inputs.cash_balance).toLocaleString()})</span>}</div><div className="text-sm font-mono text-white/50">≈ NT$ {(metrics.totalCapital*inputs.exchange_rate).toLocaleString(undefined,{maximumFractionDigits:0})}</div></div><div className="mt-4 pt-3 border-t border-white/10 flex justify-between text-xs font-bold z-10 relative"><div><span className="opacity-40 text-[9px] block">月報酬</span><span className={`text-lg ${metrics.performanceStats.mtd>=0?'text-emerald-400':'text-red-400'}`}>{metrics.performanceStats.mtd>0?'+':''}{metrics.performanceStats.mtd.toFixed(2)}%</span></div><div className="text-center"><span className="opacity-40 text-[9px] block">已實現權利金</span><span className="text-lg text-amber-400 font-mono">${totalRealizedPremium.toLocaleString(undefined,{maximumFractionDigits:0})}</span></div><div className="text-right"><span className="opacity-40 text-[9px] block">貸款</span><span className="font-mono text-base text-red-500">${inputs.loan_amount.toLocaleString()}</span></div></div></Card>
 
+                                {/* --- Simulator with Leverage --- */}
                                 <Card className="p-5 bg-gradient-to-br from-slate-800 to-indigo-900 text-white border-none relative overflow-hidden">
                                     <div className="flex justify-between items-center mb-4 z-10 relative"><div className="flex gap-2 text-xs font-black opacity-80 items-center"><Icon name="Activity" size={16} /> 壓力測試</div><button onClick={()=>setSections(p=>({...p,simulator:!p.simulator}))}><Icon name={dashboardSections.simulator?"ChevronUp":"ChevronDown"} size={16}/></button></div>
                                     {dashboardSections.simulator && <div className="z-10 relative space-y-4">
@@ -711,6 +809,7 @@
                                     </div>}
                                 </Card>
 
+                                {/* --- Rebalance Visuals --- */}
                                 <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 border-2 border-slate-200 dark:border-slate-700 shadow-lg">
                                     <div className="flex justify-between mb-3"><div className="flex gap-2 text-xs font-black text-slate-400"><Icon name="Scale" size={14} /> 再平衡檢測</div><button onClick={()=>setSections(p=>({...p,rebalance:!p.rebalance}))}><Icon name={dashboardSections.rebalance?"ChevronUp":"ChevronDown"} size={16} /></button></div>
                                     {dashboardSections.rebalance && <div className="space-y-4">
@@ -781,6 +880,15 @@
                                     </div>
                                 </div>
 
+                                {/* --- Whipsaw Protection Settings --- */}
+                                <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-[2rem] border border-slate-200 dark:border-slate-700">
+                                    <div className="flex justify-between items-center mb-4"><div className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Icon name="Shield" size={16}/> 防洗盤設定 (Whipsaw Protection)</div></div>
+                                    <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-3">
+                                        <div><label className="text-[9px] text-slate-400 block mb-1">突破買入緩衝 %</label><input type="number" value={inputs.global_sma_buffer_buy} onChange={e=>handleInputChange('global_sma_buffer_buy',e.target.value)} onBlur={e=>syncToCloud('global_sma_buffer_buy',e.target.value)} className="bg-emerald-50 text-emerald-600 dark:bg-slate-800 dark:text-emerald-400 p-2 rounded-lg text-center w-full font-bold"/></div>
+                                        <div><label className="text-[9px] text-slate-400 block mb-1">跌破賣出緩衝 %</label><input type="number" value={inputs.global_sma_buffer_sell} onChange={e=>handleInputChange('global_sma_buffer_sell',e.target.value)} onBlur={e=>syncToCloud('global_sma_buffer_sell',e.target.value)} className="bg-red-50 text-red-600 dark:bg-slate-800 dark:text-red-400 p-2 rounded-lg text-center w-full font-bold"/></div>
+                                    </div>
+                                </div>
+
                                 <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-[2rem] border border-slate-200 dark:border-slate-700">
                                     <div className="flex justify-between items-center mb-4"><div className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Icon name="Activity" size={16}/> 衛星策略參數 (Satellite)</div><button onClick={addSatellite} className="text-[10px] bg-indigo-600 text-white px-3 py-1 rounded-lg font-bold">+ 新增</button></div>
                                     <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 mb-3 relative"><div className="flex justify-between items-center mb-2"><span className="text-xs font-black text-orange-500">IBIT (比特幣)</span><span className="text-[9px] text-slate-400">固定配置</span></div><div className="grid grid-cols-3 gap-2"><div><label className="text-[9px] text-slate-400">目標%</label><input type="number" value={inputs.target_sat_ibit} onChange={e=>handleInputChange('target_sat_ibit',e.target.value)} onBlur={()=>syncToCloud('target_sat_ibit', inputs.target_sat_ibit)} className="bg-slate-50 dark:bg-slate-800 w-full p-1.5 rounded-lg text-center text-xs font-bold"/></div><div><label className="text-[9px] text-slate-400">均線(20MA)</label><input type="number" value={inputs.ibit_sma20} onChange={e=>handleInputChange('ibit_sma20',e.target.value)} onBlur={()=>syncToCloud('ibit_sma20', inputs.ibit_sma20)} className="bg-slate-50 dark:bg-slate-800 w-full p-1.5 rounded-lg text-center text-xs font-bold"/></div><div className="flex flex-col"><label className="text-[9px] text-slate-400">容許%</label><div className="flex gap-1"><input value={inputs.tol_up_ibit} onChange={e=>handleInputChange('tol_up_ibit',e.target.value)} onBlur={()=>syncToCloud('tol_up_ibit', inputs.tol_up_ibit)} className="w-full bg-slate-50 text-red-400 text-center text-[10px] rounded"/><input value={inputs.tol_down_ibit} onChange={e=>handleInputChange('tol_down_ibit',e.target.value)} onBlur={()=>syncToCloud('tol_down_ibit', inputs.tol_down_ibit)} className="w-full bg-slate-50 text-blue-400 text-center text-[10px] rounded"/></div></div></div></div>
@@ -792,7 +900,7 @@
                                     {openSettings.rsi_matrix && <div className="space-y-2"><div className="grid grid-cols-12 gap-1 text-[9px] text-center text-slate-400 mb-1"><div className="col-span-3">Min</div><div className="col-span-3">Max</div><div className="col-span-3">Cover%</div><div className="col-span-3">Delta</div></div>{inputs.options_matrix && inputs.options_matrix.map((row, i) => (<div key={i} className="grid grid-cols-12 gap-1 mb-1"><div className="col-span-3"><input type="number" value={row.min} onChange={e=>handleMatrixChange(i,'min',e.target.value)} className="bg-white dark:bg-slate-700 w-full p-1 rounded text-center text-xs"/></div><div className="col-span-3"><input type="number" value={row.max} onChange={e=>handleMatrixChange(i,'max',e.target.value)} className="bg-white dark:bg-slate-700 w-full p-1 rounded text-center text-xs"/></div><div className="col-span-3"><input type="number" value={row.cover} onChange={e=>handleMatrixChange(i,'cover',e.target.value)} className="bg-white dark:bg-slate-700 w-full p-1 rounded text-center text-xs"/></div><div className="col-span-3"><input type="text" value={row.delta} onChange={e=>handleMatrixChange(i,'delta',e.target.value)} className="bg-white dark:bg-slate-700 w-full p-1 rounded text-center text-xs"/></div></div>))}</div>}
                                 </div>
 
-                                {/* --- RESTORED: Calculator --- */}
+                                {/* --- Calculator --- */}
                                 <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 overflow-hidden"><button onClick={()=>setIsCalcOpen(!isCalcOpen)} className="w-full p-4 flex justify-between bg-slate-50 dark:bg-slate-800/50"><div className="flex items-center gap-3 font-black"><Icon name="Calculator" className="text-indigo-500"/> 資金分配計算機</div><Icon name={isCalcOpen?"ChevronUp":"ChevronDown"} size={14}/></button>
                                     {isCalcOpen && <div className="p-4 pt-0 space-y-3 bg-slate-50 dark:bg-slate-800/50">
                                         <div className="flex items-center gap-2"><span className="text-xl font-bold text-slate-400">$</span><input type="number" placeholder="輸入新投入金額" value={simulatedTotal} onChange={e=>setSimulatedTotal(e.target.value)} className="bg-white dark:bg-slate-900 p-3 rounded-xl text-xl w-full font-black shadow-sm" /></div>
