@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Alpha Horizon v15.0</title>
-    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjMUUxQjRCIi8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiMxMEI5ODEiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
+    <title>Alpha Horizon v16.10</title>
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iMTAwIiBmaWxsPSIjRjFGNUY5Ii8+CjxwYXRoIGQ9Ik0zNjAgMzYwTDI4MCAyODBNMzQwIDIyMEMzNDAgMjg2LjI3NCAyODYuMjc0IDM0MCAyMjAgMzQwQzE1My43MjYgMzQwIDEwMCAyODYuMjc0IDEwMCAyMjBDMTAwIDE1My43MjYgMTUzLjcyNiAxMDAgMjIwIDEwMEMyODYuMjc0IDEwMCAzNDAgMTUzLjcyNiAzNDAgMjIwWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiM0NzU1NjkiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNjAgMzAwTDIyMCAyNDBMMjgwIDMwMEwzODAgMTgwIiBzdHJva2U9IiM0NzU1NjkiIHN0cm9rZS13aWR0aD0iMjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
@@ -15,28 +15,39 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { indigo: { 950: '#1e1b4b' }, slate: { 850: '#1e293b' } } } } }</script>
+    <script>
+        tailwind.config = { 
+            theme: { 
+                extend: { 
+                    colors: { 
+                        // Ultra Soft Palette for Eye Care
+                        brand: { 50: '#f0f9ff', 100: '#e0f2fe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' },
+                        slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 400: '#94a3b8', 500: '#64748b', 600: '#475569', 700: '#334155', 800: '#1e293b' }
+                    } 
+                } 
+            } 
+        }
+    </script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&display=swap');
-        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #f1f5f9; color: #334155; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
-        .dark body { background-color: #0f172a; } .light body { background-color: #f1f5f9; }
         input, select, textarea { font-size: 14px !important; line-height: 1.4 !important; padding: 8px 2px !important; width: 100%; background: transparent; border: none; outline: none; text-align: center; }
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
-        .strategy-textarea { text-align: left !important; padding: 12px !important; min-height: 120px; border-radius: 12px; background: rgba(255,255,255,0.5); border: 1px dashed #cbd5e1; white-space: pre-wrap; font-size: 12px !important; line-height: 1.6 !important; }
-        .dark .strategy-textarea { background: rgba(30, 41, 59, 0.5); border-color: #334155; color: #e2e8f0; }
-        .holding-input-group { background: rgba(255,255,255,0.5); border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden; }
-        .dark .holding-input-group { background: rgba(30, 41, 59, 0.5); border-color: #334155; }
+        .holding-input-group { background: #f8fafc; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden; transition: all 0.2s; }
+        .holding-input-group:focus-within { background: #ffffff; border-color: #cbd5e1; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
         @keyframes pulse-dot { 0%, 100% { opacity: 0.6; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1.1); } }
         .sync-loading { animation: pulse-dot 1.2s infinite ease-in-out; }
         input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #ffffff; cursor: pointer; margin-top: -8px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
-        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: rgba(255,255,255,0.3); border-radius: 2px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #ffffff; cursor: pointer; margin-top: -8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); border: 1px solid #cbd5e1; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #e2e8f0; border-radius: 3px; }
+        .strategy-textarea { text-align: left !important; padding: 12px !important; min-height: 120px; border-radius: 12px; background: #ffffff; border: 1px dashed #cbd5e1; white-space: pre-wrap; font-size: 12px !important; line-height: 1.6 !important; width: 100%; color: #475569; }
+        .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; gap: 1rem; }
     </style>
 </head>
-<body class="light text-left font-black text-slate-900 dark:text-slate-100">
+<body class="text-left font-bold text-slate-700">
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback, useRef, memo } = React;
@@ -52,9 +63,9 @@
         const sanitizeForFirestore = (data) => JSON.parse(JSON.stringify(data, (k, v) => v === undefined ? null : v));
 
         const FIXED_HOLDINGS = [
-            { id: 'core', type: 'dynamic', tickerKey: 'ticker_core_1', qtyKey: 'qty_qqq', targetKey: 'target_qqq', defaultTicker: 'QQQ', color: 'text-indigo-600', hex: '#4f46e5' },
-            { id: 'tqqq', type: 'fixed', ticker: 'TQQQ', qtyKey: 'qty_tqqq', targetKey: 'target_tqqq', color: 'text-purple-600', hex: '#c084fc' },
-            { id: 'ibit', type: 'fixed', ticker: 'IBIT', qtyKey: 'qty_ibit', targetKey: 'target_ibit', color: 'text-orange-500', hex: '#f59e0b' },
+            { id: 'core', type: 'dynamic', tickerKey: 'ticker_core_1', qtyKey: 'qty_qqq', targetKey: 'target_qqq', defaultTicker: 'QQQ', color: 'text-brand-600', hex: '#2563eb' },
+            { id: 'tqqq', type: 'fixed', ticker: 'TQQQ', qtyKey: 'qty_tqqq', targetKey: 'target_tqqq', color: 'text-purple-600', hex: '#9333ea' },
+            { id: 'ibit', type: 'fixed', ticker: 'IBIT', qtyKey: 'qty_ibit', targetKey: 'target_ibit', color: 'text-orange-500', hex: '#f97316' },
             { id: 'sgov', type: 'fixed', ticker: 'SGOV', qtyKey: 'qty_sgov', targetKey: 'target_sgov', color: 'text-slate-500', hex: '#64748b' }
         ];
 
@@ -64,7 +75,7 @@
         
         const Icon = memo(({ name, size = 20, className = "" }) => {
             const icons = { 
-                TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>, Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>, 
+                TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>, Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>, 
                 RefreshCcw: <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 4a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16m-18-8h5V3m13 18h-5v5"/>, LayoutDashboard: <g><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></g>, 
                 History: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 0V3m0 5h5M12 7v5l4 2"/>, Landmark: <g><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 11 4 11 12 2"/></g>, 
                 Save: <g><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></g>, Quote: <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5zM16 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-2c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5zM16 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-2c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5z"/>, 
@@ -89,18 +100,18 @@
             return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name] || <circle cx="12" cy="12" r="10" />}</svg>;
         });
 
-        const Card = ({ children, className = "", onClick }) => <div onClick={onClick} className={`rounded-[2rem] shadow-xl border p-5 transition-all bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 ${className} ${onClick ? 'cursor-pointer hover:scale-[1.01]' : ''}`}>{children}</div>;
-        const SectionTitle = ({ title, iconName }) => <h2 className="text-[11px] font-black mb-3 flex items-center gap-2 uppercase tracking-widest text-slate-500 dark:text-slate-400"><Icon name={iconName} size={14} /> {title}</h2>;
+        const Card = ({ children, className = "", onClick }) => <div onClick={onClick} className={`rounded-[2rem] shadow-sm border p-5 transition-all bg-white border-slate-200 ${className} ${onClick ? 'cursor-pointer hover:scale-[1.01]' : ''}`}>{children}</div>;
+        const SectionTitle = ({ title, iconName }) => <h2 className="text-[11px] font-black mb-3 flex items-center gap-2 uppercase tracking-widest text-slate-500"><Icon name={iconName} size={14} /> {title}</h2>;
         
-        // --- CUSTOM TOOLTIP FOR GRAPH ---
+        // --- UPDATED TOOLTIP FOR GRAPH (With Units) ---
         const CustomGraphTooltip = ({ active, payload, label }) => {
             if (active && payload && payload.length) {
                 return (
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl shadow-xl text-xs font-black z-50">
+                    <div className="bg-white border border-slate-200 p-3 rounded-xl shadow-xl text-xs font-black z-50">
                         <p className="mb-1 text-slate-500">{new Date(label).toLocaleDateString()}</p>
                         {payload.map((p, i) => (
                             <p key={i} style={{ color: p.color || p.fill }}>
-                                {p.name}: {p.name.includes('%') ? '' : '$'}{p.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}{p.name.includes('%') ? '%' : ''}
+                                {p.name}: {p.name.includes('%') || p.value < 500 ? '' : '$'}{p.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}{p.name.includes('%') || p.value < 500 ? '%' : ''}
                             </p>
                         ))}
                     </div>
@@ -108,6 +119,8 @@
             }
             return null;
         };
+
+        const CustomPieTooltip = ({ active, payload }) => active && payload && payload.length ? <div className="bg-white border border-slate-200 p-3 rounded-xl shadow-xl text-xs font-black"><p className="mb-1 text-slate-500">{payload[0].payload.name}</p><p className="text-lg mb-2 text-slate-800 font-mono">${payload[0].payload.value.toLocaleString()}</p><p className="text-slate-400">{payload[0].payload.percentage}%</p></div> : null;
 
         // Holding Row in Dashboard - Shows HELD Ticker
         const HoldingRow = memo(({ conf, inputs, prices, onChange, onBlur, isDynamic = false }) => {
@@ -122,7 +135,7 @@
                 trackingTicker = ticker;
             } else {
                 ticker = (inputs[conf.tickerKey] || conf.defaultTicker).toUpperCase();
-                trackingTicker = ticker; 
+                trackingTicker = ticker; // Core tracking logic handled separately
             }
 
             const price = prices[ticker] || 0;
@@ -138,57 +151,54 @@
 
             return (
                 <div className="holding-input-group grid grid-cols-12 gap-1 items-center p-1 relative group">
-                    <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200 dark:border-slate-700">
+                    <div className="col-span-3 flex flex-col justify-center px-2 border-r border-slate-200">
                         {(!isDynamic && conf.type === 'fixed') ? 
-                            <span className={`text-xs font-black font-mono tracking-tight text-slate-700 dark:text-slate-200`}>{ticker}</span> : 
+                            <span className={`text-xs font-black font-mono tracking-tight text-slate-700`}>{ticker}</span> : 
                             <input type="text" value={isDynamic ? conf.ticker : inputs[conf.tickerKey]} onChange={e => handleTickerChange(e.target.value)} onBlur={() => handleBlur('ticker')} className={`w-full text-xs font-black bg-transparent p-0 outline-none text-left font-mono tracking-tight uppercase ${colorClass}`} placeholder={isDynamic ? "代號" : conf.defaultTicker} />
                         }
                         <span className={`text-[9px] font-mono ${colorClass}`}>${price.toFixed(1)}</span>
                     </div>
-                    <input type="number" placeholder="0" value={isDynamic ? conf.qty : inputs[conf.qtyKey]} onChange={e => handleQtyChange(e.target.value)} onBlur={() => handleBlur('qty')} className="col-span-3 bg-transparent font-black text-sm h-10 font-mono focus:bg-white dark:focus:bg-slate-800" />
-                    <input type="number" placeholder="-" value={targetPrice} onChange={e => handleTargetPriceChange(e.target.value)} onBlur={() => handleBlur('target')} className={`col-span-3 bg-transparent font-bold text-xs h-10 font-mono ${colorClass} focus:bg-white dark:focus:bg-slate-800`} />
-                    <div className={`col-span-3 text-center text-xs font-black font-mono ${diff && diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                        {diff ? `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%` : '-'}
-                    </div>
+                    <input type="number" placeholder="0" value={isDynamic ? conf.qty : inputs[conf.qtyKey]} onChange={e => handleQtyChange(e.target.value)} onBlur={() => handleBlur('qty')} className="col-span-3 bg-transparent font-black text-sm h-10 font-mono focus:bg-white text-slate-800" />
+                    <input type="number" placeholder="-" value={targetPrice} onChange={e => handleTargetPriceChange(e.target.value)} onBlur={() => handleBlur('target')} className={`col-span-3 bg-transparent font-bold text-xs h-10 font-mono ${colorClass} focus:bg-white`} />
+                    <div className={`col-span-3 text-center text-xs font-black font-mono ${diff && diff > 0 ? 'text-emerald-500' : 'text-red-400'}`}>{diff ? `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%` : '-'}</div>
                 </div>
             );
         });
 
-        // Parameters Row
+        // Parameters Row - Shows Both HELD and TRACKING inputs
         const SatSettingsRow = ({ item, onChange, onDelete, onBlur }) => (
-             <div className="grid grid-cols-12 gap-2 text-center items-center mb-2 relative bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
+             <div className="grid grid-cols-12 gap-2 text-center items-center mb-2 relative bg-slate-50 p-2 rounded-xl border border-slate-200">
                 <div className="col-span-12 flex justify-between items-center mb-1">
                     <div className="flex gap-2 items-center">
                         <div className="flex flex-col text-left">
                             <label className="text-[9px] text-slate-400">持倉 (Held)</label>
-                            <input value={item.ticker} onChange={e=>onChange(item.id, 'ticker', e.target.value.toUpperCase())} onBlur={onBlur} className="font-black text-xs w-16 bg-transparent outline-none uppercase text-emerald-600 dark:text-emerald-400" placeholder="TSLL"/>
+                            <input value={item.ticker} onChange={e=>onChange(item.id, 'ticker', e.target.value.toUpperCase())} onBlur={onBlur} className="font-black text-xs w-16 bg-transparent outline-none uppercase text-emerald-600" placeholder="TSLL"/>
                         </div>
                         <div className="text-slate-300">/</div>
                         <div className="flex flex-col text-left">
                             <label className="text-[9px] text-slate-400">對標 (Track)</label>
-                            <input value={item.trackingTicker || item.ticker} onChange={e=>onChange(item.id, 'trackingTicker', e.target.value.toUpperCase())} onBlur={onBlur} className="font-black text-xs w-16 bg-transparent outline-none uppercase text-indigo-600 dark:text-indigo-400" placeholder="TSLA"/>
+                            <input value={item.trackingTicker || item.ticker} onChange={e=>onChange(item.id, 'trackingTicker', e.target.value.toUpperCase())} onBlur={onBlur} className="font-black text-xs w-16 bg-transparent outline-none uppercase text-indigo-600" placeholder="TSLA"/>
                         </div>
                     </div>
-                    <button onClick={() => onDelete(item.id)} className="w-6 h-6 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center hover:bg-red-200"><Icon name="X" size={12}/></button>
+                    <button onClick={() => onDelete(item.id)} className="w-6 h-6 bg-red-100 text-red-500 rounded-full flex items-center justify-center hover:bg-red-200"><Icon name="X" size={12}/></button>
                 </div>
-                <div className="col-span-4 flex flex-col"><label className="text-[9px] text-slate-400">佔比%</label><input type="number" value={item.target_pct} onChange={e=>onChange(item.id, 'target_pct', e.target.value)} onBlur={onBlur} className="bg-white dark:bg-slate-700 p-1 rounded-lg text-center w-full text-xs font-bold"/></div>
-                <div className="col-span-4 flex flex-col"><label className="text-[9px] text-slate-400">均線</label><input type="number" placeholder="SMA" value={item.sma_track} onChange={e=>onChange(item.id, 'sma_track', e.target.value)} onBlur={onBlur} className="bg-white dark:bg-slate-700 p-1 rounded-lg text-center w-full text-xs font-bold"/></div>
-                <div className="col-span-4 flex flex-col"><label className="text-[9px] text-slate-400">容許%</label><div className="flex gap-1"><input type="number" value={item.tol_up} onChange={e=>onChange(item.id, 'tol_up', e.target.value)} onBlur={onBlur} className="bg-white dark:bg-slate-700 p-1 rounded-lg text-center w-full text-[10px] text-red-400"/><input type="number" value={item.tol_down} onChange={e=>onChange(item.id, 'tol_down', e.target.value)} onBlur={onBlur} className="bg-white dark:bg-slate-700 p-1 rounded-lg text-center w-full text-[10px] text-blue-400"/></div></div>
+                <div className="col-span-4 flex flex-col"><label className="text-[9px] text-slate-400">佔比%</label><input type="number" value={item.target_pct} onChange={e=>onChange(item.id, 'target_pct', e.target.value)} onBlur={onBlur} className="bg-white p-1 rounded-lg text-center w-full text-xs font-bold text-slate-700"/></div>
+                <div className="col-span-4 flex flex-col"><label className="text-[9px] text-slate-400">均線</label><input type="number" placeholder="SMA" value={item.sma_track} onChange={e=>onChange(item.id, 'sma_track', e.target.value)} onBlur={onBlur} className="bg-white p-1 rounded-lg text-center w-full text-xs font-bold text-slate-700"/></div>
+                <div className="col-span-4 flex flex-col"><label className="text-[9px] text-slate-400">容許%</label><div className="flex gap-1"><input type="number" value={item.tol_up} onChange={e=>onChange(item.id, 'tol_up', e.target.value)} onBlur={onBlur} className="bg-white p-1 rounded-lg text-center w-full text-[10px] text-red-400"/><input type="number" value={item.tol_down} onChange={e=>onChange(item.id, 'tol_down', e.target.value)} onBlur={onBlur} className="bg-white p-1 rounded-lg text-center w-full text-[10px] text-blue-400"/></div></div>
             </div>
         );
 
-        // --- MODALS ---
         const TradeActionModal = ({ type, targetId, inputs, prices, onClose, onExecute }) => {
             const [local, setLocal] = useState({ ticker:'TQQQ', type:'SC', contracts:1, newPremium:0, exitPrice:0, newStrike:'', newExpiry:'', newDelta:'' });
             useEffect(() => { if(type==='ROLL' || type==='CLOSE') { const t = inputs.options_inventory.find(o=>o.id===targetId); if(t) setLocal(p=>({...p, ticker:t.ticker, contracts:t.contracts, newStrike:t.strike})); } }, [targetId]);
             return (
-                <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center">
-                    <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl animate-in slide-in-from-bottom-full z-[110]">
+                <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center">
+                    <div className="w-full max-w-sm bg-white rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl animate-in slide-in-from-bottom-full z-[110]">
                         <h3 className="text-xl font-black mb-4 flex items-center gap-2"><Icon name={type==='OPEN'?'Plus':type==='ROLL'?'RefreshCcw':'CheckCircle'} className="text-indigo-500"/> {type==='OPEN'?'新建倉位':type==='ROLL'?'選擇權轉倉':'選擇權平倉'}</h3>
-                        {type === 'OPEN' && (<div className="space-y-3"><div className="grid grid-cols-2 gap-2"><div><label className="text-xs font-bold text-slate-500">標的</label><input value={local.ticker} onChange={e=>setLocal({...local,ticker:e.target.value.toUpperCase()})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-black"/></div><div><label className="text-xs font-bold text-slate-500">類型</label><select value={local.type} onChange={e=>setLocal({...local,type:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"><option value="SC">Sell Call</option><option value="SP">Sell Put</option></select></div></div>{local.type === 'SP' && <div className={`p-2 rounded-lg text-center text-xs font-bold ${prices['QQQ']>inputs.qqq_sma20?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}`}>{prices['QQQ']>inputs.qqq_sma20?'🔥 強勢盤：Delta -0.30':'🌊 震盪盤：Delta -0.20'}</div>}<div className="grid grid-cols-2 gap-2"><input type="number" placeholder="Strike" value={local.newStrike} onChange={e=>setLocal({...local,newStrike:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"/><input type="date" value={local.newExpiry} onChange={e=>setLocal({...local,newExpiry:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold text-xs"/></div><div className="grid grid-cols-2 gap-2"><input type="number" placeholder="張數" value={local.contracts} onChange={e=>setLocal({...local,contracts:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"/><input type="number" placeholder="權利金" value={local.newPremium} onChange={e=>setLocal({...local,newPremium:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"/></div><input type="number" placeholder="Delta" value={local.newDelta} onChange={e=>setLocal({...local,newDelta:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-center font-bold"/></div>)}
-                        {type === 'CLOSE' && <div><label className="text-xs font-bold text-slate-500">買回價格</label><input type="number" autoFocus value={local.exitPrice} onChange={e=>setLocal({...local,exitPrice:e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-3 rounded-xl text-center font-black text-xl" /></div>}
-                        {type === 'ROLL' && <div className="space-y-3"><div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg mb-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Step 1: 平倉舊合約</label><div className="flex justify-between items-center mt-1"><span className="text-xs font-bold">買回價格</span><input type="number" autoFocus value={local.exitPrice} onChange={e=>setLocal({...local,exitPrice:e.target.value})} className="w-24 bg-white dark:bg-slate-700 p-1 rounded text-center font-bold" /></div></div><div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg"><label className="text-[10px] font-bold text-slate-400 uppercase">Step 2: 建立新合約</label><div className="grid grid-cols-2 gap-2 mt-1"><input type="number" placeholder="新權利金" value={local.newPremium} onChange={e=>setLocal({...local,newPremium:e.target.value})} className="bg-white dark:bg-slate-700 p-1 rounded text-center text-xs font-bold"/><input type="number" placeholder="新 Strike" value={local.newStrike} onChange={e=>setLocal({...local,newStrike:e.target.value})} className="bg-white dark:bg-slate-700 p-1 rounded text-center text-xs font-bold"/><input type="date" value={local.newExpiry} onChange={e=>setLocal({...local,newExpiry:e.target.value})} className="bg-white dark:bg-slate-700 p-1 rounded text-center text-xs font-bold"/><input type="number" placeholder="新 Delta" value={local.newDelta} onChange={e=>setLocal({...local,newDelta:e.target.value})} className="bg-white dark:bg-slate-700 p-1 rounded text-center text-xs font-bold"/></div></div></div>}
-                        <div className="flex gap-2 mt-4"><button onClick={onClose} className="flex-1 bg-slate-200 dark:bg-slate-800 text-slate-500 py-3 rounded-xl font-bold">取消</button><button onClick={()=>onExecute(type, local)} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold">確認執行</button></div>
+                        {type === 'OPEN' && (<div className="space-y-3"><div className="grid grid-cols-2 gap-2"><div><label className="text-xs font-bold text-slate-500">標的</label><input value={local.ticker} onChange={e=>setLocal({...local,ticker:e.target.value.toUpperCase()})} className="w-full bg-slate-100 p-2 rounded-xl text-center font-black text-slate-700"/></div><div><label className="text-xs font-bold text-slate-500">類型</label><select value={local.type} onChange={e=>setLocal({...local,type:e.target.value})} className="w-full bg-slate-100 p-2 rounded-xl text-center font-bold text-slate-700"><option value="SC">Sell Call</option><option value="SP">Sell Put</option></select></div></div>{local.type === 'SP' && <div className={`p-2 rounded-lg text-center text-xs font-bold ${prices['QQQ']>inputs.qqq_sma20?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}`}>{prices['QQQ']>inputs.qqq_sma20?'🔥 強勢盤：Delta -0.30':'🌊 震盪盤：Delta -0.20'}</div>}<div className="grid grid-cols-2 gap-2"><input type="number" placeholder="Strike" value={local.newStrike} onChange={e=>setLocal({...local,newStrike:e.target.value})} className="w-full bg-slate-100 p-2 rounded-xl text-center font-bold text-slate-700"/><input type="date" value={local.newExpiry} onChange={e=>setLocal({...local,newExpiry:e.target.value})} className="w-full bg-slate-100 p-2 rounded-xl text-center font-bold text-xs text-slate-700"/></div><div className="grid grid-cols-2 gap-2"><input type="number" placeholder="張數" value={local.contracts} onChange={e=>setLocal({...local,contracts:e.target.value})} className="w-full bg-slate-100 p-2 rounded-xl text-center font-bold text-slate-700"/><input type="number" placeholder="權利金" value={local.newPremium} onChange={e=>setLocal({...local,newPremium:e.target.value})} className="w-full bg-slate-100 p-2 rounded-xl text-center font-bold text-slate-700"/></div><input type="number" placeholder="Delta" value={local.newDelta} onChange={e=>setLocal({...local,newDelta:e.target.value})} className="w-full bg-slate-100 p-2 rounded-xl text-center font-bold text-slate-700"/></div>)}
+                        {type === 'CLOSE' && <div><label className="text-xs font-bold text-slate-500">買回價格</label><input type="number" autoFocus value={local.exitPrice} onChange={e=>setLocal({...local,exitPrice:e.target.value})} className="w-full bg-slate-100 p-3 rounded-xl text-center font-black text-xl text-slate-700" /></div>}
+                        {type === 'ROLL' && <div className="space-y-3"><div className="bg-slate-50 p-2 rounded-lg mb-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Step 1: 平倉舊合約</label><div className="flex justify-between items-center mt-1"><span className="text-xs font-bold text-slate-600">買回價格</span><input type="number" autoFocus value={local.exitPrice} onChange={e=>setLocal({...local,exitPrice:e.target.value})} className="w-24 bg-white p-1 rounded text-center font-bold text-slate-700" /></div></div><div className="bg-slate-50 p-2 rounded-lg"><label className="text-[10px] font-bold text-slate-400 uppercase">Step 2: 建立新合約</label><div className="grid grid-cols-2 gap-2 mt-1"><input type="number" placeholder="新權利金" value={local.newPremium} onChange={e=>setLocal({...local,newPremium:e.target.value})} className="bg-white p-1 rounded text-center text-xs font-bold text-slate-700"/><input type="number" placeholder="新 Strike" value={local.newStrike} onChange={e=>setLocal({...local,newStrike:e.target.value})} className="bg-white p-1 rounded text-center text-xs font-bold text-slate-700"/><input type="date" value={local.newExpiry} onChange={e=>setLocal({...local,newExpiry:e.target.value})} className="bg-white p-1 rounded text-center text-xs font-bold text-slate-700"/><input type="number" placeholder="新 Delta" value={local.newDelta} onChange={e=>setLocal({...local,newDelta:e.target.value})} className="bg-white p-1 rounded text-center text-xs font-bold text-slate-700"/></div></div></div>}
+                        <div className="flex gap-2 mt-4"><button onClick={onClose} className="flex-1 bg-slate-200 text-slate-500 py-3 rounded-xl font-bold hover:bg-slate-300 transition-colors">取消</button><button onClick={()=>onExecute(type, local)} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition-colors">確認執行</button></div>
                     </div>
                 </div>
             );
@@ -197,13 +207,13 @@
         const EditInventoryModal = ({ item, onClose, onSave, onDelete }) => {
             const [l, setL] = useState({...item});
             return (
-                <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2rem] p-6 shadow-2xl z-[110]">
+                <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="w-full max-w-sm bg-white rounded-[2rem] p-6 shadow-2xl z-[110]">
                         <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-black flex gap-2"><Icon name="Edit2"/> 編輯持倉</h3><button onClick={onClose}><Icon name="X"/></button></div>
                         <div className="space-y-3">
-                            <div className="grid grid-cols-2 gap-2"><input value={l.ticker} onChange={e=>setL({...l,ticker:e.target.value.toUpperCase()})} className="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg font-bold"/><select value={l.type} onChange={e=>setL({...l,type:e.target.value})} className="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg font-bold"><option value="SC">Sell Call</option><option value="SP">Sell Put</option></select></div>
-                            <div className="grid grid-cols-2 gap-2"><input type="number" value={l.strike} onChange={e=>setL({...l,strike:e.target.value})} className="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg font-bold"/><input type="date" value={l.expiry} onChange={e=>setL({...l,expiry:e.target.value})} className="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg font-bold"/></div>
-                            <div className="grid grid-cols-3 gap-2"><input type="number" value={l.contracts} onChange={e=>setL({...l,contracts:e.target.value})} className="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg font-bold text-center"/><input type="number" value={l.premium} onChange={e=>setL({...l,premium:e.target.value})} className="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg font-bold text-center"/><input type="number" value={l.delta} onChange={e=>setL({...l,delta:e.target.value})} className="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg font-bold text-center"/></div>
+                            <div className="grid grid-cols-2 gap-2"><input value={l.ticker} onChange={e=>setL({...l,ticker:e.target.value.toUpperCase()})} className="bg-slate-100 p-2 rounded-lg font-bold text-slate-700"/><select value={l.type} onChange={e=>setL({...l,type:e.target.value})} className="bg-slate-100 p-2 rounded-lg font-bold text-slate-700"><option value="SC">Sell Call</option><option value="SP">Sell Put</option></select></div>
+                            <div className="grid grid-cols-2 gap-2"><input type="number" value={l.strike} onChange={e=>setL({...l,strike:e.target.value})} className="bg-slate-100 p-2 rounded-lg font-bold text-slate-700"/><input type="date" value={l.expiry} onChange={e=>setL({...l,expiry:e.target.value})} className="bg-slate-100 p-2 rounded-lg font-bold text-slate-700"/></div>
+                            <div className="grid grid-cols-3 gap-2"><input type="number" value={l.contracts} onChange={e=>setL({...l,contracts:e.target.value})} className="bg-slate-100 p-2 rounded-lg font-bold text-center text-slate-700"/><input type="number" value={l.premium} onChange={e=>setL({...l,premium:e.target.value})} className="bg-slate-100 p-2 rounded-lg font-bold text-center text-slate-700"/><input type="number" value={l.delta} onChange={e=>setL({...l,delta:e.target.value})} className="bg-slate-100 p-2 rounded-lg font-bold text-center text-slate-700"/></div>
                             <div className="flex gap-2 mt-4"><button onClick={()=>onDelete(l.id)} className="p-3 bg-red-100 text-red-500 rounded-xl"><Icon name="Trash2"/></button><button onClick={()=>onSave(l)} className="flex-1 bg-indigo-600 text-white rounded-xl font-bold">儲存</button></div>
                         </div>
                     </div>
@@ -214,12 +224,12 @@
         const EditOptionHistoryModal = ({ trade, onClose, onSave, onDelete }) => {
             const [localTrade, setLocalTrade] = useState({...trade});
             return (
-                <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2rem] p-6 shadow-2xl animate-in fade-in z-[110]">
+                <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="w-full max-w-sm bg-white rounded-[2rem] p-6 shadow-2xl animate-in fade-in z-[110]">
                         <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-black flex gap-2"><Icon name="Edit2"/> 編輯交易</h3><button onClick={onClose}><Icon name="X"/></button></div>
                         <div className="space-y-3">
-                            <div className="grid grid-cols-2 gap-2"><div><label className="text-xs text-slate-500 block">日期</label><input type="date" value={localTrade.date?.split('T')[0]} onChange={e=>setLocalTrade({...localTrade, date: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div><div><label className="text-xs text-slate-500 block">標的</label><input value={localTrade.ticker} onChange={e=>setLocalTrade({...localTrade, ticker: e.target.value.toUpperCase()})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"/></div></div>
-                            <div className="grid grid-cols-2 gap-2"><div><label className="text-xs text-slate-500 block">動作</label><select value={localTrade.type} onChange={e=>setLocalTrade({...localTrade, type: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold"><option value="OPEN">建倉</option><option value="CLOSE">平倉</option><option value="ROLL_CLOSE">轉倉(平)</option><option value="ROLL_OPEN">轉倉(開)</option><option value="MANUAL">補登</option></select></div><div><label className="text-xs text-slate-500 block">金額 ($)</label><input type="number" step="any" value={localTrade.pnl} onChange={e=>setLocalTrade({...localTrade, pnl: e.target.value})} className="w-full bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-xs font-bold text-center" /></div></div>
+                            <div className="grid grid-cols-2 gap-2"><div><label className="text-xs text-slate-500 block">日期</label><input type="date" value={localTrade.date?.split('T')[0]} onChange={e=>setLocalTrade({...localTrade, date: e.target.value})} className="w-full bg-slate-100 p-2 rounded-lg text-xs font-bold text-slate-700"/></div><div><label className="text-xs text-slate-500 block">標的</label><input value={localTrade.ticker} onChange={e=>setLocalTrade({...localTrade, ticker: e.target.value.toUpperCase()})} className="w-full bg-slate-100 p-2 rounded-lg text-xs font-bold text-slate-700"/></div></div>
+                            <div className="grid grid-cols-2 gap-2"><div><label className="text-xs text-slate-500 block">動作</label><select value={localTrade.type} onChange={e=>setLocalTrade({...localTrade, type: e.target.value})} className="w-full bg-slate-100 p-2 rounded-lg text-xs font-bold text-slate-700"><option value="OPEN">建倉</option><option value="CLOSE">平倉</option><option value="ROLL_CLOSE">轉倉(平)</option><option value="ROLL_OPEN">轉倉(開)</option><option value="MANUAL">補登</option></select></div><div><label className="text-xs text-slate-500 block">金額 ($)</label><input type="number" step="any" value={localTrade.pnl} onChange={e=>setLocalTrade({...localTrade, pnl: e.target.value})} className="w-full bg-slate-100 p-2 rounded-lg text-xs font-bold text-center text-slate-700" /></div></div>
                             <div className="text-[10px] text-center text-slate-400 mt-1">正數 (+) = 收入, 負數 (-) = 支出</div>
                             <div className="flex gap-2 mt-4"><button onClick={()=>onDelete(localTrade.id)} className="p-3 bg-red-100 text-red-500 rounded-xl"><Icon name="Trash2"/></button><button onClick={()=>onSave({...localTrade, pnl: parseFloat(localTrade.pnl) || 0})} className="flex-1 bg-indigo-600 text-white rounded-xl font-bold">儲存</button></div>
                         </div>
@@ -241,32 +251,32 @@
             };
 
             return (
-                <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center">
-                    <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl overflow-y-auto max-h-[90vh] z-[110]">
-                        <div className="flex justify-between items-center mb-6 border-b pb-4 dark:border-slate-800"><h3 className="text-xl font-black flex items-center gap-2"><Icon name="Edit2" size={20} className="text-indigo-500" /> 編輯紀錄</h3><button onClick={() => setEditingId(null)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full"><Icon name="X" size={20} /></button></div>
+                <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center">
+                    <div className="w-full max-w-md bg-white rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl overflow-y-auto max-h-[90vh] z-[110]">
+                        <div className="flex justify-between items-center mb-6 border-b pb-4 border-slate-100"><h3 className="text-xl font-black flex items-center gap-2"><Icon name="Edit2" size={20} className="text-indigo-500" /> 編輯紀錄</h3><button onClick={() => setEditingId(null)} className="p-2 bg-slate-100 rounded-full"><Icon name="X" size={20} /></button></div>
                         <div className="space-y-2">
-                            {FIXED_HOLDINGS.map(c => { const t=c.type==='fixed'?c.ticker:(editForm.inputs[c.tickerKey]||c.defaultTicker); return <div key={c.id} className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 px-3 rounded-xl border border-slate-100 dark:border-slate-700"><span className={`font-bold text-xs ${c.color}`}>{t}</span><input type="number" value={editForm.inputs[c.qtyKey]} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, [c.qtyKey]: e.target.value}}))} className="w-24 bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold" /></div>; })}
+                            {FIXED_HOLDINGS.map(c => { const t=c.type==='fixed'?c.ticker:(editForm.inputs[c.tickerKey]||c.defaultTicker); return <div key={c.id} className="flex justify-between items-center bg-slate-50 p-2 px-3 rounded-xl border border-slate-100"><span className={`font-bold text-xs ${c.color}`}>{t}</span><input type="number" value={editForm.inputs[c.qtyKey]} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, [c.qtyKey]: e.target.value}}))} className="w-24 bg-white border rounded-lg px-2 py-1 text-right font-mono font-bold text-slate-700" /></div>; })}
                             
                             {(editForm.inputs.satellites || []).map(s => (
-                                <div key={s.id} className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 px-3 rounded-xl border border-slate-100 dark:border-slate-700">
+                                <div key={s.id} className="flex justify-between items-center bg-slate-50 p-2 px-3 rounded-xl border border-slate-100">
                                     <span className="font-bold text-xs text-emerald-500">{s.ticker}</span>
                                     <input type="number" value={s.qty} onChange={e => {
                                         const newSats = editForm.inputs.satellites.map(si => si.id === s.id ? {...si, qty: e.target.value} : si);
                                         setEditForm(p => ({...p, inputs: {...p.inputs, satellites: newSats}}));
-                                    }} className="w-24 bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold" />
+                                    }} className="w-24 bg-white border rounded-lg px-2 py-1 text-right font-mono font-bold text-slate-700" />
                                 </div>
                             ))}
 
-                            <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 px-3 rounded-xl">
+                            <div className="flex justify-between items-center bg-slate-50 p-2 px-3 rounded-xl">
                                 <span className="font-bold text-xs text-slate-500">現金</span>
                                 <div className="relative w-32">
-                                    <input type="text" inputMode="decimal" value={editForm.inputs.cash_balance} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, cash_balance: e.target.value}}))} className={`w-full bg-white dark:bg-slate-900 border rounded-lg px-2 py-1 text-right font-mono font-bold ${parseFloat(editForm.inputs.cash_balance) < 0 ? 'text-red-500' : ''}`} />
-                                    <button onClick={toggleCashSign} className="absolute left-1 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold bg-slate-200 dark:bg-slate-700 px-1 rounded active:scale-95">+/-</button>
+                                    <input type="text" inputMode="decimal" value={editForm.inputs.cash_balance} onChange={e => setEditForm(p => ({...p, inputs: {...p.inputs, cash_balance: e.target.value}}))} className={`w-full bg-white border rounded-lg px-2 py-1 text-right font-mono font-bold ${parseFloat(editForm.inputs.cash_balance) < 0 ? 'text-red-500' : 'text-slate-700'}`} />
+                                    <button onClick={toggleCashSign} className="absolute left-1 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold bg-slate-200 px-1 rounded active:scale-95">+/-</button>
                                 </div>
                             </div>
                             
-                            <textarea value={editForm.memo || ''} onChange={e => setEditForm(p => ({...p, memo: e.target.value}))} className="w-full bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl p-4 text-sm h-20 mt-2" placeholder="備註..." />
-                            <button onClick={()=>saveEdit({...editForm, inputs: {...editForm.inputs, total_realized_premium: parseFloat(editForm.inputs.total_realized_premium) || 0}})} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black flex justify-center gap-2 mt-2"><Icon name="Save" size={20} /> 保存修正</button>
+                            <textarea value={editForm.memo || ''} onChange={e => setEditForm(p => ({...p, memo: e.target.value}))} className="w-full bg-slate-50 border-2 rounded-2xl p-4 text-sm h-20 mt-2 text-slate-700" placeholder="備註..." />
+                            <button onClick={()=>saveEdit({...editForm, inputs: {...editForm.inputs, total_realized_premium: parseFloat(editForm.inputs.total_realized_premium) || 0}})} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black flex justify-center gap-2 mt-2 hover:bg-indigo-700 transition-colors"><Icon name="Save" size={20} /> 保存修正</button>
                         </div>
                     </div>
                 </div>
@@ -357,7 +367,6 @@
             const ibitTarget = getV('target_sat_ibit');
             const coreTargetAlloc = Math.max(0, 100 - totalSatPctTarget - ibitTarget);
             
-            // Core Asymmetric Logic
             const tqqqInCoreTarget = getV('rebalance_core_target');
             const coreTolUp = getV('core_tol_up') || 15;
             const coreTolDown = getV('core_tol_down') || 15;
@@ -366,7 +375,6 @@
             if (tqqqRatio > tqqqInCoreTarget + coreTolUp) coreStatus = 'high';
             if (tqqqRatio < tqqqInCoreTarget - coreTolDown) coreStatus = 'low';
 
-            // IBIT Logic
             const checkSat = (w, target, up, down) => {
                 const u = getNum(up) || 20; const d = getNum(down) || 10;
                 if (w > target * (1 + u/100)) return 'high';
@@ -375,10 +383,9 @@
             };
             const statIbit = checkSat(ibitW, ibitTarget, inputs.tol_up_ibit, inputs.tol_down_ibit);
 
-            // Fetch Core Track Ticker Price (Default QQQ if undefined)
             const coreTrackTicker = (inputs.core_track_ticker || 'QQQ').toUpperCase();
             const benchmarkPrice = getP(coreTrackTicker); 
-            const sma200 = getV('qqq_sma200'); // Variable name kept for compatibility, but represents Core SMA
+            const sma200 = getV('qqq_sma200'); 
             const isBear = sma200 > 0 && benchmarkPrice > 0 && benchmarkPrice < (sma200 * 0.97); 
             const bearData = { isActive: isBear, totalDefensive: getV('cash_balance') + (getP('SGOV') * getV('qty_sgov')), monthlyBuy: (getV('cash_balance') + (getP('SGOV') * getV('qty_sgov'))) / 12 };
 
@@ -498,20 +505,18 @@
                     const triggerSell = smaVal * (1 - sellBuffer/100);
                     const triggerBuy = smaVal * (1 + buyBuffer/100);
 
-                    // Sell Signal
                     if (price < triggerSell) {
                         a.push({ 
                             type: 'danger', 
                             title: `【${ticker}】 跌破均線 (防禦)`, 
-                            msg: `現價 $${price} (距均線 ${dist.toFixed(2)}%) < SMA $${smaVal}。已低於觸發價 $${triggerSell.toFixed(2)} (緩衝 -${sellBuffer}%)。建議清倉。` 
+                            msg: `現價 $${price} (距均線 ${dist.toFixed(2)}%) < 觸發價 $${triggerSell.toFixed(2)} (SMA $${smaVal})。建議清倉。` 
                         });
                     }
-                    // Buy Signal
                     else if (price > triggerBuy) {
                         a.push({ 
                             type: 'opportunity', 
                             title: `【${ticker}】 站上均線 (進攻)`, 
-                            msg: `現價 $${price} (距均線 +${dist.toFixed(2)}%) > SMA $${smaVal}。已高於觸發價 $${triggerBuy.toFixed(2)} (緩衝 +${buyBuffer}%)。建議進場。` 
+                            msg: `現價 $${price} (距均線 +${dist.toFixed(2)}%) > 觸發價 $${triggerBuy.toFixed(2)} (SMA $${smaVal})。建議進場。` 
                         });
                     }
                 }
@@ -577,6 +582,7 @@
             const [prices, setPrices] = useState({});
             const [loadingPrices, setLoadingPrices] = useState(false);
             const [isSaving, setIsSaving] = useState(false);
+            const [isSwitching, setIsSwitching] = useState(false);
             const [message, setMessage] = useState(null);
             const [historyTab, setHistoryTab] = useState('nav'); 
             const [chartMode, setChartMode] = useState('NAV_DD');
@@ -584,21 +590,36 @@
             const [expandedYears, setExpandedYears] = useState({});
             const [historyExpanded, setHistoryExpanded] = useState(false);
             const [optionHistoryExpanded, setOptionHistoryExpanded] = useState(false);
-            const [darkMode, setDarkMode] = useState(() => localStorage.getItem('qqq_theme') === 'dark');
             const [customSyncId, setCustomSyncId] = useState(() => localStorage.getItem('qqq_sync_id') || '');
             const [tempSyncId, setTempSyncId] = useState(customSyncId);
             const [showBenchmark, setShowBenchmark] = useState(false);
             
+            // --- STATE VARIABLES ---
             const [openSettings, setSettings] = useState({ account: true, system: false, strategy: false, rsi_matrix: false });
             const [isAlertsView, setIsAlertsView] = useState(false);
             const [isMottoLocked, setIsMottoLocked] = useState(true);
             const [isStrategyEditing, setIsStrategyEditing] = useState(false);
             const [isCalcOpen, setIsCalcOpen] = useState(false); 
-            const [dashboardSections, setSections] = useState({ simulator: true, rebalance: true, holdings: true, pie: true, rsiHelper: true }); 
+            // Layout with Safe Persistence
+            const [dashboardSections, setSections] = useState(() => {
+                try {
+                    const saved = localStorage.getItem('qqq_dashboard_sections');
+                    return saved ? JSON.parse(saved) : { simulator: true, rebalance: true, holdings: true, pie: true, rsiHelper: true };
+                } catch(e) {
+                    return { simulator: true, rebalance: true, holdings: true, pie: true, rsiHelper: true };
+                }
+            });
+
+            // Save layout preference
+            useEffect(() => {
+                localStorage.setItem('qqq_dashboard_sections', JSON.stringify(dashboardSections));
+            }, [dashboardSections]);
+
             const [simulatedTotal, setSimulatedTotal] = useState('');
             const [stressSimPct, setStressSimPct] = useState(0); 
             const [simLeverage, setSimLeverage] = useState(3); 
 
+            // --- MODAL STATE ---
             const [openModalType, setOpenModalType] = useState(null);
             const [targetOptionId, setTargetOptionId] = useState(null);
             const [editingTrade, setEditingTrade] = useState(null);
@@ -607,10 +628,11 @@
             const [editForm, setEditForm] = useState(null); 
 
             const [inputs, setInputs] = useState({
+                motto: '', // Initialize motto to empty string
                 current_rsi: '', qqq_ath: 0, option_history: [], qqq_sma200: 0, qqq_sma20: 0, ibit_sma20: 0,
-                global_sma_buffer_buy: 3, global_sma_buffer_sell: 3,
+                global_sma_buffer_buy: 3, global_sma_buffer_sell: 3, // Global Buffers
                 exchange_rate: 32.5, rebalance_core_target: 50,
-                core_tol_up: 15, core_tol_down: 15,
+                core_tol_up: 15, core_tol_down: 15, // New Core Tolerances
                 tol_up_ibit: 20, tol_down_ibit: 10, target_sat_ibit: 10,
                 ticker_core_1: 'QQQ', qty_qqq: 0, qty_tqqq: 0, qty_ibit: 0, qty_sgov: 0,
                 core_track_ticker: 'QQQ', // Default core tracking ticker
@@ -629,22 +651,51 @@
             
             useEffect(() => { 
                 if (!user) return;
+                
+                // Clear state when switching users to prevent lag/stale data
+                setRecords([]);
+                setInputs(prev => ({ ...prev, satellites: [], option_history: [] }));
+                setIsSwitching(true);
+
                 const uid = customSyncId || user.uid;
-                const uRecs = db.collection('artifacts').doc(APP_ID).collection('users').doc(uid).collection('trading_records').onSnapshot(s => setRecords(s.docs.map(d => ({id:d.id,...d.data()})))); 
-                const uConf = db.collection('artifacts').doc(APP_ID).collection('users').doc(uid).collection('config').doc('current').onSnapshot(s => { 
-                    if (s.exists) { 
-                        const d = s.data(); 
-                        d.record_date = new Date().toISOString().split('T')[0]; 
-                        if(!d.option_history) d.option_history=[]; 
-                        if (!d.satellites) d.satellites = [];
-                        setInputs(p => ({...p, ...d})); 
+                
+                // Fix: Add error handling to prevent infinite loading
+                const uRecs = db.collection('artifacts').doc(APP_ID).collection('users').doc(uid).collection('trading_records').onSnapshot(
+                    s => setRecords(s.docs.map(d => ({id:d.id,...d.data()}))),
+                    e => {
+                        console.error("Records sync error:", e);
+                        setIsSwitching(false);
                     }
-                }); 
+                ); 
+                
+                const uConf = db.collection('artifacts').doc(APP_ID).collection('users').doc(uid).collection('config').doc('current').onSnapshot(
+                    s => { 
+                        if (s.exists) { 
+                            const d = s.data(); 
+                            d.record_date = new Date().toISOString().split('T')[0]; 
+                            if(!d.option_history) d.option_history=[]; 
+                            if (!d.satellites) d.satellites = [];
+                            if (d.motto === undefined) d.motto = ''; 
+                            setInputs(p => ({...p, ...d})); 
+                        }
+                        setIsSwitching(false); // Done loading
+                    },
+                    e => {
+                        console.error("Config sync error:", e);
+                        setIsSwitching(false); // Fail safe: Stop loading spinner
+                        showToast("連線逾時，請檢查網路");
+                    }
+                ); 
                 fetchPrices(); 
                 return () => { uRecs(); uConf(); };
             }, [user, customSyncId]);
 
-            useEffect(() => { document.documentElement.className = darkMode ? 'dark' : 'light'; }, [darkMode]);
+            // AUTO-FETCH FIX: Trigger fetchPrices when satellites or core ticker change
+            useEffect(() => {
+                if (inputs.satellites && inputs.satellites.length > 0) {
+                    fetchPrices();
+                }
+            }, [inputs.satellites, inputs.core_track_ticker]);
 
             const metrics = useMemo(() => calculatePortfolioMetrics(prices, inputs, records, simulatedTotal, filterMode, stressSimPct, simLeverage), [prices, inputs, records, filterMode, simulatedTotal, stressSimPct, simLeverage]);
             const historyGroups = useMemo(() => processHistoryData(records, inputs.option_history || []), [records, inputs.option_history]);
@@ -663,7 +714,7 @@
                 const safeValue = value === undefined ? '' : value; 
                 const newSats = inputs.satellites.map(s => s.id === id ? { ...s, [field]: safeValue } : s); 
                 setInputs(p => ({ ...p, satellites: newSats }));
-                if (field === 'current_rsi') syncToCloud('satellites', newSats); 
+                if (field === 'current_rsi') syncToCloud('satellites', newSats); // Explicitly sync RSI changes immediately
             };
             const saveSatellites = () => syncToCloud('satellites', inputs.satellites);
             const deleteSatellite = (id) => { const newSats = inputs.satellites.filter(s => s.id !== id); setInputs(p => ({ ...p, satellites: newSats })); syncToCloud('satellites', newSats); };
@@ -691,8 +742,9 @@
 
             const fetchPrices = useCallback(async (force = false) => { 
                 if (loadingPrices) return; 
-                const CACHE_KEY = 'qqq_price_cache_v14'; 
+                const CACHE_KEY = 'qqq_price_cache_v16'; 
                 const satTickers = (inputs.satellites || []).flatMap(s => [s.ticker, s.trackingTicker]).filter(Boolean);
+                // Ensure Core Track Ticker is fetched
                 const coreTrackTicker = inputs.core_track_ticker || 'QQQ';
                 const syms = [...new Set(['QQQ', 'QQQM', 'TQQQ', 'IBIT', 'SGOV', coreTrackTicker, ...satTickers].filter(Boolean).map(s=>s.trim().toUpperCase()))]; 
                 
@@ -750,41 +802,52 @@
 
             return (
                 <div className="pb-40 min-h-screen transition-colors duration-300 font-black text-left select-none overflow-x-hidden">
-                    {message && <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-top-4"><div className="bg-indigo-600 text-white px-6 py-3 rounded-full shadow-2xl text-sm flex items-center gap-2"><Icon name="CheckCircle" size={16} /> {message}</div></div>}
+                    {message && <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-top-4"><div className="bg-brand-600 text-white px-6 py-3 rounded-full shadow-2xl text-sm flex items-center gap-2"><Icon name="CheckCircle" size={16} /> {message}</div></div>}
+                    {isSwitching && <div className="loading-overlay"><div className="w-12 h-12 border-4 border-brand-100 border-t-brand-600 rounded-full animate-spin"></div><div className="text-brand-600 font-black">帳號同步中...</div></div>}
                     
                     <EditRecordModal editingId={editingId} editForm={editForm} setEditingId={setEditingId} setEditForm={setEditForm} saveEdit={async () => { await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').doc(editingId).update({ inputs: editForm.inputs, memo: editForm.memo }); setEditingId(null); showToast("更新成功"); }} />
                     {editingInventoryItem && <EditInventoryModal item={editingInventoryItem} onClose={()=>setEditingInventoryItem(null)} onSave={(i)=>{const nInv = inputs.options_inventory.some(o=>o.id===i.id)?inputs.options_inventory.map(o=>o.id===i.id?i:o):[...inputs.options_inventory,i]; setInputs(p=>({...p,options_inventory:nInv})); syncToCloud('options_inventory',nInv); setEditingInventoryItem(null);}} onDelete={(id)=>{const nInv=inputs.options_inventory.filter(o=>o.id!==id); setInputs(p=>({...p,options_inventory:nInv})); syncToCloud('options_inventory',nInv); setEditingInventoryItem(null);}} />}
                     {editingTrade && <EditOptionHistoryModal trade={editingTrade} onClose={()=>setEditingTrade(null)} onSave={handleTradeSave} onDelete={handleTradeDelete} />}
                     {openModalType && <TradeActionModal type={openModalType} targetId={targetOptionId} inputs={inputs} prices={prices} onClose={()=>{setOpenModalType(null);}} onExecute={handleExecuteTrade} />}
 
-                    <header className="fixed top-0 inset-x-0 bg-indigo-900 dark:bg-slate-950 z-50 px-5 py-4 pt-6 flex justify-between items-center shadow-lg text-white">
-                        <div className="flex items-center gap-2 font-black"><div className="bg-white p-2 rounded-2xl shadow-sm"><Icon name="TrendingUp" className="text-indigo-900" size={18} /></div><h1 className="text-lg">Alpha Horizon</h1></div>
-                        <div className="flex gap-2"><button onClick={() => setView('sync_settings')} className="p-2.5 rounded-xl bg-white text-slate-700 shadow-sm"><Icon name="Settings" size={20} /></button><div className="flex items-center gap-1.5 ml-1"><button onClick={() => fetchPrices(true)} className="p-2 text-white/80"><Icon name="RefreshCcw" size={22} className={loadingPrices ? 'animate-spin' : ''} /></button><div className={`w-3.5 h-3.5 rounded-full border-2 ${loadingPrices ? 'bg-red-500 sync-loading' : 'bg-emerald-500'}`}></div></div></div>
+                    <header className="fixed top-0 inset-x-0 bg-white z-50 px-5 py-4 pt-6 flex justify-between items-center shadow-sm">
+                        <div className="flex items-center gap-2 font-black"><div className="bg-brand-50 p-2 rounded-2xl"><Icon name="TrendingUp" className="text-brand-600" size={18} /></div><h1 className="text-lg text-slate-800">Alpha Horizon</h1></div>
+                        <div className="flex gap-2"><button onClick={() => setView('sync_settings')} className="p-2.5 rounded-xl bg-slate-50 text-slate-600"><Icon name="Settings" size={20} /></button><div className="flex items-center gap-1.5 ml-1"><button onClick={() => fetchPrices(true)} className="p-2 text-slate-400"><Icon name="RefreshCcw" size={22} className={loadingPrices ? 'animate-spin' : ''} /></button><div className={`w-3.5 h-3.5 rounded-full border-2 ${loadingPrices ? 'bg-red-500 sync-loading' : 'bg-emerald-500'}`}></div></div></div>
                     </header>
 
                     <main className="max-w-md mx-auto p-4 pt-28 space-y-6">
                         {view === 'dashboard' && (
                             <div className="space-y-6 animate-in fade-in">
-                                <Card className="p-4 bg-gradient-to-r from-slate-800 to-indigo-900 text-white border-none">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div className="flex gap-2 opacity-80">
-                                            <Icon name={isAlertsView ? "ShieldAlert" : "Quote"} size={16} />
-                                            <span className="text-[10px] tracking-widest font-bold">{isAlertsView ? "策略警示" : "投資座右銘"}</span>
+                                <Card className="p-4 bg-white border-2 border-brand-100 shadow-xl shadow-brand-500/5 relative overflow-hidden">
+                                    <div className="absolute -right-4 -top-4 opacity-5 pointer-events-none"><Icon name="Quote" size={120} className="text-brand-900"/></div>
+                                    <div className="flex justify-between items-start mb-3 relative z-10">
+                                        <div className="flex gap-2 items-center text-brand-900">
+                                            <div className={`p-1.5 rounded-lg ${isAlertsView ? 'bg-red-100 text-red-600' : 'bg-brand-100 text-brand-600'}`}>
+                                                <Icon name={isAlertsView ? "ShieldAlert" : "Quote"} size={16} />
+                                            </div>
+                                            <span className={`text-xs font-black tracking-widest ${isAlertsView ? 'text-red-600' : 'text-slate-500'}`}>{isAlertsView ? "策略警示" : "投資座右銘"}</span>
                                         </div>
                                         <div className="flex gap-2">
-                                             {!isAlertsView && <button onClick={() => setIsMottoLocked(!isMottoLocked)} className="p-1 bg-white/20 rounded-full"><Icon name={isMottoLocked?"Lock":"Unlock"} size={10}/></button>}
-                                             <button onClick={() => setIsAlertsView(!isAlertsView)} className={`p-1 bg-white/20 rounded-full ${alerts.length>0?'bg-red-500/80':''}`}><Icon name="AlertCircle" size={12}/></button>
+                                             {!isAlertsView && <button onClick={() => setIsMottoLocked(!isMottoLocked)} className="p-1.5 bg-slate-50 text-slate-400 rounded-lg hover:bg-slate-100 transition-colors"><Icon name={isMottoLocked?"Lock":"Unlock"} size={14}/></button>}
+                                             <button onClick={() => setIsAlertsView(!isAlertsView)} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all shadow-sm ${alerts.length > 0 ? 'bg-red-500 text-white animate-pulse' : (isAlertsView ? 'bg-slate-100 text-slate-600' : 'bg-brand-50 text-brand-600')}`}>
+                                                 {isAlertsView ? '返回心法' : (alerts.length > 0 ? `查看警示 (${alerts.length})` : '查看警示')}
+                                                 {alerts.length > 0 && !isAlertsView && <div className="w-2 h-2 rounded-full bg-white animate-bounce"></div>}
+                                             </button>
                                         </div>
                                     </div>
                                     {isAlertsView ? (
-                                        alerts.length ? alerts.map((a,i)=><div key={i} className={`p-3 rounded-xl mb-2 text-xs font-bold border-l-4 shadow-sm ${a.type==='danger'?'bg-red-50 text-red-800 border-red-500 dark:bg-red-900/30 dark:text-red-200':a.type==='opportunity'?'bg-emerald-50 text-emerald-800 border-emerald-500 dark:bg-emerald-900/30 dark:text-emerald-200':'bg-amber-50 text-amber-800 border-amber-500 dark:bg-amber-900/30 dark:text-amber-200'}`}>{a.type==='danger'?'🔴':(a.type==='opportunity'?'🟢':'🟡')} {a.title}<div className="font-medium opacity-80 mt-1 ml-5 leading-relaxed">{a.msg}</div></div>) : <div className="text-center opacity-70 text-xs py-4">目前無策略警示</div>
+                                        alerts.length ? (
+                                            <div className="space-y-2">
+                                                {alerts.map((a,i)=><div key={i} className={`p-3 rounded-xl text-xs font-bold border-l-4 shadow-sm bg-slate-50 text-slate-700 ${a.type==='danger'?'border-red-500 bg-red-50/50':'border-emerald-500 bg-emerald-50/50'}`}><div className="flex items-center gap-2 mb-1">{a.type==='danger'?'🔴':'🟢'} <span className="text-sm">{a.title}</span></div><div className="font-medium opacity-80 leading-relaxed ml-6">{a.msg}</div></div>)}
+                                            </div>
+                                        ) : <div className="text-center text-xs py-8 text-slate-400 font-bold bg-slate-50 rounded-xl border border-slate-100">目前無策略警示</div>
                                     ) : (
-                                        <textarea value={inputs.motto} readOnly={isMottoLocked} onChange={e=>handleInputChange('motto',e.target.value)} onBlur={e=>syncToCloud('motto',e.target.value)} className={`w-full bg-transparent text-lg font-black text-center outline-none resize-none ${isMottoLocked?'':'bg-white/10 rounded-xl'}`} rows="6" placeholder="輸入心法..." />
+                                        <textarea value={inputs.motto} readOnly={isMottoLocked} onChange={e=>handleInputChange('motto',e.target.value)} onBlur={e=>syncToCloud('motto',e.target.value)} className={`w-full bg-transparent text-lg font-black text-center outline-none resize-none text-slate-700 placeholder-slate-300 transition-all ${isMottoLocked?'':'bg-slate-50 p-2 rounded-xl ring-2 ring-brand-100'}`} rows="4" placeholder="在此輸入您的投資心法..." />
                                     )}
                                 </Card>
 
                                 {/* --- RSI Helper Card (Collapsible) --- */}
-                                <Card className="mt-4 border-2 border-indigo-100 dark:border-slate-800">
+                                <Card className="mt-4 border-2 border-brand-50">
                                   <div className="flex justify-between items-center mb-2 cursor-pointer" onClick={()=>setSections(p=>({...p,rsiHelper:!p.rsiHelper}))}>
                                     <div className="flex items-center gap-2">
                                         <Icon name="Zap" className="text-amber-500" />
@@ -796,21 +859,21 @@
                                   {dashboardSections.rsiHelper && (
                                     <>
                                         {/* Core (TQQQ) */}
-                                        <div className="flex items-center gap-4 mb-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+                                        <div className="flex items-center gap-4 mb-3 border-b border-slate-100 pb-3">
                                             <div className="relative w-20">
                                                 <input 
                                                     type="number" 
                                                     value={inputs.current_rsi} 
                                                     onChange={e=>handleInputChange('current_rsi', e.target.value)} 
                                                     onBlur={e=>syncToCloud('current_rsi', e.target.value)}
-                                                    className="w-full bg-indigo-50 dark:bg-slate-800 p-2 rounded-lg text-center font-black text-lg outline-none focus:ring-2 focus:ring-indigo-500 text-indigo-600 dark:text-indigo-400"
+                                                    className="w-full bg-brand-50 p-2 rounded-lg text-center font-black text-lg outline-none focus:ring-2 focus:ring-brand-500 text-brand-600"
                                                     placeholder="RSI"
                                                 />
-                                                <label className="absolute -top-2 left-1 text-[8px] bg-white dark:bg-slate-900 px-1 text-slate-400 font-bold">{inputs.core_track_ticker || 'QQQ'}</label>
+                                                <label className="absolute -top-2 left-1 text-[8px] bg-white px-1 text-slate-400 font-bold">{inputs.core_track_ticker || 'QQQ'}</label>
                                             </div>
                                             
                                             <div className="flex-1 flex justify-between items-center">
-                                                <div className="flex flex-col"><span className="text-[10px] text-slate-400 font-bold">TQQQ</span><span className="text-sm font-black text-slate-700 dark:text-slate-200">{metrics.rsiSuggestion.contracts} 張</span></div>
+                                                <div className="flex flex-col"><span className="text-[10px] text-slate-400 font-bold">TQQQ</span><span className="text-sm font-black text-slate-700">{metrics.rsiSuggestion.contracts} 張</span></div>
                                                 <div className="flex flex-col text-right"><span className="text-[9px] text-slate-400">Delta / Cover</span><span className="text-[10px] font-bold text-slate-500">{metrics.rsiSuggestion.delta} / {metrics.rsiSuggestion.cover}%</span></div>
                                             </div>
                                         </div>
@@ -825,14 +888,14 @@
                                                             value={s.current_rsi || ''} 
                                                             onChange={e=>updateSatellite(s.id, 'current_rsi', e.target.value)} 
                                                             onBlur={()=>syncToCloud('satellites', inputs.satellites)}
-                                                            className="w-full bg-slate-50 dark:bg-slate-800 p-2 rounded-lg text-center font-black text-sm outline-none focus:ring-2 focus:ring-emerald-500 text-slate-600 dark:text-slate-300 placeholder-slate-300"
+                                                            className="w-full bg-slate-50 p-2 rounded-lg text-center font-black text-sm outline-none focus:ring-2 focus:ring-emerald-500 text-slate-600 placeholder-slate-300"
                                                             placeholder="-"
                                                         />
                                                         {/* --- UPDATED LABEL: Shows Track Ticker (e.g., TSLA) --- */}
-                                                        <label className="absolute -top-2 left-1 text-[8px] bg-white dark:bg-slate-900 px-1 text-emerald-500 font-bold uppercase truncate max-w-[60px]">{s.trackTicker}</label>
+                                                        <label className="absolute -top-2 left-1 text-[8px] bg-white px-1 text-emerald-500 font-bold uppercase truncate max-w-[60px]">{s.trackTicker}</label>
                                                     </div>
                                                     <div className="flex-1 flex justify-between items-center">
-                                                        <div className="flex flex-col"><span className="text-[10px] text-slate-400 font-bold">{s.ticker}</span><span className="text-sm font-black text-slate-700 dark:text-slate-200">{s.rsiSuggestion.contracts} 張</span></div>
+                                                        <div className="flex flex-col"><span className="text-[10px] text-slate-400 font-bold">{s.ticker}</span><span className="text-sm font-black text-slate-700">{s.rsiSuggestion.contracts} 張</span></div>
                                                         <div className="flex flex-col text-right"><span className="text-[9px] text-slate-400">Delta / Cover</span><span className="text-[10px] font-bold text-slate-500">{s.rsiSuggestion.delta} / {s.rsiSuggestion.cover}%</span></div>
                                                     </div>
                                                 </div>
@@ -843,129 +906,129 @@
                                   )}
                                 </Card>
 
-                                <Card className="bg-gradient-to-br from-slate-900 via-indigo-950 to-indigo-900 text-white border-none p-7 relative overflow-hidden group"><div className="absolute -right-4 -bottom-4 opacity-10 rotate-12"><Icon name="TrendingUp" size={160} /></div><div className="flex justify-between"><label className="text-[10px] opacity-50 uppercase tracking-widest">總資產</label></div><div className="mt-2"><div className="text-4xl font-black font-mono">${metrics.totalCapital.toLocaleString(undefined,{maximumFractionDigits:0})}{inputs.cash_balance < 0 && <span className="text-sm font-bold text-red-300 ml-2">(融資: -${Math.abs(inputs.cash_balance).toLocaleString()})</span>}</div><div className="text-sm font-mono text-white/50">≈ NT$ {(metrics.totalCapital*inputs.exchange_rate).toLocaleString(undefined,{maximumFractionDigits:0})}</div></div><div className="mt-4 pt-3 border-t border-white/10 flex justify-between text-xs font-bold z-10 relative"><div><span className="opacity-40 text-[9px] block">月報酬</span><span className={`text-lg ${metrics.performanceStats.mtd>=0?'text-emerald-400':'text-red-400'}`}>{metrics.performanceStats.mtd>0?'+':''}{metrics.performanceStats.mtd.toFixed(2)}%</span></div><div className="text-center"><span className="opacity-40 text-[9px] block">已實現權利金</span><span className="text-lg text-amber-400 font-mono">${totalRealizedPremium.toLocaleString(undefined,{maximumFractionDigits:0})}</span></div><div className="text-right"><span className="opacity-40 text-[9px] block">貸款</span><span className="font-mono text-base text-red-500">${inputs.loan_amount.toLocaleString()}</span></div></div></Card>
-
-                                {/* --- Simulator with Leverage --- */}
-                                <Card className="p-5 bg-gradient-to-br from-slate-800 to-indigo-900 text-white border-none relative overflow-hidden">
-                                    <div className="flex justify-between items-center mb-4 z-10 relative"><div className="flex gap-2 text-xs font-black opacity-80 items-center"><Icon name="Activity" size={16} /> 壓力測試</div><button onClick={()=>setSections(p=>({...p,simulator:!p.simulator}))}><Icon name={dashboardSections.simulator?"ChevronUp":"ChevronDown"} size={16}/></button></div>
-                                    {dashboardSections.simulator && <div className="z-10 relative space-y-4">
-                                        <div className="grid grid-cols-3 gap-2 text-center items-end border-b border-white/10 pb-3">
-                                            <div className="flex flex-col items-center"><span className="text-[10px] opacity-60 uppercase tracking-widest mb-1">跌至 MA200</span><span className="font-mono text-sm font-bold text-slate-300">${inputs.qqq_sma200}</span><span className="text-[9px] font-bold text-red-400">{metrics.qqqAthMetrics.toMA200?.toFixed(2)}%</span></div>
-                                            <div className="flex flex-col items-center"><span className="text-[10px] opacity-60 uppercase tracking-widest mb-1">{inputs.core_track_ticker || 'QQQ'}</span><span className="font-mono text-2xl font-black text-white">${metrics.qqqAthMetrics.currentPrice}</span></div>
-                                            <div className="flex flex-col items-center"><span className="text-[10px] opacity-60 uppercase tracking-widest mb-1">漲至 ATH</span><span className="font-mono text-sm font-bold text-slate-300">${inputs.qqq_ath}</span><span className="text-[9px] font-bold text-emerald-400">+{metrics.qqqAthMetrics.toATH?.toFixed(1)}%</span></div>
-                                        </div>
-                                        <div className="bg-black/20 rounded-xl p-3 border border-white/5 space-y-3">
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div className="flex flex-col gap-1 bg-white/5 p-2 rounded-xl"><span className="text-[9px] opacity-60 uppercase tracking-wider">預期漲跌幅 %</span><div className="flex items-center gap-1"><input type="number" value={Math.round(stressSimPct*100)/100} onChange={e=>setStressSimPct(parseFloat(e.target.value)||0)} className={`w-full bg-transparent font-mono font-bold outline-none text-lg text-center ${stressSimPct>=0?'text-emerald-400':'text-red-400'}`}/><span className="text-xs font-bold text-slate-400">%</span></div></div>
-                                                <div className="flex flex-col gap-1 bg-white/5 p-2 rounded-xl"><span className="text-[9px] opacity-60 uppercase tracking-wider">設定總資產槓桿</span><div className="flex items-center justify-center gap-1"><button onClick={()=>setSimLeverage(Math.max(0, simLeverage-0.1))} className="text-slate-400 p-1">-</button><input type="number" value={simLeverage.toFixed(1)} onChange={e=>setSimLeverage(parseFloat(e.target.value))} className="w-12 bg-transparent font-mono font-bold text-amber-400 outline-none text-xl text-center" /><span className="text-xs font-bold text-slate-400">x</span><button onClick={()=>setSimLeverage(simLeverage+0.1)} className="text-slate-400 p-1">+</button></div></div>
-                                            </div>
-                                            <div className="flex items-center gap-2"><input type="range" min="-30" max="30" step="0.5" value={stressSimPct} onChange={e=>setStressSimPct(parseFloat(e.target.value))} className="w-full h-1 bg-slate-600 rounded-lg appearance-none cursor-pointer opacity-50 hover:opacity-100"/></div>
-                                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/10">
-                                                <div className="flex flex-col items-center"><span className="text-[9px] opacity-60 uppercase tracking-wider mb-1">預估損益</span><span className={`text-lg font-black font-mono ${metrics.simulatedMetrics.simulatedPnL>=0?'text-emerald-400':'text-red-400'}`}>{metrics.simulatedMetrics.simulatedPnL>=0?'+':''}{Math.round(metrics.simulatedMetrics.simulatedPnL).toLocaleString()}</span></div>
-                                                <div className="flex flex-col items-center"><span className="text-[9px] opacity-60 uppercase tracking-wider mb-1">預估總資產</span><span className="text-lg font-black font-mono text-white">${Math.round(metrics.simulatedMetrics.simulatedTotalAsset).toLocaleString()}</span></div>
-                                            </div>
-                                        </div>
-                                    </div>}
-                                </Card>
+                                <Card className="bg-white border-none p-7 relative overflow-hidden group shadow-lg"><div className="absolute top-0 right-0 w-32 h-32 bg-brand-50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div><div className="flex justify-between relative z-10"><label className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">總資產</label></div><div className="mt-2 relative z-10"><div className="text-4xl font-black font-mono text-slate-800">${metrics.totalCapital.toLocaleString(undefined,{maximumFractionDigits:0})}{inputs.cash_balance < 0 && <span className="text-sm font-bold text-red-400 ml-2">(融資: -${Math.abs(inputs.cash_balance).toLocaleString()})</span>}</div><div className="text-sm font-mono text-slate-400">≈ NT$ {(metrics.totalCapital*inputs.exchange_rate).toLocaleString(undefined,{maximumFractionDigits:0})}</div></div><div className="mt-6 pt-4 border-t border-slate-100 flex justify-between text-xs font-bold z-10 relative"><div><span className="text-slate-400 text-[9px] block">月報酬</span><span className={`text-lg ${metrics.performanceStats.mtd>=0?'text-emerald-500':'text-red-500'}`}>{metrics.performanceStats.mtd>0?'+':''}{metrics.performanceStats.mtd.toFixed(2)}%</span></div><div className="text-center"><span className="text-slate-400 text-[9px] block">已實現權利金</span><span className="text-lg text-amber-500 font-mono">${totalRealizedPremium.toLocaleString(undefined,{maximumFractionDigits:0})}</span></div><div className="text-right"><span className="text-slate-400 text-[9px] block">貸款</span><span className="font-mono text-base text-red-500">${inputs.loan_amount.toLocaleString()}</span></div></div></Card>
 
                                 {/* --- Rebalance Visuals --- */}
-                                <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 border-2 border-slate-200 dark:border-slate-700 shadow-lg">
-                                    <div className="flex justify-between mb-3"><div className="flex gap-2 text-xs font-black text-slate-400"><Icon name="Scale" size={14} /> 再平衡檢測</div><button onClick={()=>setSections(p=>({...p,rebalance:!p.rebalance}))}><Icon name={dashboardSections.rebalance?"ChevronUp":"ChevronDown"} size={16} /></button></div>
-                                    {dashboardSections.rebalance && <div className="space-y-4">
-                                        <div className="space-y-1"><div className="flex justify-between text-xs font-bold mb-1"><span className="text-indigo-600">TQQQ {metrics.rebalanceStatus.tqqqRatio.toFixed(1)}%</span><span className="text-orange-500">{inputs.ticker_core_1} {metrics.rebalanceStatus.qqqRatio.toFixed(1)}%</span></div><div className="h-4 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden flex relative"><div className="h-full bg-indigo-600 flex items-center justify-center text-[9px] text-white/80" style={{width: `${metrics.rebalanceStatus.tqqqRatio}%`}}></div><div className="h-full bg-orange-500 flex items-center justify-center text-[9px] text-white/80" style={{width: `${metrics.rebalanceStatus.qqqRatio}%`}}></div><div className="absolute top-0 bottom-0 w-0.5 bg-white z-10" style={{left: `${metrics.rebalanceStatus.tqqqInCoreTarget}%`}}></div></div>
+                                <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm">
+                                    <div className="flex justify-between mb-4"><div className="flex gap-2 text-xs font-black text-slate-400"><Icon name="Scale" size={14} /> 再平衡檢測</div><button onClick={()=>setSections(p=>({...p,rebalance:!p.rebalance}))}><Icon name={dashboardSections.rebalance?"ChevronUp":"ChevronDown"} size={16} /></button></div>
+                                    {dashboardSections.rebalance && <div className="space-y-5">
+                                        <div className="space-y-1.5"><div className="flex justify-between text-xs font-bold mb-1"><span className="text-brand-600">TQQQ {metrics.rebalanceStatus.tqqqRatio.toFixed(1)}%</span><span className="text-orange-500">{inputs.ticker_core_1} {metrics.rebalanceStatus.qqqRatio.toFixed(1)}%</span></div><div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex relative"><div className="h-full bg-brand-500 flex items-center justify-center text-[9px] text-white/80" style={{width: `${metrics.rebalanceStatus.tqqqRatio}%`}}></div><div className="h-full bg-orange-400 flex items-center justify-center text-[9px] text-white/80" style={{width: `${metrics.rebalanceStatus.qqqRatio}%`}}></div><div className="absolute top-0 bottom-0 w-0.5 bg-white z-10" style={{left: `${metrics.rebalanceStatus.tqqqInCoreTarget}%`}}></div></div>
                                         <div className="flex justify-between text-[10px] text-slate-400 font-mono mt-1"><span>核心佔比: {metrics.rebalanceStatus.coreTargetAlloc.toFixed(1)}%</span></div></div>
                                         {/* IBIT */}
-                                        <div className="space-y-1">
-                                            <div className="flex justify-between text-xs font-bold"><span className="text-slate-600 dark:text-slate-300">IBIT</span><span className={metrics.rebalanceStatus.statIbit!=='ok'?'text-red-500':'text-emerald-500'}>{(parseFloat(metrics.rebalanceStatus.ibitW)||0).toFixed(1)}%</span></div>
-                                            <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden relative"><div className={`h-full ${metrics.rebalanceStatus.statIbit==='high'?'bg-red-500':(metrics.rebalanceStatus.statIbit==='low'?'bg-indigo-400':'bg-emerald-500')}`} style={{width:`${Math.min((metrics.rebalanceStatus.ibitW/20)*100,100)}%`}}></div></div>
+                                        <div className="space-y-1.5">
+                                            <div className="flex justify-between text-xs font-bold"><span className="text-slate-600">IBIT</span><span className={metrics.rebalanceStatus.statIbit!=='ok'?'text-red-500':'text-emerald-500'}>{(parseFloat(metrics.rebalanceStatus.ibitW)||0).toFixed(1)}%</span></div>
+                                            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden relative"><div className={`h-full ${metrics.rebalanceStatus.statIbit==='high'?'bg-red-500':(metrics.rebalanceStatus.statIbit==='low'?'bg-brand-400':'bg-emerald-500')}`} style={{width:`${Math.min((metrics.rebalanceStatus.ibitW/20)*100,100)}%`}}></div></div>
                                         </div>
                                         {/* Dynamic Satellites */}
                                         {(metrics.rebalanceStatus.satellites || []).map(s => (
-                                            <div key={s.id} className="space-y-1">
-                                                <div className="flex justify-between text-xs font-bold"><span className="text-emerald-600 dark:text-emerald-400">{s.ticker || '新衛星'}</span><span className={s.status!=='ok'?'text-red-500':'text-emerald-500'}>{s.weight.toFixed(1)}%</span></div>
-                                                <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden relative"><div className={`h-full ${s.status==='high'?'bg-red-500':(s.status==='low'?'bg-indigo-400':'bg-emerald-500')}`} style={{width:`${Math.min((s.weight/20)*100,100)}%`}}></div></div>
+                                            <div key={s.id} className="space-y-1.5">
+                                                <div className="flex justify-between text-xs font-bold"><span className="text-emerald-600">{s.ticker || '新衛星'}</span><span className={s.status!=='ok'?'text-red-500':'text-emerald-500'}>{s.weight.toFixed(1)}%</span></div>
+                                                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden relative"><div className={`h-full ${s.status==='high'?'bg-red-500':(s.status==='low'?'bg-brand-400':'bg-emerald-500')}`} style={{width:`${Math.min((s.weight/20)*100,100)}%`}}></div></div>
                                             </div>
                                         ))}
                                     </div>}
                                 </div>
 
-                                <Card className="border-2 border-indigo-500 dark:border-indigo-600">
-                                    <div className="flex justify-between items-center mb-2"><SectionTitle title="持倉數量 (Held)" iconName="Edit2" /><div className="text-xs text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded">{inputs.core_track_ticker || 'QQQ'}: ${prices[inputs.core_track_ticker||'QQQ']?.toFixed(2)||'-'}</div><button onClick={()=>setSections(p=>({...p,holdings:!p.holdings}))}><Icon name={dashboardSections.holdings?"ChevronUp":"ChevronDown"} size={16}/></button></div>
+                                <Card className="border-2 border-brand-50">
+                                    <div className="flex justify-between items-center mb-2"><SectionTitle title="持倉數量 (Held)" iconName="Edit2" /><div className="text-xs text-brand-600 bg-brand-50 px-2 py-1 rounded font-bold">{inputs.core_track_ticker || 'QQQ'}: ${prices[inputs.core_track_ticker||'QQQ']?.toFixed(2)||'-'}</div><button onClick={()=>setSections(p=>({...p,holdings:!p.holdings}))}><Icon name={dashboardSections.holdings?"ChevronUp":"ChevronDown"} size={16}/></button></div>
                                     {dashboardSections.holdings && <div className="space-y-2 mt-2">
                                         <div className="grid grid-cols-12 gap-1 text-[10px] text-slate-400 text-center mb-1"><div className="col-span-3 text-left pl-2">持倉標的</div><div className="col-span-3">股數</div><div className="col-span-3">目標價</div><div className="col-span-3">距離</div></div>
                                         {FIXED_HOLDINGS.map(c => <HoldingRow key={c.id} conf={c} inputs={inputs} prices={prices} onChange={handleInputChange} onBlur={syncToCloud} />)}
                                         {/* Dynamic Satellites */}
                                         {(inputs.satellites || []).map(s => <HoldingRow key={s.id} conf={s} inputs={inputs} prices={prices} onChange={updateSatellite} onBlur={saveSatellites} onDelete={deleteSatellite} isDynamic={true} />)}
-                                        <button onClick={addSatellite} className="w-full py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold rounded-xl mt-2 flex justify-center items-center gap-1 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"><Icon name="Plus" size={14}/> 新增持倉</button>
+                                        <button onClick={addSatellite} className="w-full py-2 bg-slate-50 text-slate-500 text-xs font-bold rounded-xl mt-2 flex justify-center items-center gap-1 hover:bg-slate-100 transition-colors"><Icon name="Plus" size={14}/> 新增持倉</button>
                                         
                                         <div className="pt-2">
                                             <label className="text-[11px] font-black text-slate-500 block text-center mb-1">現金 (USD)</label>
                                             <div className="relative">
-                                                <input type="text" inputMode="decimal" placeholder="0" value={inputs.cash_balance} onChange={e=>handleInputChange('cash_balance',e.target.value)} onBlur={e=>syncToCloud('cash_balance',e.target.value)} className={`w-full bg-slate-50 dark:bg-slate-800 border-2 border-indigo-100 rounded-2xl p-4 text-xl font-mono ${inputs.cash_balance < 0 ? 'text-red-500' : 'text-indigo-600'}`} />
-                                                <button onClick={toggleCashSign} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-xs font-bold text-slate-500 active:scale-95 shadow-sm">+/-</button>
+                                                <input type="text" inputMode="decimal" placeholder="0" value={inputs.cash_balance} onChange={e=>handleInputChange('cash_balance',e.target.value)} onBlur={e=>syncToCloud('cash_balance',e.target.value)} className={`w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-xl font-mono text-brand-600 font-black ${inputs.cash_balance < 0 ? 'text-red-500' : 'text-brand-600'}`} />
+                                                <button onClick={toggleCashSign} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-slate-200 rounded-lg text-xs font-bold text-slate-500 active:scale-95 shadow-sm">+/-</button>
                                             </div>
                                         </div>
                                     </div>}
                                     
-                                    <div className="pt-4 mt-2 border-t border-slate-200 dark:border-slate-700">
-                                        <div className="flex justify-between items-center mb-2"><div className="flex gap-2 text-xs font-black text-slate-500 uppercase tracking-widest"><Icon name="Zap" size={14}/> 選擇權帳本</div><button onClick={()=>{setOpenModalType('OPEN');setTargetOptionId(null);}} className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded font-bold">+ 新建倉位</button></div>
+                                    <div className="pt-4 mt-2 border-t border-slate-100">
+                                        <div className="flex justify-between items-center mb-2"><div className="flex gap-2 text-xs font-black text-slate-500 uppercase tracking-widest"><Icon name="Zap" size={14}/> 選擇權帳本</div><button onClick={()=>{setOpenModalType('OPEN');setTargetOptionId(null);}} className="text-[10px] bg-brand-50 text-brand-600 px-2 py-1 rounded font-bold">+ 新建倉位</button></div>
                                         <div className="space-y-2">{(inputs.options_inventory || []).map(opt => (
-                                            <div key={opt.id} className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg text-xs space-y-2 relative border border-slate-100 dark:border-slate-700">
-                                                <div className="flex justify-between items-center"><div className="flex gap-2 font-bold text-indigo-600 dark:text-indigo-400 text-sm">{opt.ticker} <span className="bg-slate-200 dark:bg-slate-700 text-slate-500 px-1 rounded text-[10px] self-center">{opt.type}</span></div><div className="flex gap-2"><button onClick={()=>setEditingInventoryItem(opt)} className="text-slate-400 hover:text-indigo-500"><Icon name="Edit2" size={14}/></button><button onClick={()=>removeOption(opt.id)} className="text-slate-400 hover:text-red-500"><Icon name="X" size={14}/></button></div></div>
+                                            <div key={opt.id} className="bg-white border border-slate-200 p-3 rounded-lg text-xs space-y-2 relative shadow-sm">
+                                                <div className="flex justify-between items-center"><div className="flex gap-2 font-bold text-brand-600 text-sm">{opt.ticker} <span className="bg-slate-100 text-slate-500 px-1 rounded text-[10px] self-center">{opt.type}</span></div><div className="flex gap-2"><button onClick={()=>setEditingInventoryItem(opt)} className="text-slate-400 hover:text-brand-500"><Icon name="Edit2" size={14}/></button><button onClick={()=>removeOption(opt.id)} className="text-slate-400 hover:text-red-500"><Icon name="X" size={14}/></button></div></div>
                                                 <div className="grid grid-cols-4 gap-2 text-center"><div><label className="text-[9px] text-slate-400 block">Strike</label><span className="font-bold">{opt.strike}</span></div><div><label className="text-[9px] text-slate-400 block">Expiry</label><span className="font-bold">{opt.expiry}</span></div><div><label className="text-[9px] text-slate-400 block">張數</label><span className="font-bold">{opt.contracts}</span></div><div><label className="text-[9px] text-slate-400 block">權利金</label><span className="font-bold text-emerald-500">${opt.premium}</span></div></div>
-                                                <div className="flex justify-between items-center pt-1 border-t border-slate-100 dark:border-slate-700"><div className="flex items-center gap-1"><span className="text-[9px] text-slate-400">Delta</span><span className={`text-xs font-bold ${parseFloat(opt.delta)>=0.4?'text-red-500 animate-pulse':''}`}>{opt.delta}</span></div><div className="flex gap-2"><button onClick={()=>{setTargetOptionId(opt.id);setOpenModalType('ROLL');}} className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-[9px] font-bold">轉倉</button><button onClick={()=>{setTargetOptionId(opt.id);setOpenModalType('CLOSE');}} className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-[9px] font-bold">平倉</button></div></div>
+                                                <div className="flex justify-between items-center pt-1 border-t border-slate-100"><div className="flex items-center gap-1"><span className="text-[9px] text-slate-400">Delta</span><span className={`text-xs font-bold ${parseFloat(opt.delta)>=0.4?'text-red-500 animate-pulse':''}`}>{opt.delta}</span></div><div className="flex gap-2"><button onClick={()=>{setTargetOptionId(opt.id);setOpenModalType('ROLL');}} className="px-2 py-1 bg-amber-50 text-amber-700 rounded text-[9px] font-bold border border-amber-100">轉倉</button><button onClick={()=>{setTargetOptionId(opt.id);setOpenModalType('CLOSE');}} className="px-2 py-1 bg-brand-50 text-brand-700 rounded text-[9px] font-bold border border-brand-100">平倉</button></div></div>
                                             </div>
-                                        ))}{(!inputs.options_inventory || inputs.options_inventory.length === 0) && <div className="text-center text-[10px] text-slate-400 py-2">無部位</div>}</div>
+                                        ))}{(!inputs.options_inventory || inputs.options_inventory.length === 0) && <div className="text-center text-[10px] text-slate-300 py-2">無部位</div>}</div>
                                     </div>
 
-                                    <button onClick={save} disabled={isSaving} className={`w-full py-4 mt-4 rounded-xl text-white shadow-lg flex justify-center gap-2 font-black ${isSaving?'bg-slate-400':'bg-slate-900 dark:bg-indigo-600'}`}><Icon name={isSaving?"RefreshCcw":"Save"} className={isSaving?"animate-spin":""} /> {isSaving?"同步中...":"儲存紀錄"}</button>
+                                    <button onClick={save} disabled={isSaving} className={`w-full py-4 mt-4 rounded-xl text-white shadow-lg shadow-brand-500/30 flex justify-center gap-2 font-black ${isSaving?'bg-slate-400':'bg-brand-600'}`}><Icon name={isSaving?"RefreshCcw":"Save"} className={isSaving?"animate-spin":""} /> {isSaving?"同步中...":"儲存紀錄"}</button>
+                                </Card>
+
+                                 {/* --- Simulator with Leverage (UPDATED: Unified White Theme) --- */}
+                                 <Card className="p-5 bg-white border-2 border-brand-50 relative overflow-hidden">
+                                    <div className="flex justify-between items-center mb-4 z-10 relative"><div className="flex gap-2 text-xs font-black text-slate-500 items-center uppercase tracking-widest"><Icon name="Activity" size={16} /> 壓力測試</div><button onClick={()=>setSections(p=>({...p,simulator:!p.simulator}))}><Icon name={dashboardSections.simulator?"ChevronUp":"ChevronDown"} size={16} className="text-slate-400"/></button></div>
+                                    {dashboardSections.simulator && <div className="z-10 relative space-y-4">
+                                        <div className="grid grid-cols-3 gap-2 text-center items-end border-b border-slate-100 pb-3">
+                                            <div className="flex flex-col items-center"><span className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">跌至 MA200</span><span className="font-mono text-sm font-bold text-slate-500">${inputs.qqq_sma200}</span><span className="text-[9px] font-bold text-red-500">{metrics.qqqAthMetrics.toMA200?.toFixed(2)}%</span></div>
+                                            <div className="flex flex-col items-center"><span className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">{inputs.core_track_ticker || 'QQQ'}</span><span className="font-mono text-2xl font-black text-slate-800">${metrics.qqqAthMetrics.currentPrice}</span></div>
+                                            <div className="flex flex-col items-center"><span className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">漲至 ATH</span><span className="font-mono text-sm font-bold text-slate-500">${inputs.qqq_ath}</span><span className="text-[9px] font-bold text-emerald-500">+{metrics.qqqAthMetrics.toATH?.toFixed(1)}%</span></div>
+                                        </div>
+                                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-3">
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="flex flex-col gap-1 bg-white p-2 rounded-xl border border-slate-100 shadow-sm"><span className="text-[9px] text-slate-400 uppercase tracking-wider">預期漲跌幅 %</span><div className="flex items-center gap-1"><input type="number" value={Math.round(stressSimPct*100)/100} onChange={e=>setStressSimPct(parseFloat(e.target.value)||0)} className={`w-full bg-transparent font-mono font-bold outline-none text-lg text-center ${stressSimPct>=0?'text-emerald-500':'text-red-500'}`}/><span className="text-xs font-bold text-slate-400">%</span></div></div>
+                                                <div className="flex flex-col gap-1 bg-white p-2 rounded-xl border border-slate-100 shadow-sm"><span className="text-[9px] text-slate-400 uppercase tracking-wider">設定總資產槓桿</span><div className="flex items-center justify-center gap-1"><button onClick={()=>setSimLeverage(Math.max(0, simLeverage-0.1))} className="text-slate-400 p-1 hover:text-brand-500">-</button><input type="number" value={simLeverage.toFixed(1)} onChange={e=>setSimLeverage(parseFloat(e.target.value))} className="w-12 bg-transparent font-mono font-bold text-brand-600 outline-none text-xl text-center" /><span className="text-xs font-bold text-slate-400">x</span><button onClick={()=>setSimLeverage(simLeverage+0.1)} className="text-slate-400 p-1 hover:text-brand-500">+</button></div></div>
+                                            </div>
+                                            <div className="flex items-center gap-2"><input type="range" min="-30" max="30" step="0.5" value={stressSimPct} onChange={e=>setStressSimPct(parseFloat(e.target.value))} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-500"/></div>
+                                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
+                                                <div className="flex flex-col items-center"><span className="text-[9px] text-slate-400 uppercase tracking-wider mb-1">預估損益</span><span className={`text-lg font-black font-mono ${metrics.simulatedMetrics.simulatedPnL>=0?'text-emerald-500':'text-red-500'}`}>{metrics.simulatedMetrics.simulatedPnL>=0?'+':''}{Math.round(metrics.simulatedMetrics.simulatedPnL).toLocaleString()}</span></div>
+                                                <div className="flex flex-col items-center"><span className="text-[9px] text-slate-400 uppercase tracking-wider mb-1">預估總資產</span><span className="text-lg font-black font-mono text-slate-800">${Math.round(metrics.simulatedMetrics.simulatedTotalAsset).toLocaleString()}</span></div>
+                                            </div>
+                                        </div>
+                                    </div>}
                                 </Card>
                             </div>
                         )}
 
                         {view === 'parameters' && (
                             <div className="space-y-6 animate-in fade-in">
-                                <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-[2rem] border border-slate-200 dark:border-slate-700">
+                                <div className="bg-white p-4 rounded-[2rem] border border-slate-200">
                                     <div className="text-xs font-black text-slate-500 mb-4 uppercase tracking-widest flex items-center gap-2"><Icon name="Sliders" size={16}/> 核心策略參數 (Core)</div>
-                                    <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
-                                        <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
-                                            <span className="text-xs font-bold text-indigo-500">持倉 TQQQ / 對標</span>
-                                            <input value={inputs.core_track_ticker} onChange={e=>handleInputChange('core_track_ticker', e.target.value.toUpperCase())} onBlur={e=>syncToCloud('core_track_ticker', e.target.value)} className="w-16 bg-white dark:bg-slate-800 p-1 rounded text-center text-xs font-black uppercase text-indigo-600" placeholder="QQQ"/>
+                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                                        <div className="flex justify-between items-center border-b border-slate-200 pb-2">
+                                            <span className="text-xs font-bold text-brand-600">持倉 TQQQ / 對標</span>
+                                            <input value={inputs.core_track_ticker} onChange={e=>handleInputChange('core_track_ticker', e.target.value.toUpperCase())} onBlur={e=>syncToCloud('core_track_ticker', e.target.value)} className="w-16 bg-white p-1 rounded text-center text-xs font-black uppercase text-brand-600 shadow-sm" placeholder="QQQ"/>
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div><label className="text-[9px] text-slate-400 block mb-1">TQQQ 佔核心比例%</label><input type="number" value={inputs.rebalance_core_target} onChange={e=>handleInputChange('rebalance_core_target',e.target.value)} onBlur={e=>syncToCloud('rebalance_core_target',e.target.value)} className="bg-slate-50 dark:bg-slate-800 p-2 rounded-lg text-center w-full font-bold"/></div>
-                                            <div><label className="text-[9px] text-slate-400 block mb-1">{inputs.core_track_ticker || 'QQQ'} 200 SMA</label><input type="number" value={inputs.qqq_sma200} onChange={e=>handleInputChange('qqq_sma200',e.target.value)} onBlur={e=>syncToCloud('qqq_sma200',e.target.value)} className="bg-slate-50 dark:bg-slate-800 p-2 rounded-lg text-center w-full font-bold"/></div>
-                                            <div><label className="text-[9px] text-slate-400 block mb-1">上限容許 %</label><input type="number" value={inputs.core_tol_up} onChange={e=>handleInputChange('core_tol_up',e.target.value)} onBlur={e=>syncToCloud('core_tol_up',e.target.value)} className="bg-slate-50 dark:bg-slate-800 p-2 rounded-lg text-center w-full font-bold text-red-400"/></div>
-                                            <div><label className="text-[9px] text-slate-400 block mb-1">下限容許 %</label><input type="number" value={inputs.core_tol_down} onChange={e=>handleInputChange('core_tol_down',e.target.value)} onBlur={e=>syncToCloud('core_tol_down',e.target.value)} className="bg-slate-50 dark:bg-slate-800 p-2 rounded-lg text-center w-full font-bold text-blue-400"/></div>
+                                            <div><label className="text-[9px] text-slate-400 block mb-1">TQQQ 佔核心比例%</label><input type="number" value={inputs.rebalance_core_target} onChange={e=>handleInputChange('rebalance_core_target',e.target.value)} onBlur={e=>syncToCloud('rebalance_core_target',e.target.value)} className="bg-white p-2 rounded-lg text-center w-full font-bold shadow-sm"/></div>
+                                            <div><label className="text-[9px] text-slate-400 block mb-1">{inputs.core_track_ticker || 'QQQ'} 200 SMA</label><input type="number" value={inputs.qqq_sma200} onChange={e=>handleInputChange('qqq_sma200',e.target.value)} onBlur={e=>syncToCloud('qqq_sma200',e.target.value)} className="bg-white p-2 rounded-lg text-center w-full font-bold shadow-sm"/></div>
+                                            <div><label className="text-[9px] text-slate-400 block mb-1">上限容許 %</label><input type="number" value={inputs.core_tol_up} onChange={e=>handleInputChange('core_tol_up',e.target.value)} onBlur={e=>syncToCloud('core_tol_up',e.target.value)} className="bg-white p-2 rounded-lg text-center w-full font-bold text-red-400 shadow-sm"/></div>
+                                            <div><label className="text-[9px] text-slate-400 block mb-1">下限容許 %</label><input type="number" value={inputs.core_tol_down} onChange={e=>handleInputChange('core_tol_down',e.target.value)} onBlur={e=>syncToCloud('core_tol_down',e.target.value)} className="bg-white p-2 rounded-lg text-center w-full font-bold text-blue-400 shadow-sm"/></div>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* --- Whipsaw Protection Settings --- */}
-                                <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-[2rem] border border-slate-200 dark:border-slate-700">
+                                <div className="bg-white p-4 rounded-[2rem] border border-slate-200">
                                     <div className="flex justify-between items-center mb-4"><div className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Icon name="Shield" size={16}/> 防洗盤設定 (Whipsaw Protection)</div></div>
-                                    <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-3">
-                                        <div><label className="text-[9px] text-slate-400 block mb-1">突破買入緩衝 %</label><input type="number" value={inputs.global_sma_buffer_buy} onChange={e=>handleInputChange('global_sma_buffer_buy',e.target.value)} onBlur={e=>syncToCloud('global_sma_buffer_buy',e.target.value)} className="bg-emerald-50 text-emerald-600 dark:bg-slate-800 dark:text-emerald-400 p-2 rounded-lg text-center w-full font-bold"/></div>
-                                        <div><label className="text-[9px] text-slate-400 block mb-1">跌破賣出緩衝 %</label><input type="number" value={inputs.global_sma_buffer_sell} onChange={e=>handleInputChange('global_sma_buffer_sell',e.target.value)} onBlur={e=>syncToCloud('global_sma_buffer_sell',e.target.value)} className="bg-red-50 text-red-600 dark:bg-slate-800 dark:text-red-400 p-2 rounded-lg text-center w-full font-bold"/></div>
+                                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 grid grid-cols-2 gap-3">
+                                        <div><label className="text-[9px] text-slate-400 block mb-1">突破買入緩衝 %</label><input type="number" value={inputs.global_sma_buffer_buy} onChange={e=>handleInputChange('global_sma_buffer_buy',e.target.value)} onBlur={e=>syncToCloud('global_sma_buffer_buy',e.target.value)} className="bg-emerald-50 text-emerald-600 p-2 rounded-lg text-center w-full font-bold shadow-sm"/></div>
+                                        <div><label className="text-[9px] text-slate-400 block mb-1">跌破賣出緩衝 %</label><input type="number" value={inputs.global_sma_buffer_sell} onChange={e=>handleInputChange('global_sma_buffer_sell',e.target.value)} onBlur={e=>syncToCloud('global_sma_buffer_sell',e.target.value)} className="bg-red-50 text-red-600 p-2 rounded-lg text-center w-full font-bold shadow-sm"/></div>
                                     </div>
                                 </div>
 
-                                <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-[2rem] border border-slate-200 dark:border-slate-700">
-                                    <div className="flex justify-between items-center mb-4"><div className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Icon name="Activity" size={16}/> 衛星策略參數 (Satellite)</div><button onClick={addSatellite} className="text-[10px] bg-indigo-600 text-white px-3 py-1 rounded-lg font-bold">+ 新增</button></div>
-                                    <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 mb-3 relative"><div className="flex justify-between items-center mb-2"><span className="text-xs font-black text-orange-500">IBIT (比特幣)</span><span className="text-[9px] text-slate-400">固定配置</span></div><div className="grid grid-cols-3 gap-2"><div><label className="text-[9px] text-slate-400">目標%</label><input type="number" value={inputs.target_sat_ibit} onChange={e=>handleInputChange('target_sat_ibit',e.target.value)} onBlur={()=>syncToCloud('target_sat_ibit', inputs.target_sat_ibit)} className="bg-slate-50 dark:bg-slate-800 w-full p-1.5 rounded-lg text-center text-xs font-bold"/></div><div><label className="text-[9px] text-slate-400">均線(20MA)</label><input type="number" value={inputs.ibit_sma20} onChange={e=>handleInputChange('ibit_sma20',e.target.value)} onBlur={()=>syncToCloud('ibit_sma20', inputs.ibit_sma20)} className="bg-slate-50 dark:bg-slate-800 w-full p-1.5 rounded-lg text-center text-xs font-bold"/></div><div className="flex flex-col"><label className="text-[9px] text-slate-400">容許%</label><div className="flex gap-1"><input value={inputs.tol_up_ibit} onChange={e=>handleInputChange('tol_up_ibit',e.target.value)} onBlur={()=>syncToCloud('tol_up_ibit', inputs.tol_up_ibit)} className="w-full bg-slate-50 text-red-400 text-center text-[10px] rounded"/><input value={inputs.tol_down_ibit} onChange={e=>handleInputChange('tol_down_ibit',e.target.value)} onBlur={()=>syncToCloud('tol_down_ibit', inputs.tol_down_ibit)} className="w-full bg-slate-50 text-blue-400 text-center text-[10px] rounded"/></div></div></div></div>
+                                <div className="bg-white p-4 rounded-[2rem] border border-slate-200">
+                                    <div className="flex justify-between items-center mb-4"><div className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Icon name="Activity" size={16}/> 衛星策略參數 (Satellite)</div><button onClick={addSatellite} className="text-[10px] bg-brand-600 text-white px-3 py-1 rounded-lg font-bold">+ 新增</button></div>
+                                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 mb-3 relative"><div className="flex justify-between items-center mb-2"><span className="text-xs font-black text-orange-500">IBIT (比特幣)</span><span className="text-[9px] text-slate-400">固定配置</span></div><div className="grid grid-cols-3 gap-2"><div><label className="text-[9px] text-slate-400">目標%</label><input type="number" value={inputs.target_sat_ibit} onChange={e=>handleInputChange('target_sat_ibit',e.target.value)} onBlur={()=>syncToCloud('target_sat_ibit', inputs.target_sat_ibit)} className="bg-white w-full p-1.5 rounded-lg text-center text-xs font-bold shadow-sm"/></div><div><label className="text-[9px] text-slate-400">均線(20MA)</label><input type="number" value={inputs.ibit_sma20} onChange={e=>handleInputChange('ibit_sma20',e.target.value)} onBlur={()=>syncToCloud('ibit_sma20', inputs.ibit_sma20)} className="bg-white w-full p-1.5 rounded-lg text-center text-xs font-bold shadow-sm"/></div><div className="flex flex-col"><label className="text-[9px] text-slate-400">容許%</label><div className="flex gap-1"><input value={inputs.tol_up_ibit} onChange={e=>handleInputChange('tol_up_ibit',e.target.value)} onBlur={()=>syncToCloud('tol_up_ibit', inputs.tol_up_ibit)} className="w-full bg-slate-50 text-red-400 text-center text-[10px] rounded shadow-sm"/><input value={inputs.tol_down_ibit} onChange={e=>handleInputChange('tol_down_ibit',e.target.value)} onBlur={()=>syncToCloud('tol_down_ibit', inputs.tol_down_ibit)} className="w-full bg-slate-50 text-blue-400 text-center text-[10px] rounded shadow-sm"/></div></div></div></div>
                                     <div className="space-y-3">{(inputs.satellites || []).map(s => <SatSettingsRow key={s.id} item={s} onChange={updateSatellite} onBlur={saveSatellites} onDelete={deleteSatellite} />)}</div>
                                 </div>
 
-                                <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-[2rem] border border-slate-200 dark:border-slate-700">
+                                <div className="bg-white p-4 rounded-[2rem] border border-slate-200">
                                     <div className="flex justify-between items-center mb-3"><div className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Icon name="Activity" size={16}/> RSI 收益矩陣</div><button onClick={()=>setSettings(p=>({...p,rsi_matrix:!p.rsi_matrix}))}><Icon name={openSettings.rsi_matrix?"ChevronUp":"ChevronDown"} size={14} className="text-slate-400"/></button></div>
-                                    {openSettings.rsi_matrix && <div className="space-y-2"><div className="grid grid-cols-12 gap-1 text-[9px] text-center text-slate-400 mb-1"><div className="col-span-3">Min</div><div className="col-span-3">Max</div><div className="col-span-3">Cover%</div><div className="col-span-3">Delta</div></div>{inputs.options_matrix && inputs.options_matrix.map((row, i) => (<div key={i} className="grid grid-cols-12 gap-1 mb-1"><div className="col-span-3"><input type="number" value={row.min} onChange={e=>handleMatrixChange(i,'min',e.target.value)} className="bg-white dark:bg-slate-700 w-full p-1 rounded text-center text-xs"/></div><div className="col-span-3"><input type="number" value={row.max} onChange={e=>handleMatrixChange(i,'max',e.target.value)} className="bg-white dark:bg-slate-700 w-full p-1 rounded text-center text-xs"/></div><div className="col-span-3"><input type="number" value={row.cover} onChange={e=>handleMatrixChange(i,'cover',e.target.value)} className="bg-white dark:bg-slate-700 w-full p-1 rounded text-center text-xs"/></div><div className="col-span-3"><input type="text" value={row.delta} onChange={e=>handleMatrixChange(i,'delta',e.target.value)} className="bg-white dark:bg-slate-700 w-full p-1 rounded text-center text-xs"/></div></div>))}</div>}
+                                    {openSettings.rsi_matrix && <div className="space-y-2"><div className="grid grid-cols-12 gap-1 text-[9px] text-center text-slate-400 mb-1"><div className="col-span-3">Min</div><div className="col-span-3">Max</div><div className="col-span-3">Cover%</div><div className="col-span-3">Delta</div></div>{inputs.options_matrix && inputs.options_matrix.map((row, i) => (<div key={i} className="grid grid-cols-12 gap-1 mb-1"><div className="col-span-3"><input type="number" value={row.min} onChange={e=>handleMatrixChange(i,'min',e.target.value)} className="bg-slate-50 w-full p-1 rounded text-center text-xs shadow-sm"/></div><div className="col-span-3"><input type="number" value={row.max} onChange={e=>handleMatrixChange(i,'max',e.target.value)} className="bg-slate-50 w-full p-1 rounded text-center text-xs shadow-sm"/></div><div className="col-span-3"><input type="number" value={row.cover} onChange={e=>handleMatrixChange(i,'cover',e.target.value)} className="bg-slate-50 w-full p-1 rounded text-center text-xs shadow-sm"/></div><div className="col-span-3"><input type="text" value={row.delta} onChange={e=>handleMatrixChange(i,'delta',e.target.value)} className="bg-slate-50 w-full p-1 rounded text-center text-xs shadow-sm"/></div></div>))}</div>}
                                 </div>
 
                                 {/* --- Calculator --- */}
-                                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 overflow-hidden"><button onClick={()=>setIsCalcOpen(!isCalcOpen)} className="w-full p-4 flex justify-between bg-slate-50 dark:bg-slate-800/50"><div className="flex items-center gap-3 font-black"><Icon name="Calculator" className="text-indigo-500"/> 資金分配計算機</div><Icon name={isCalcOpen?"ChevronUp":"ChevronDown"} size={14}/></button>
-                                    {isCalcOpen && <div className="p-4 pt-0 space-y-3 bg-slate-50 dark:bg-slate-800/50">
-                                        <div className="flex items-center gap-2"><span className="text-xl font-bold text-slate-400">$</span><input type="number" placeholder="輸入新投入金額" value={simulatedTotal} onChange={e=>setSimulatedTotal(e.target.value)} className="bg-white dark:bg-slate-900 p-3 rounded-xl text-xl w-full font-black shadow-sm" /></div>
-                                        {simulatedTotal > 0 && <div className="space-y-1.5 pt-2">{metrics.calcResults.map(r => (<div key={r.ticker} className="flex justify-between items-center bg-white dark:bg-slate-900 p-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700"><div className="flex flex-col"><span className="font-bold text-xs text-slate-600 dark:text-slate-300">{r.ticker}</span><span className={`text-[9px] font-bold ${r.action==='Buy'?'text-emerald-500':'text-red-400'}`}>{r.action === 'Buy' ? '買入' : '賣出'} {Math.abs(r.qty).toFixed(2)} 股</span></div><span className={`font-mono font-black text-sm ${r.action==='Buy'?'text-emerald-500':'text-red-400'}`}>${Math.abs(r.diff).toLocaleString(undefined, {maximumFractionDigits: 0})}</span></div>))}</div>}
+                                <div className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden"><button onClick={()=>setIsCalcOpen(!isCalcOpen)} className="w-full p-4 flex justify-between bg-slate-50"><div className="flex items-center gap-3 font-black"><Icon name="Calculator" className="text-brand-500"/> 資金分配計算機</div><Icon name={isCalcOpen?"ChevronUp":"ChevronDown"} size={14}/></button>
+                                    {isCalcOpen && <div className="p-4 pt-0 space-y-3 bg-slate-50">
+                                        <div className="flex items-center gap-2"><span className="text-xl font-bold text-slate-400">$</span><input type="number" placeholder="輸入新投入金額" value={simulatedTotal} onChange={e=>setSimulatedTotal(e.target.value)} className="bg-white p-3 rounded-xl text-xl w-full font-black shadow-sm" /></div>
+                                        {simulatedTotal > 0 && <div className="space-y-1.5 pt-2">{metrics.calcResults.map(r => (<div key={r.ticker} className="flex justify-between items-center bg-white p-2 px-3 rounded-lg border border-slate-200"><div className="flex flex-col"><span className="font-bold text-xs text-slate-600">{r.ticker}</span><span className={`text-[9px] font-bold ${r.action==='Buy'?'text-emerald-500':'text-red-400'}`}>{r.action === 'Buy' ? '買入' : '賣出'} {Math.abs(r.qty).toFixed(2)} 股</span></div><span className={`font-mono font-black text-sm ${r.action==='Buy'?'text-emerald-500':'text-red-400'}`}>${Math.abs(r.diff).toLocaleString(undefined, {maximumFractionDigits: 0})}</span></div>))}</div>}
                                     </div>}
                                 </div>
                             </div>
@@ -973,37 +1036,37 @@
 
                         {view === 'history' && (
                             <div className="space-y-6 animate-in fade-in">
-                                <div className="flex bg-slate-200 dark:bg-slate-800 rounded-3xl p-1"><button onClick={()=>setHistoryTab('nav')} className={`flex-1 py-3 rounded-2xl text-xs font-black uppercase ${historyTab==='nav'?'bg-white shadow text-indigo-600':'text-slate-500'}`}>資產走勢</button><button onClick={()=>setHistoryTab('options')} className={`flex-1 py-3 rounded-2xl text-xs font-black uppercase ${historyTab==='options'?'bg-white shadow text-amber-500':'text-slate-500'}`}>選擇權收益</button></div>
+                                <div className="flex bg-white rounded-3xl p-1 shadow-sm"><button onClick={()=>setHistoryTab('nav')} className={`flex-1 py-3 rounded-2xl text-xs font-black uppercase ${historyTab==='nav'?'bg-brand-50 shadow text-brand-600':'text-slate-400'}`}>資產走勢</button><button onClick={()=>setHistoryTab('options')} className={`flex-1 py-3 rounded-2xl text-xs font-black uppercase ${historyTab==='options'?'bg-amber-50 shadow text-amber-600':'text-slate-400'}`}>選擇權收益</button></div>
                                 {historyTab === 'nav' ? (
                                     <>
-                                        <Card className="h-72 p-2 shadow-xl border-none"><div className="flex justify-between px-2 mb-2"><SectionTitle title={chartMode==='NAV_DD'?"淨值 & 回撤":"Alpha vs QQQ"} iconName="TrendingUp" /><div className="flex gap-2"><button onClick={()=>setShowBenchmark(!showBenchmark)} className={`px-3 py-1 rounded-lg text-xs font-bold ${showBenchmark ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-500'}`}>{showBenchmark ? '隱藏 QQQ' : '比較 QQQ'}</button><button onClick={()=>setChartMode(chartMode==='NAV_DD'?'ALPHA':'NAV_DD')} className="px-3 py-1 bg-indigo-100 rounded-lg text-xs font-bold text-indigo-600">切換</button></div></div><ResponsiveContainer>{chartMode==='NAV_DD' ? <ComposedChart data={metrics.graphData} margin={{top:10,right:0,left:0,bottom:0}}><defs><linearGradient id="colorEq" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs><XAxis dataKey="date" tickFormatter={v=>new Date(v).toLocaleDateString(undefined,{month:'numeric',day:'numeric'})} tick={{fontSize:10}}/><YAxis yAxisId="left" tickFormatter={v=>`${(v/1000).toFixed(0)}k`} tick={{fontSize:10}}/><YAxis yAxisId="right" orientation="right" tickFormatter={v=>`${v.toFixed(0)}%`} tick={{fontSize:10,fill:'#ef4444'}}/><Tooltip content={<CustomGraphTooltip />} cursor={{ stroke: '#64748b', strokeWidth: 1 }} /><Area yAxisId="left" type="monotone" dataKey="equity" stroke="#6366f1" fill="url(#colorEq)"/>{showBenchmark && <Line yAxisId="left" type="monotone" dataKey="qqqEquity" stroke="#f97316" strokeWidth={2} dot={false} strokeDasharray="5 5" />}<Area yAxisId="right" type="step" dataKey="dd" stroke="#ef4444" fill="#ef4444" fillOpacity={0.1}/></ComposedChart> : <ComposedChart data={metrics.graphData} margin={{top:10,right:0,left:0,bottom:0}}><XAxis dataKey="date" tickFormatter={v=>new Date(v).toLocaleDateString(undefined,{month:'numeric',day:'numeric'})} tick={{fontSize:10}}/><YAxis tickFormatter={v=>`${v.toFixed(0)}%`} tick={{fontSize:10}}/><Tooltip content={<CustomGraphTooltip />} cursor={{ stroke: '#64748b', strokeWidth: 1 }} /><Line type="monotone" dataKey="ret" stroke="#6366f1" strokeWidth={2} dot={false}/><Line type="monotone" dataKey="qRet" stroke="#10b981" strokeWidth={2} dot={false}/></ComposedChart>}</ResponsiveContainer></Card>
+                                        <Card className="h-72 p-2 border-none shadow-brand-500/10"><div className="flex justify-between px-2 mb-2"><SectionTitle title={chartMode==='NAV_DD'?"淨值 & 回撤":"Alpha vs QQQ"} iconName="TrendingUp" /><div className="flex gap-2"><button onClick={()=>setShowBenchmark(!showBenchmark)} className={`px-3 py-1 rounded-lg text-xs font-bold ${showBenchmark ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-500'}`}>{showBenchmark ? '隱藏 QQQ' : '比較 QQQ'}</button><button onClick={()=>setChartMode(chartMode==='NAV_DD'?'ALPHA':'NAV_DD')} className="px-3 py-1 bg-brand-50 rounded-lg text-xs font-bold text-brand-600">切換</button></div></div><ResponsiveContainer>{chartMode==='NAV_DD' ? <ComposedChart data={metrics.graphData} margin={{top:10,right:0,left:0,bottom:0}}><defs><linearGradient id="colorEq" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3}/><stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/></linearGradient></defs><XAxis dataKey="date" tickFormatter={v=>new Date(v).toLocaleDateString(undefined,{month:'numeric',day:'numeric'})} tick={{fontSize:10}}/><YAxis yAxisId="left" tickFormatter={v=>`${(v/1000).toFixed(0)}k`} tick={{fontSize:10}}/><YAxis yAxisId="right" orientation="right" tickFormatter={v=>`${v.toFixed(0)}%`} tick={{fontSize:10,fill:'#ef4444'}}/><Tooltip content={<CustomGraphTooltip />} cursor={{ stroke: '#64748b', strokeWidth: 1 }} /><Area yAxisId="left" type="monotone" dataKey="equity" stroke="#0ea5e9" fill="url(#colorEq)"/>{showBenchmark && <Line yAxisId="left" type="monotone" dataKey="qqqEquity" stroke="#f97316" strokeWidth={2} dot={false} strokeDasharray="5 5" />}<Area yAxisId="right" type="step" dataKey="dd" stroke="#ef4444" fill="#ef4444" fillOpacity={0.1}/></ComposedChart> : <ComposedChart data={metrics.graphData} margin={{top:10,right:0,left:0,bottom:0}}><XAxis dataKey="date" tickFormatter={v=>new Date(v).toLocaleDateString(undefined,{month:'numeric',day:'numeric'})} tick={{fontSize:10}}/><YAxis tickFormatter={v=>`${v.toFixed(0)}%`} tick={{fontSize:10}}/><Tooltip content={<CustomGraphTooltip />} cursor={{ stroke: '#64748b', strokeWidth: 1 }} /><Line type="monotone" dataKey="ret" stroke="#0ea5e9" strokeWidth={2} dot={false}/><Line type="monotone" dataKey="qRet" stroke="#f97316" strokeWidth={2} dot={false}/></ComposedChart>}</ResponsiveContainer></Card>
                                         <div className="space-y-3">
                                             {historyGroups.map(g => (
-                                                <div key={g.year} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-                                                    <div onClick={() => toggleYear(g.year)} className="p-4 flex justify-between items-center cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                                                        <div className="flex flex-col"><div className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2"><span className="bg-indigo-100 dark:bg-slate-700 text-indigo-600 dark:text-slate-300 px-2 py-0.5 rounded text-xs">{g.year}</span></div><div className="text-[10px] text-slate-400 mt-1 flex gap-2"><span>損益: ${Math.round(g.pnl).toLocaleString()}</span><span>|</span><span>權利金: <span className="text-amber-500">${Math.round(g.optPnl).toLocaleString()}</span> ({g.optCont.toFixed(0)}%)</span></div></div>
+                                                <div key={g.year} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                                                    <div onClick={() => toggleYear(g.year)} className="p-4 flex justify-between items-center cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors">
+                                                        <div className="flex flex-col"><div className="font-bold text-slate-700 flex items-center gap-2"><span className="bg-brand-100 text-brand-700 px-2 py-0.5 rounded text-xs">{g.year}</span></div><div className="text-[10px] text-slate-400 mt-1 flex gap-2"><span>損益: ${Math.round(g.pnl).toLocaleString()}</span><span>|</span><span>權利金: <span className="text-amber-500">${Math.round(g.optPnl).toLocaleString()}</span> ({g.optCont.toFixed(0)}%)</span></div></div>
                                                         <div className={`font-mono font-black flex items-center gap-2 ${g.return >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{g.return > 0 ? '+' : ''}{g.return.toFixed(2)}% <Icon name={expandedYears[g.year] ? "ChevronUp" : "ChevronDown"} size={16} className="text-slate-400"/></div>
                                                     </div>
-                                                    {expandedYears[g.year] && <div className="border-t border-slate-100 dark:border-slate-700/50">{g.months.map(m => <div key={m.month} className="flex justify-between p-3 px-5 text-xs font-bold border-b border-slate-50 dark:border-slate-800/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/30"><div className="flex flex-col"><span className="text-slate-500">{m.month} 月</span><span className="text-[9px] text-slate-400 font-normal">權利金: ${Math.round(m.optPnl).toLocaleString()}</span></div><div className="text-right"><div className={`font-mono ${m.return >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{m.return > 0 ? '+' : ''}{m.return.toFixed(2)}%</div><div className="text-[9px] text-slate-400 font-normal">${Math.round(m.pnl).toLocaleString()}</div></div></div>)}</div>}
+                                                    {expandedYears[g.year] && <div className="border-t border-slate-100">{g.months.map(m => <div key={m.month} className="flex justify-between p-3 px-5 text-xs font-bold border-b border-slate-50 last:border-0 hover:bg-slate-50"><div className="flex flex-col"><span className="text-slate-500">{m.month} 月</span><span className="text-[9px] text-slate-400 font-normal">權利金: ${Math.round(m.optPnl).toLocaleString()}</span></div><div className="text-right"><div className={`font-mono ${m.return >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{m.return > 0 ? '+' : ''}{m.return.toFixed(2)}%</div><div className="text-[9px] text-slate-400 font-normal">${Math.round(m.pnl).toLocaleString()}</div></div></div>)}</div>}
                                                 </div>
                                             ))}
                                         </div>
-                                        <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800"><div className="flex items-center gap-2 text-xs font-black text-slate-500 px-1 uppercase tracking-widest"><Icon name="History" size={14}/> 詳細紀錄</div>{(historyExpanded ? metrics.graphData.slice().reverse() : metrics.graphData.slice().reverse().slice(0, 5)).map(r => { const rec = records.find(x=>x.date===r.date); return (<Card key={r.date} className="border-none shadow-md p-5 flex justify-between items-center cursor-pointer hover:scale-[1.01]" onClick={()=>{setEditingId(rec.id);setEditForm(JSON.parse(JSON.stringify(rec)));}}><div><div className="text-[10px] text-slate-400 font-bold">{new Date(r.date).toLocaleDateString()}</div><div className="text-xl font-mono">${r.equity.toLocaleString()}</div></div><div className="flex gap-2"><button className="p-2 bg-blue-50 dark:bg-slate-800 text-blue-500 rounded-lg"><Icon name="Edit2" size={14}/></button><button onClick={(e)=>{e.stopPropagation();confirmDelete(rec.id)}} className="p-2 bg-red-50 dark:bg-slate-800 text-red-500 rounded-lg"><Icon name="Trash2" size={14}/></button></div></Card>);})}<button onClick={() => setHistoryExpanded(!historyExpanded)} className="w-full py-3 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">{historyExpanded ? "收起" : `顯示全部`}</button></div>
+                                        <div className="space-y-4 pt-4 border-t border-slate-200"><div className="flex items-center gap-2 text-xs font-black text-slate-500 px-1 uppercase tracking-widest"><Icon name="History" size={14}/> 詳細紀錄</div>{(historyExpanded ? metrics.graphData.slice().reverse() : metrics.graphData.slice().reverse().slice(0, 5)).map(r => { const rec = records.find(x=>x.date===r.date); return (<Card key={r.date} className="border-none shadow-sm p-5 flex justify-between items-center cursor-pointer hover:scale-[1.01]" onClick={()=>{setEditingId(rec.id);setEditForm(JSON.parse(JSON.stringify(rec)));}}><div><div className="text-[10px] text-slate-400 font-bold">{new Date(r.date).toLocaleDateString()}</div><div className="text-xl font-mono">${r.equity.toLocaleString()}</div></div><div className="flex gap-2"><button className="p-2 bg-blue-50 text-blue-500 rounded-lg"><Icon name="Edit2" size={14}/></button><button onClick={(e)=>{e.stopPropagation();confirmDelete(rec.id)}} className="p-2 bg-red-50 text-red-500 rounded-lg"><Icon name="Trash2" size={14}/></button></div></Card>);})}<button onClick={() => setHistoryExpanded(!historyExpanded)} className="w-full py-3 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors">{historyExpanded ? "收起" : `顯示全部`}</button></div>
                                     </>
                                 ) : (
                                     <div className="space-y-4">
-                                        <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-slate-800 dark:to-slate-900 border-2 border-amber-200 dark:border-slate-700"><div className="text-xs font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest mb-1">歷史已實現總權利金</div><div className="text-3xl font-black font-mono text-slate-800 dark:text-slate-100">${totalRealizedPremium.toLocaleString()}</div></Card>
+                                        <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200"><div className="text-xs font-black text-amber-600 uppercase tracking-widest mb-1">歷史已實現總權利金</div><div className="text-3xl font-black font-mono text-slate-800">${totalRealizedPremium.toLocaleString()}</div></Card>
                                         <div className="flex justify-between items-center px-1 mb-2"><div className="flex items-center gap-2 text-xs font-black text-slate-500 uppercase tracking-widest"><Icon name="List" size={14}/> 交易明細</div></div>
                                         {/* OPTION HISTORY LOGIC */}
                                         {inputs.option_history && inputs.option_history.length > 0 ? (
                                             <>
                                                 {(optionHistoryExpanded ? inputs.option_history : inputs.option_history.slice(0, 5)).map(t => (
-                                                    <Card key={t.id} className="p-4 flex justify-between items-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50" onClick={()=>setEditingTrade(t)}>
+                                                    <Card key={t.id} className="p-4 flex justify-between items-center cursor-pointer hover:bg-slate-50" onClick={()=>setEditingTrade(t)}>
                                                         <div>
                                                             <div className="text-[10px] text-slate-400 font-bold">{new Date(t.date).toLocaleDateString()}</div>
                                                             <div className="font-bold flex items-center gap-2">
-                                                                <span className="text-indigo-600 dark:text-indigo-400">{t.ticker}</span>
-                                                                <span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">{t.type}</span>
+                                                                <span className="text-brand-600">{t.ticker}</span>
+                                                                <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{t.type}</span>
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center gap-4">
@@ -1018,7 +1081,7 @@
                                                     </Card>
                                                 ))}
                                                 {inputs.option_history.length > 5 && (
-                                                    <button onClick={() => setOptionHistoryExpanded(!optionHistoryExpanded)} className="w-full py-3 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                                                    <button onClick={() => setOptionHistoryExpanded(!optionHistoryExpanded)} className="w-full py-3 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors">
                                                         {optionHistoryExpanded ? "收起 (只看 5 筆)" : `顯示全部 (共 ${inputs.option_history.length} 筆)`}
                                                     </button>
                                                 )}
@@ -1033,27 +1096,27 @@
 
                         {view === 'loan' && (
                             <div className="space-y-6 animate-in fade-in">
-                                <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 border border-slate-200 dark:border-slate-700 shadow-lg">
+                                <div className="bg-white rounded-[2rem] p-6 border border-slate-200 shadow-sm">
                                     <div className="flex justify-between items-center mb-4"><div className="text-xs font-black uppercase text-slate-500 flex items-center gap-2"><Icon name="Activity" size={16} /> LTV 貸款價值比</div><div className={`text-2xl font-black font-mono ${ltv > 50 ? 'text-red-500' : (ltv > 30 ? 'text-amber-500' : 'text-emerald-500')}`}>{ltv.toFixed(1)}%</div></div>
-                                    <div className="h-6 w-full bg-slate-100 dark:bg-slate-800 rounded-full relative overflow-hidden mb-2"><div className="absolute top-0 bottom-0 left-0 bg-emerald-400/30" style={{width: '30%'}}></div><div className="absolute top-0 bottom-0 left-[30%] bg-amber-400/30" style={{width: '20%'}}></div><div className="absolute top-0 bottom-0 left-[50%] bg-red-400/30" style={{width: '50%'}}></div><div className="absolute top-0 bottom-0 w-1 bg-slate-800 dark:bg-white transition-all duration-500 z-10" style={{left: `${Math.min(ltv, 100)}%`}}></div></div>
+                                    <div className="h-6 w-full bg-slate-100 rounded-full relative overflow-hidden mb-2"><div className="absolute top-0 bottom-0 left-0 bg-emerald-400" style={{width: '30%'}}></div><div className="absolute top-0 bottom-0 left-[30%] bg-amber-400" style={{width: '20%'}}></div><div className="absolute top-0 bottom-0 left-[50%] bg-red-400" style={{width: '50%'}}></div><div className="absolute top-0 bottom-0 w-1 bg-white shadow-xl transition-all duration-500 z-10" style={{left: `${Math.min(ltv, 100)}%`}}></div></div>
                                 </div>
-                                <Card className="border-2 border-amber-100 dark:border-amber-900/30"><div className="grid gap-4">{[{l:"貸款總額",k:"loan_amount"},{l:"還款目標%",k:"loan_repay_target"},{l:"基準市值(可選)",k:"loan_entry_valuation"}].map(f => (<div key={f.k} className="space-y-1"><label className="text-[10px] uppercase text-amber-600">{f.l}</label><input type="number" value={inputs[f.k]} onChange={e=>handleInputChange(f.k,e.target.value)} onBlur={e=>syncToCloud(f.k,e.target.value)} className="bg-amber-50 dark:bg-slate-800 rounded-xl p-3 text-center text-lg w-full font-bold" /></div>))}</div></Card>
+                                <Card className="border-2 border-amber-100"><div className="grid gap-4">{[{l:"貸款總額",k:"loan_amount"},{l:"還款目標%",k:"loan_repay_target"},{l:"基準市值(可選)",k:"loan_entry_valuation"}].map(f => (<div key={f.k} className="space-y-1"><label className="text-[10px] uppercase text-amber-600">{f.l}</label><input type="number" value={inputs[f.k]} onChange={e=>handleInputChange(f.k,e.target.value)} onBlur={e=>syncToCloud(f.k,e.target.value)} className="bg-amber-50 rounded-xl p-3 text-center text-lg w-full font-bold" /></div>))}</div></Card>
                             </div>
                         )}
 
                         {view === 'sync_settings' && (
                             <div className="space-y-6 animate-in fade-in">
-                                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 overflow-hidden"><button onClick={()=>setSettings(p=>({...p,account:!p.account}))} className="w-full p-4 flex justify-between bg-slate-50 dark:bg-slate-800/50"><div className="flex items-center gap-3 font-black"><Icon name="Fingerprint" className="text-indigo-500"/> 帳號同步</div><Icon name={openSettings.account?"ChevronUp":"ChevronDown"} size={14}/></button>{openSettings.account && <div className="p-6 pt-2 space-y-4"><div className="text-center font-mono text-lg">{effectiveUserId}</div><div className="flex gap-2"><input value={tempSyncId} onChange={e=>setTempSyncId(e.target.value)} className="flex-1 bg-slate-100 p-3 rounded-xl" placeholder="ID" /><button onClick={()=>{setCustomSyncId(tempSyncId);localStorage.setItem('qqq_sync_id',tempSyncId);showToast("已切換")}} className="bg-indigo-600 text-white px-4 rounded-xl">OK</button></div></div>}</div>
-                                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 overflow-hidden">
-                                    <button onClick={()=>setSettings(p=>({...p,system:!p.system}))} className="w-full p-4 flex justify-between bg-slate-50 dark:bg-slate-800/50"><div className="flex items-center gap-3 font-black"><Icon name="Settings" className="text-emerald-500"/> 系統與工具</div><Icon name={openSettings.system?"ChevronUp":"ChevronDown"} size={14}/></button>
-                                    {openSettings.system && <div className="p-6 pt-2 space-y-4"><div className="flex gap-3"><button onClick={()=>setDarkMode(!darkMode)} className="flex-1 p-3 bg-slate-100 rounded-xl flex justify-center gap-2"><Icon name={darkMode?"Sun":"Moon"}/> {darkMode?"亮色":"深色"}</button></div></div>}
+                                <div className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden"><button onClick={()=>setSettings(p=>({...p,account:!p.account}))} className="w-full p-4 flex justify-between bg-slate-50"><div className="flex items-center gap-3 font-black"><Icon name="Fingerprint" className="text-indigo-500"/> 帳號同步</div><Icon name={openSettings.account?"ChevronUp":"ChevronDown"} size={14}/></button>{openSettings.account && <div className="p-6 pt-2 space-y-4"><div className="text-center font-mono text-lg">{effectiveUserId}</div><div className="flex gap-2"><input value={tempSyncId} onChange={e=>setTempSyncId(e.target.value)} className="flex-1 bg-slate-100 p-3 rounded-xl" placeholder="ID" /><button onClick={()=>{setCustomSyncId(tempSyncId);localStorage.setItem('qqq_sync_id',tempSyncId);showToast("已切換")}} className="bg-indigo-600 text-white px-4 rounded-xl">OK</button></div></div>}</div>
+                                <div className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden">
+                                    <button onClick={()=>setSettings(p=>({...p,strategy:!p.strategy}))} className="w-full p-4 flex justify-between bg-slate-50"><div className="flex items-center gap-3 font-black"><Icon name="BookOpen" className="text-amber-500"/> 策略手冊</div><Icon name={openSettings.strategy?"ChevronUp":"ChevronDown"} size={14}/></button>
+                                    {openSettings.strategy && <div className="p-5 pt-0"><button onClick={()=>setIsStrategyEditing(!isStrategyEditing)} className="mb-2 text-[10px] bg-slate-100 px-2 py-0.5 rounded ml-auto block">{isStrategyEditing?"鎖定":"編輯"}</button>{['core','custom','options'].map(k=><div key={k} className="mb-2"><input value={inputs[`title_${k}`]} readOnly={!isStrategyEditing} onChange={e=>handleInputChange(`title_${k}`,e.target.value)} className="text-brand-600 font-bold mb-1 w-full text-left" /><textarea value={inputs[`strat_${k}`]} readOnly={!isStrategyEditing} onChange={e=>handleInputChange(`strat_${k}`,e.target.value)} className="strategy-textarea w-full text-xs p-2" /></div>)}</div>}
                                 </div>
                             </div>
                         )}
                     </main>
 
-                    <nav className="fixed bottom-0 inset-x-0 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 z-50 py-4 pb-10 flex justify-around shadow-2xl">
-                        {[{id:'dashboard',icon:'LayoutDashboard',l:'儀表板'},{id:'parameters',icon:'Sliders',l:'參數'},{id:'history',icon:'TrendingUp',l:'績效'},{id:'loan',icon:'Landmark',l:'貸款'}].map(t => <button key={t.id} onClick={()=>{setView(t.id);}} className={`flex flex-col items-center gap-1 flex-1 transition-all active:scale-90 ${view===t.id?'text-indigo-600 border-t-2 border-indigo-600 -mt-4 pt-2':'text-slate-400'}`}><Icon name={t.icon} size={24}/><span className="text-[10px] uppercase font-black">{t.l}</span></button>)}
+                    <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 z-50 py-4 pb-10 flex justify-around shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                        {[{id:'dashboard',icon:'LayoutDashboard',l:'儀表板'},{id:'parameters',icon:'Sliders',l:'參數'},{id:'history',icon:'TrendingUp',l:'績效'},{id:'loan',icon:'Landmark',l:'貸款'}].map(t => <button key={t.id} onClick={()=>{setView(t.id);}} className={`flex flex-col items-center gap-1 flex-1 transition-all active:scale-90 ${view===t.id?'text-brand-600 border-t-2 border-brand-600 -mt-4 pt-2':'text-slate-400'}`}><Icon name={t.icon} size={24}/><span className="text-[10px] uppercase font-black">{t.l}</span></button>)}
                     </nav>
                 </div>
             );
