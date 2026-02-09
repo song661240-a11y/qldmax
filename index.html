@@ -55,7 +55,7 @@
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback, memo } = React;
-        const { ComposedChart, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
+        const { ComposedChart, AreaChart, Area, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
 
         const FINNHUB_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
         const firebaseConfig = { apiKey: "AIzaSyBpax3wlTwHTe6G3niZajtTxpoUWbgvX80", authDomain: "qldmax.firebaseapp.com", projectId: "qldmax", storageBucket: "qldmax.firebasestorage.app", messagingSenderId: "752199866954", appId: "1:752199866954:web:50d17ae522095c363d64b3" };
@@ -64,10 +64,12 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore(); const auth = firebase.auth();
 
+        // --- Utility Functions ---
         const sanitizeForFirestore = (data) => JSON.parse(JSON.stringify(data, (k, v) => v === undefined ? null : v));
         const getNum = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
         const getQty = (val, price) => (price > 0 ? Math.abs(val / price) : 0);
 
+        // --- UI Components ---
         const Icon = memo(({ name, size = 20, className = "" }) => {
             const icons = { 
                 TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>, Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>, 
@@ -89,6 +91,7 @@
             return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name] || <circle cx="12" cy="12" r="10" />}</svg>;
         });
 
+        // --- Collapsible Card Component ---
         const CollapsibleCard = ({ title, icon, isOpen, onToggle, children, rightElement, className = "" }) => (
             <div className={`bg-white rounded-[1.5rem] shadow-heavy border border-slate-300 transition-all overflow-hidden ${className}`}>
                 <div className="p-4 flex justify-between items-center cursor-pointer bg-slate-50 border-b border-slate-100" onClick={onToggle}>
@@ -255,6 +258,8 @@
             const [expandedYears, setExpandedYears] = useState({});
             const toggleYear = (y) => setExpandedYears(prev => ({...prev, [y]: !prev[y]}));
             const [historyTab, setHistoryTab] = useState('nav'); 
+            const [chartMode, setChartMode] = useState('DD'); 
+            const [benchmarkTicker, setBenchmarkTicker] = useState('QQQ');
 
             const [modal, setModal] = useState({ type: null, data: null }); 
             const [records, setRecords] = useState([]);
@@ -316,12 +321,10 @@
             const updateSatellite = (id, field, value) => { const newSats = inputs.satellites.map(s => s.id === id ? { ...s, [field]: value } : s); setInputs(p => ({ ...p, satellites: newSats })); if (field === 'ticker') syncToCloud('satellites', newSats); };
             const saveSatellites = () => syncToCloud('satellites', inputs.satellites);
             const deleteSatellite = (id) => { const newSats = inputs.satellites.filter(s => s.id !== id); setInputs(p => ({ ...p, satellites: newSats })); syncToCloud('satellites', newSats); };
-
             const toggleCashSign = () => { setInputs(prev => { const currentVal = prev.cash_balance; const numVal = parseFloat(currentVal); if (!isNaN(numVal)) { const newVal = numVal * -1; syncToCloud('cash_balance', newVal); return { ...prev, cash_balance: newVal }; } return prev; }); };
 
             const save = async () => { if (!user || isSaving) return; setIsSaving(true); try { const cleanInputs = sanitizeForFirestore(inputs); if (!cleanInputs.record_date) cleanInputs.record_date = new Date().toISOString().split('T')[0]; const payload = { date: new Date(cleanInputs.record_date).toISOString(), total_equity: metrics.totalCapital || 0, prices: sanitizeForFirestore(prices), inputs: cleanInputs, memo: cleanInputs.record_memo || '' }; await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').add(payload); await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set(cleanInputs, { merge: true }); showToast("儲存成功"); } catch(e) { showToast(`失敗: ${e.message}`); } setIsSaving(false); };
             const deleteRecord = async (id) => { if(confirm('確定刪除此筆紀錄？')) { await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').doc(id).delete(); showToast("紀錄已刪除"); } };
-            
             const updateRecord = async () => { 
                 if(!modal.data?.id) return; 
                 const updatedInputs = { ...modal.data.inputs, ...modal.temp?.inputs };
@@ -331,19 +334,6 @@
                     inputs: updatedInputs 
                 }); 
                 setModal({type:null}); showToast("更新成功"); 
-            };
-
-            const confirmDelete = async () => {
-                if (modal.data.type === 'RECORD') {
-                    await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').doc(modal.data.id).delete();
-                    showToast("紀錄已刪除");
-                } else if (modal.data.type === 'OPTION_HISTORY') {
-                     const newHist = inputs.option_history.filter(h => h.id !== modal.data.id);
-                     setInputs(p => ({...p, option_history: newHist}));
-                     await syncToCloud('option_history', newHist);
-                     showToast("交易紀錄已刪除");
-                }
-                setModal({ type: null });
             };
 
             const handleOptionTrade = (type, data) => {
@@ -467,6 +457,7 @@
                     }
                 }
 
+                // FIXED: Pie Data includes Fund Pool (Core 1) and Cash
                 const pieData = [
                     { name: tickerCore1, value: valCore1, fill: '#3b82f6', percent: valCore1/safeTotal }, 
                     { name: tickerCore2, value: valCore2, fill: '#8b5cf6', percent: valCore2/safeTotal },
@@ -510,10 +501,68 @@
                     {isSwitching && <div className="loading-overlay"><div className="w-12 h-12 border-4 border-brand-100 border-t-brand-600 rounded-full animate-spin"></div><div className="text-brand-600 font-black">載入數據中...</div></div>}
 
                     {modal.type === 'DELETE_CONFIRM' && (<Modal title="確認刪除" icon="Trash2" isOpen={true} onClose={()=>setModal({type:null})}><div className="text-center py-4"><p className="text-slate-600 font-bold mb-4">確定要刪除此筆資料嗎？此動作無法復原。</p><div className="flex gap-2"><button onClick={()=>setModal({type:null})} className="flex-1 bg-slate-200 text-slate-600 py-3 rounded-xl font-bold">取消</button><button onClick={confirmDelete} className="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600">確認刪除</button></div></div></Modal>)}
-                    {modal.type === 'TRADE' && (<Modal title={modal.subType === 'OPEN' ? "建立選擇權部位" : (modal.subType === 'ROLL' ? "選擇權轉倉" : "平倉")} icon="Zap" isOpen={true} onClose={()=>setModal({type:null})}><div className="space-y-3">{modal.subType === 'OPEN' && (<><div className="grid grid-cols-2 gap-2"><div><label className="text-xs text-slate-500">標的代號</label><input className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={inputs.ticker_core_2} onChange={e=>setModal({...modal, temp: {...modal.temp, ticker: e.target.value.toUpperCase()}})} /></div><div><label className="text-xs text-slate-500">交易類型</label><select className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" onChange={e=>setModal({...modal, temp: {...modal.temp, type: e.target.value}})}><option value="SC">Sell Call</option><option value="SP">Sell Put</option></select></div></div><div className="grid grid-cols-2 gap-2"><div><label className="text-xs text-slate-500">到期日</label><input type="date" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold text-xs" onChange={e=>setModal({...modal, temp: {...modal.temp, newExpiry: e.target.value}})} /></div><div><label className="text-xs text-slate-500">履約價</label><input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" placeholder="Strike" onChange={e=>setModal({...modal, temp: {...modal.temp, newStrike: e.target.value}})} /></div></div><div className="grid grid-cols-2 gap-2"><div><label className="text-xs text-slate-500">權利金(單股)</label><input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" placeholder="0.00" onChange={e=>setModal({...modal, temp: {...modal.temp, newPremium: e.target.value}})} /></div><div><label className="text-xs text-slate-500">張數</label><input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={1} onChange={e=>setModal({...modal, temp: {...modal.temp, contracts: e.target.value}})} /></div></div><div className="bg-emerald-50 p-2 rounded-lg text-center text-emerald-600 font-bold text-sm">預估收入: ${((parseFloat(modal.temp?.newPremium)||0) * (parseFloat(modal.temp?.contracts)||1) * 100).toFixed(0)}</div><button onClick={()=>handleOptionTrade('OPEN', modal.temp)} className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold mt-2">確認建立</button></>)}{modal.subType === 'CLOSE' && (<><input className="bg-f1f5f9 p-3 w-full rounded-xl font-black text-center text-xl" type="number" placeholder="買回價格" autoFocus onChange={e=>setModal({...modal, temp: {...modal.temp, exitPrice: e.target.value}})} /><button onClick={()=>handleOptionTrade('CLOSE', modal.temp)} className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold mt-2">確認平倉</button></>)}{modal.subType === 'ROLL' && (<><div className="bg-slate-50 p-2 rounded-lg mb-2 text-xs"><span className="font-bold">Step 1: 平倉舊合約</span><input className="mt-1 bg-white border border-slate-300 p-2 w-full rounded-lg font-bold text-center" type="number" placeholder="買回價格" autoFocus onChange={e=>setModal({...modal, temp: {...modal.temp, exitPrice: e.target.value}})} /></div><div className="bg-slate-50 p-2 rounded-lg text-xs"><span className="font-bold block mb-1">Step 2: 建立新合約</span><div className="grid grid-cols-2 gap-2"><input className="bg-white p-2 rounded border border-slate-300" type="date" onChange={e=>setModal({...modal, temp: {...modal.temp, newExpiry: e.target.value}})} /><input className="bg-white p-2 rounded border border-slate-300" type="number" placeholder="新 Strike" onChange={e=>setModal({...modal, temp: {...modal.temp, newStrike: e.target.value}})} /><input className="bg-white p-2 rounded border border-slate-300" type="number" placeholder="新權利金" onChange={e=>setModal({...modal, temp: {...modal.temp, newPremium: e.target.value}})} /><div className="p-2 flex items-center justify-center text-slate-400 font-bold">{modal.data.contracts} 張</div></div></div><button onClick={()=>handleOptionTrade('ROLL', modal.temp)} className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold mt-2">確認轉倉</button></>)}</div></Modal>)}
+                    {/* ... (Previous Modals for TRADE, EDIT_INVENTORY, EDIT_HISTORY, EDIT_RECORD remain exactly same) ... */}
+                    
+                    {/* (Insert Modals Here - Shortened for brevity as logic is identical to previous successful versions) */}
+                    {/* Trade Modal */}
+                    {modal.type === 'TRADE' && (
+                        <Modal title={modal.subType === 'OPEN' ? "建立選擇權部位" : (modal.subType === 'ROLL' ? "選擇權轉倉" : "平倉")} icon="Zap" isOpen={true} onClose={()=>setModal({type:null})}>
+                            <div className="space-y-3">
+                                {modal.subType === 'OPEN' && (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-2"><div><label className="text-xs text-slate-500">標的代號</label><input className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={inputs.ticker_core_2} onChange={e=>setModal({...modal, temp: {...modal.temp, ticker: e.target.value.toUpperCase()}})} /></div><div><label className="text-xs text-slate-500">交易類型</label><select className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" onChange={e=>setModal({...modal, temp: {...modal.temp, type: e.target.value}})}><option value="SC">Sell Call</option><option value="SP">Sell Put</option></select></div></div>
+                                        <div className="grid grid-cols-2 gap-2"><div><label className="text-xs text-slate-500">到期日</label><input type="date" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold text-xs" onChange={e=>setModal({...modal, temp: {...modal.temp, newExpiry: e.target.value}})} /></div><div><label className="text-xs text-slate-500">履約價</label><input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" placeholder="Strike" onChange={e=>setModal({...modal, temp: {...modal.temp, newStrike: e.target.value}})} /></div></div>
+                                        <div className="grid grid-cols-2 gap-2"><div><label className="text-xs text-slate-500">權利金(單股)</label><input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" placeholder="0.00" onChange={e=>setModal({...modal, temp: {...modal.temp, newPremium: e.target.value}})} /></div><div><label className="text-xs text-slate-500">張數</label><input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={1} onChange={e=>setModal({...modal, temp: {...modal.temp, contracts: e.target.value}})} /></div></div>
+                                        <div className="bg-emerald-50 p-2 rounded-lg text-center text-emerald-600 font-bold text-sm">預估收入: ${((parseFloat(modal.temp?.newPremium)||0) * (parseFloat(modal.temp?.contracts)||1) * 100).toFixed(0)}</div>
+                                        <button onClick={()=>handleOptionTrade('OPEN', modal.temp)} className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold mt-2">確認建立</button>
+                                    </>
+                                )}
+                                {modal.subType === 'CLOSE' && (
+                                    <>
+                                        <input className="bg-f1f5f9 p-3 w-full rounded-xl font-black text-center text-xl" type="number" placeholder="買回價格" autoFocus onChange={e=>setModal({...modal, temp: {...modal.temp, exitPrice: e.target.value}})} />
+                                        <button onClick={()=>handleOptionTrade('CLOSE', modal.temp)} className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold mt-2">確認平倉</button>
+                                    </>
+                                )}
+                                {modal.subType === 'ROLL' && (
+                                    <>
+                                        <div className="bg-slate-50 p-2 rounded-lg mb-2 text-xs"><span className="font-bold">Step 1: 平倉舊合約</span><input className="mt-1 bg-white border border-slate-300 p-2 w-full rounded-lg font-bold text-center" type="number" placeholder="買回價格" autoFocus onChange={e=>setModal({...modal, temp: {...modal.temp, exitPrice: e.target.value}})} /></div>
+                                        <div className="bg-slate-50 p-2 rounded-lg text-xs"><span className="font-bold block mb-1">Step 2: 建立新合約</span><div className="grid grid-cols-2 gap-2"><input className="bg-white p-2 rounded border border-slate-300" type="date" onChange={e=>setModal({...modal, temp: {...modal.temp, newExpiry: e.target.value}})} /><input className="bg-white p-2 rounded border border-slate-300" type="number" placeholder="新 Strike" onChange={e=>setModal({...modal, temp: {...modal.temp, newStrike: e.target.value}})} /><input className="bg-white p-2 rounded border border-slate-300" type="number" placeholder="新權利金" onChange={e=>setModal({...modal, temp: {...modal.temp, newPremium: e.target.value}})} /><div className="p-2 flex items-center justify-center text-slate-400 font-bold">{modal.data.contracts} 張</div></div></div>
+                                        <button onClick={()=>handleOptionTrade('ROLL', modal.temp)} className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold mt-2">確認轉倉</button>
+                                    </>
+                                )}
+                            </div>
+                        </Modal>
+                    )}
+                    
                     {modal.type === 'EDIT_INVENTORY' && (<Modal title="編輯部位" icon="Edit2" isOpen={true} onClose={()=>setModal({type:null})}><div className="space-y-3"><div className="grid grid-cols-2 gap-2"><input className="bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={modal.data.ticker} onChange={e=>setModal({...modal, temp: {...modal.temp, ticker: e.target.value.toUpperCase()}})} /><select className="bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={modal.data.type} onChange={e=>setModal({...modal, temp: {...modal.temp, type: e.target.value}})}><option value="SC">Sell Call</option><option value="SP">Sell Put</option></select></div><div className="grid grid-cols-2 gap-2"><input className="bg-f1f5f9 p-2 rounded-lg font-bold" type="number" defaultValue={modal.data.strike} onChange={e=>setModal({...modal, temp: {...modal.temp, strike: e.target.value}})} /><input className="bg-f1f5f9 p-2 rounded-lg font-bold" type="date" defaultValue={modal.data.expiry} onChange={e=>setModal({...modal, temp: {...modal.temp, expiry: e.target.value}})} /></div><button onClick={()=>handleOptionTrade('EDIT_INVENTORY', modal.temp)} className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold">儲存修改</button></div></Modal>)}
                     {modal.type === 'EDIT_HISTORY' && (<Modal title="編輯交易" icon="Edit2" isOpen={true} onClose={()=>setModal({type:null})}><div className="space-y-3"><div><label className="text-xs text-slate-500">損益 ($)</label><input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={modal.data.pnl} onChange={e=>setModal({...modal, temp: {...modal.temp, pnl: parseFloat(e.target.value)}})} /></div><div className="flex gap-2"><button onClick={()=>setModal({type:'DELETE_CONFIRM', data:{id:modal.data.id, type:'OPTION_HISTORY'}})} className="p-3 bg-red-100 text-red-500 rounded-xl"><Icon name="Trash2"/></button><button onClick={()=>handleOptionTrade('EDIT_HISTORY', modal.temp)} className="flex-1 bg-brand-600 text-white rounded-xl font-bold">儲存</button></div></div></Modal>)}
-                    {modal.type === 'EDIT_RECORD' && (<Modal title="修正歷史紀錄" icon="Edit2" isOpen={true} onClose={()=>setModal({type:null})}><div className="space-y-3"><div><label className="text-xs text-slate-500">日期</label><input type="date" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={modal.data.date?.split('T')[0]} onChange={e=>setModal({...modal, temp: {...modal.temp, date: e.target.value}})} /></div><div><label className="text-xs text-slate-500">總資產 ($)</label><input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={modal.data.total_equity} onChange={e=>setModal({...modal, temp: {...modal.temp, equity: e.target.value}})} /></div><div className="p-3 bg-f1f5f9 rounded-xl border border-slate-200"><div className="text-xs font-black text-slate-500 mb-2">持倉修正 (快照)</div><div className="grid grid-cols-2 gap-2 mb-2"><div><label className="text-[10px] text-slate-400">Core 1</label><input type="number" className="w-full bg-white p-1 rounded font-bold text-sm" defaultValue={modal.data.inputs?.qty_core_1} onChange={e=>setModal({...modal, temp: {...modal.temp, inputs: {...(modal.temp?.inputs || modal.data.inputs), qty_core_1: e.target.value}}})} /></div><div><label className="text-[10px] text-slate-400">Core 2</label><input type="number" className="w-full bg-white p-1 rounded font-bold text-sm" defaultValue={modal.data.inputs?.qty_core_2} onChange={e=>setModal({...modal, temp: {...modal.temp, inputs: {...(modal.temp?.inputs || modal.data.inputs), qty_core_2: e.target.value}}})} /></div></div><div className="space-y-2">{(modal.data.inputs?.satellites||[]).map((s,idx)=><div key={idx} className="flex justify-between items-center"><label className="text-[10px] text-slate-400">{s.ticker}</label><input type="number" className="w-16 bg-white p-1 rounded font-bold text-sm text-right" defaultValue={s.qty} onChange={e=>{const ns=[...(modal.temp?.inputs?.satellites||modal.data.inputs.satellites)]; ns[idx]={...ns[idx],qty:e.target.value}; setModal({...modal,temp:{...modal.temp,inputs:{...(modal.temp?.inputs||modal.data.inputs),satellites:ns}}})}}/></div>)}</div><div className="mt-2"><label className="text-[10px] text-slate-400">Cash ($)</label><input type="number" className="w-full bg-white p-1 rounded font-bold text-sm" defaultValue={modal.data.inputs?.cash_balance} onChange={e=>setModal({...modal, temp: {...modal.temp, inputs: {...(modal.temp?.inputs || modal.data.inputs), cash_balance: e.target.value}}})} /></div></div><button onClick={updateRecord} className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold">儲存修正</button></div></Modal>)}
+                    
+                    {modal.type === 'EDIT_RECORD' && (
+                        <Modal title="修正歷史紀錄" icon="Edit2" isOpen={true} onClose={()=>setModal({type:null})}>
+                            <div className="space-y-3">
+                                <div><label className="text-xs text-slate-500">日期</label><input type="date" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={modal.data.date?.split('T')[0]} onChange={e=>setModal({...modal, temp: {...modal.temp, date: e.target.value}})} /></div>
+                                <div><label className="text-xs text-slate-500">總資產 ($)</label><input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={modal.data.total_equity} onChange={e=>setModal({...modal, temp: {...modal.temp, equity: e.target.value}})} /></div>
+                                <div className="p-3 bg-f1f5f9 rounded-xl border border-slate-200">
+                                    <div className="text-xs font-black text-slate-500 mb-2">持倉修正 (快照)</div>
+                                    <div className="grid grid-cols-2 gap-2 mb-2">
+                                        <div><label className="text-[10px] text-slate-400">Core 1 ({inputs.ticker_core_1})</label><input type="number" className="w-full bg-white p-1 rounded font-bold text-sm" defaultValue={modal.data.inputs?.qty_core_1} onChange={e=>setModal({...modal, temp: {...modal.temp, inputs: {...(modal.temp?.inputs || modal.data.inputs), qty_core_1: e.target.value}}})} /></div>
+                                        <div><label className="text-[10px] text-slate-400">Core 2 ({inputs.ticker_core_2})</label><input type="number" className="w-full bg-white p-1 rounded font-bold text-sm" defaultValue={modal.data.inputs?.qty_core_2} onChange={e=>setModal({...modal, temp: {...modal.temp, inputs: {...(modal.temp?.inputs || modal.data.inputs), qty_core_2: e.target.value}}})} /></div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {(modal.data.inputs?.satellites || []).map((s, idx) => (
+                                            <div key={idx} className="flex justify-between items-center"><label className="text-[10px] text-slate-400">{s.ticker}</label><input type="number" className="w-16 bg-white p-1 rounded font-bold text-sm text-right" defaultValue={s.qty} onChange={e=>{
+                                                const newSats = [...(modal.temp?.inputs?.satellites || modal.data.inputs.satellites)];
+                                                newSats[idx] = { ...newSats[idx], qty: e.target.value };
+                                                setModal({...modal, temp: {...modal.temp, inputs: {...(modal.temp?.inputs || modal.data.inputs), satellites: newSats}}});
+                                            }} /></div>
+                                        ))}
+                                    </div>
+                                    <div className="mt-2"><label className="text-[10px] text-slate-400">Cash ($)</label><input type="number" className="w-full bg-white p-1 rounded font-bold text-sm" defaultValue={modal.data.inputs?.cash_balance} onChange={e=>setModal({...modal, temp: {...modal.temp, inputs: {...(modal.temp?.inputs || modal.data.inputs), cash_balance: e.target.value}}})} /></div>
+                                </div>
+                                <button onClick={updateRecord} className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold mt-2">儲存修正</button>
+                            </div>
+                        </Modal>
+                    )}
 
                     <header className="fixed top-0 inset-x-0 bg-f8fafc z-50 px-5 py-4 pt-6 flex justify-between items-center shadow-sm border-b border-e2e8f0">
                         <div className="flex items-center gap-2 font-black"><div className="bg-brand-50 p-2 rounded-2xl"><Icon name="Shield" className="text-brand-600" size={18} /></div><h1 className="text-lg text-slate-800">Alpha Horizon V9.8</h1></div>
@@ -525,7 +574,7 @@
                             <div className="space-y-6 animate-in fade-in">
                                 <CollapsibleCard title="投資座右銘" icon="Quote" isOpen={sections.motto} onToggle={()=>toggleSection('motto')} className="relative group">
                                     <div className="flex justify-end mb-2 relative z-10"><button onClick={(e) => {e.stopPropagation(); setIsMottoLocked(!isMottoLocked);}} className="p-1.5 bg-slate-100 rounded-full text-slate-400 hover:text-brand-600"><Icon name={isMottoLocked?"Lock":"Unlock"} size={12}/></button></div>
-                                    <textarea value={inputs.motto} readOnly={isMottoLocked} onChange={e=>handleInputChange('motto',e.target.value)} onBlur={e=>syncToCloud('motto',e.target.value)} className={`w-full bg-transparent text-sm font-bold text-slate-700 outline-none resize-none leading-relaxed text-center ${isMottoLocked?'':'bg-f8fafc rounded-xl border border-dashed border-slate-300 p-2'}`} rows="3" placeholder="輸入您的投資心法..." onClick={e=>e.stopPropagation()} />
+                                    <textarea value={inputs.motto} readOnly={isMottoLocked} onChange={e=>handleInputChange('motto',e.target.value)} onBlur={e=>syncToCloud('motto',e.target.value)} className={`w-full bg-transparent text-sm font-bold text-slate-700 outline-none resize-none leading-relaxed text-center ${isMottoLocked?'':'bg-f8fafc rounded-xl border border-dashed border-slate-300 p-2'}`} rows="6" placeholder="輸入您的投資心法..." onClick={e=>e.stopPropagation()} />
                                     <div className="absolute right-0 bottom-0 opacity-5 pointer-events-none transform translate-x-4 translate-y-4"><Icon name="Quote" size={80} /></div>
                                 </CollapsibleCard>
 
@@ -692,28 +741,35 @@
                                         <div className="pt-4 border-t border-slate-200">
                                             <div className="flex justify-between items-center px-2 mb-2"><SectionTitle title="詳細績效紀錄" iconName="List" /></div>
                                             <div className="space-y-2">
-                                                {records.sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0, 10).map(r => (
-                                                    <div key={r.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                                                        <div className="flex justify-between items-center mb-2">
-                                                            <div>
-                                                                <div className="text-xs font-black text-slate-700">{new Date(r.date).toLocaleDateString()}</div>
-                                                                <div className="text-[10px] text-slate-400 font-mono">${r.total_equity.toLocaleString()}</div>
+                                                {records.sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0, 10).map((r, idx, arr) => {
+                                                    const prev = arr[idx+1];
+                                                    const change = prev ? ((r.total_equity - prev.total_equity)/prev.total_equity)*100 : 0;
+                                                    return (
+                                                        <div key={r.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                                                            <div className="flex justify-between items-center mb-2">
+                                                                <div>
+                                                                    <div className="text-xs font-black text-slate-700">{new Date(r.date).toLocaleDateString()}</div>
+                                                                    <div className="flex gap-2 items-end">
+                                                                        <div className="text-[10px] text-slate-400 font-mono">${r.total_equity.toLocaleString()}</div>
+                                                                        {idx < arr.length-1 && <div className={`text-[9px] font-bold ${change>=0?'text-emerald-500':'text-red-500'}`}>{change>0?'+':''}{change.toFixed(1)}%</div>}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex gap-2">
+                                                                    <button onClick={()=>setModal({type:'EDIT_RECORD', data: r, temp: {}})} className="p-2 text-brand-400 hover:bg-brand-50 rounded-lg"><Icon name="Edit2" size={14}/></button>
+                                                                    <button onClick={()=>requestDeleteRecord(r.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg"><Icon name="Trash2" size={14}/></button>
+                                                                </div>
                                                             </div>
-                                                            <div className="flex gap-2">
-                                                                <button onClick={()=>setModal({type:'EDIT_RECORD', data: r, temp: {}})} className="p-2 text-brand-400 hover:bg-brand-50 rounded-lg"><Icon name="Edit2" size={14}/></button>
-                                                                <button onClick={()=>requestDeleteRecord(r.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg"><Icon name="Trash2" size={14}/></button>
-                                                            </div>
+                                                            {r.inputs && (
+                                                                <div className="flex flex-wrap gap-2 text-[9px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                                                    <span className="font-bold text-blue-600">{inputs.ticker_core_1}: {r.inputs.qty_core_1||r.inputs.qty_voo||0}</span>
+                                                                    <span className="font-bold text-purple-600">{inputs.ticker_core_2}: {r.inputs.qty_core_2||r.inputs.qty_qqq||0}</span>
+                                                                    <span className="font-bold text-slate-600">Cash: ${parseInt(r.inputs.cash_balance||0).toLocaleString()}</span>
+                                                                    {(r.inputs.satellites||[]).map(s => <span key={s.id} className="text-slate-400">{s.ticker}: {s.qty}</span>)}
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        {r.inputs && (
-                                                            <div className="flex flex-wrap gap-2 text-[9px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                                                <span className="font-bold text-blue-600">{inputs.ticker_core_1}: {r.inputs.qty_core_1||r.inputs.qty_voo||0}</span>
-                                                                <span className="font-bold text-purple-600">{inputs.ticker_core_2}: {r.inputs.qty_core_2||r.inputs.qty_qqq||0}</span>
-                                                                <span className="font-bold text-slate-600">Cash: ${parseInt(r.inputs.cash_balance||0).toLocaleString()}</span>
-                                                                {(r.inputs.satellites||[]).map(s => <span key={s.id} className="text-slate-400">{s.ticker}: {s.qty}</span>)}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     </>
