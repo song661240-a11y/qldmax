@@ -173,31 +173,42 @@
         };
 
         const HoldingRow = memo(({ conf, inputs, prices, onChange, onBlur, isDynamic = false }) => {
-            let rawTicker = '';
-            if (isDynamic) rawTicker = conf.ticker;
-            else if (conf.tickerKey) rawTicker = inputs[conf.tickerKey];
-            else rawTicker = conf.ticker;
+            let rawTicker = isDynamic ? conf.ticker : (conf.tickerKey ? inputs[conf.tickerKey] : conf.ticker);
             const ticker = (rawTicker || conf.defaultTicker || '').toUpperCase();
-            
             const price = prices[ticker] || 0;
             const currentQty = isDynamic ? conf.qty : inputs[conf.qtyKey];
             
+            // Target Price Logic
+            const targetPrice = isDynamic ? (conf.target_price || '') : (inputs[conf.targetPriceKey] || '');
+            const diffPct = (targetPrice && price) ? ((targetPrice - price) / price * 100) : 0;
+            
             const handleTickerChange = (v) => isDynamic ? onChange(conf.id, 'ticker', v.toUpperCase()) : onChange(conf.tickerKey, v.toUpperCase());
             const handleQtyChange = (v) => isDynamic ? onChange(conf.id, 'qty', v) : onChange(conf.qtyKey, v);
-            const handleBlur = (field, v) => isDynamic ? onBlur() : onBlur(field, v);
+            const handleTargetChange = (v) => isDynamic ? onChange(conf.id, 'target_price', v) : onChange(conf.targetPriceKey, v);
+            const handleBlur = () => isDynamic ? onBlur() : onBlur(conf.tickerKey, null); 
 
             return (
-                <div className="grid grid-cols-12 gap-1 items-center bg-f1f5f9 rounded-xl border border-slate-300 overflow-hidden mb-1">
-                    <div className="col-span-4 flex flex-col justify-center px-3 py-2 border-r border-slate-300 bg-white h-full relative">
-                        {isDynamic || conf.tickerKey ? 
-                            <input type="text" value={ticker} onChange={e => handleTickerChange(e.target.value)} onBlur={() => handleBlur('ticker')} className={`w-full text-xs font-black bg-transparent p-0 outline-none text-left font-mono tracking-tight uppercase ${conf.color}`} placeholder="代號" /> :
-                            <span className={`text-xs font-black font-mono tracking-tight text-slate-800`}>{ticker}</span>
-                        }
-                        <span className={`text-[9px] font-mono text-slate-400 font-bold`}>${price.toFixed(2)}</span>
+                <div className="bg-white border border-slate-200 rounded-2xl p-3 mb-2 shadow-sm">
+                    <div className="flex justify-between items-center mb-2">
+                        <div className="flex items-center gap-2">
+                            <span className={`text-sm font-black font-mono ${conf.color}`}>{ticker}</span>
+                            <span className="text-xs text-slate-400 font-mono">${price.toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-lg">
+                            <input type="number" placeholder="0" value={currentQty || ''} onChange={e => handleQtyChange(e.target.value)} onBlur={handleBlur} className="w-16 bg-transparent text-right font-bold text-slate-700 text-sm" />
+                            <span className="text-[10px] text-slate-400">股</span>
+                        </div>
                     </div>
-                    <div className="col-span-8 flex items-center px-2">
-                         <input type="number" placeholder="0" value={currentQty || ''} onChange={e => handleQtyChange(e.target.value)} onBlur={() => handleBlur('qty')} className="w-full bg-transparent font-black text-lg h-10 font-mono text-slate-800 text-right pr-2" />
-                         <span className="text-[10px] text-slate-400 font-bold">股</span>
+                    <div className="flex gap-2 items-center text-xs border-t border-slate-100 pt-2">
+                        <div className="flex-1 flex items-center gap-2 bg-slate-50 px-2 py-1 rounded-lg">
+                            <span className="text-[10px] text-slate-400">目標價</span>
+                            <input type="number" placeholder="Target" value={targetPrice} onChange={e => handleTargetChange(e.target.value)} onBlur={handleBlur} className="w-full bg-transparent font-bold text-slate-600" />
+                        </div>
+                        {targetPrice && (
+                            <div className={`font-black font-mono px-2 ${diffPct > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                {diffPct > 0 ? '+' : ''}{diffPct.toFixed(1)}%
+                            </div>
+                        )}
                     </div>
                 </div>
             );
@@ -267,10 +278,13 @@
 
             const [inputs, setInputs] = useState({
                 motto: '', current_rsi: '', qqq_ath: 0, option_history: [], qqq_sma200: 0, voo_sma200: 0,
-                ticker_core_1: 'VOO', qty_core_1: 0, target_core_1: 35,
-                ticker_core_2: 'TQQQ', qty_core_2: 0, target_core_2: 35, 
+                // Core 1 & 2
+                ticker_core_1: 'VOO', qty_core_1: 0, target_core_1: 35, target_price_core_1: '',
+                ticker_core_2: 'TQQQ', qty_core_2: 0, target_core_2: 35, target_price_core_2: '',
+                // Params
                 tol_up_core_2_d: 15, tol_down_core_2_d: 15,
                 tol_up_core_2_q: 10, tol_down_core_2_q: 5,
+                def_buy_pct: 5, def_sell_pct: 3, 
                 cash_balance: 0, satellites: [], options_inventory: [],
             });
 
@@ -295,10 +309,6 @@
                         if (d.qty_qqq !== undefined && d.qty_core_2 === undefined) d.qty_core_2 = d.qty_qqq; 
                         if (d.qty_voo !== undefined && d.qty_core_1 === undefined) d.qty_core_1 = d.qty_voo; 
                         
-                        // Map legacy single params to Daily params if not exists
-                        if (d.tol_up_core_2 !== undefined && d.tol_up_core_2_d === undefined) d.tol_up_core_2_d = d.tol_up_core_2;
-                        if (d.tol_down_core_2 !== undefined && d.tol_down_core_2_d === undefined) d.tol_down_core_2_d = d.tol_down_core_2;
-
                         setInputs(p => ({...p, ...d})); 
                     }
                     setIsSwitching(false); 
@@ -322,15 +332,31 @@
             const handleInputChange = (f, v) => setInputs(p => ({ ...p, [f]: v }));
             const syncToCloud = async (f, v) => { if (user) { const safeV = sanitizeForFirestore(v); await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ [f]: safeV }, { merge: true }); } };
             
-            const addSatellite = () => { const newSat = { id: Date.now().toString(), ticker: '', qty: 0, target_pct: 5, tol_up_d: 15, tol_down_d: 10, tol_up_q: 10, tol_down_q: 5 }; const newSats = [...(inputs.satellites || []), newSat]; setInputs(p => ({ ...p, satellites: newSats })); syncToCloud('satellites', newSats); };
+            const addSatellite = () => { const newSat = { id: Date.now().toString(), ticker: '', qty: 0, target_pct: 5, tol_up_d: 15, tol_down_d: 10, tol_up_q: 10, tol_down_q: 5, target_price: '' }; const newSats = [...(inputs.satellites || []), newSat]; setInputs(p => ({ ...p, satellites: newSats })); syncToCloud('satellites', newSats); };
             const updateSatellite = (id, field, value) => { const newSats = inputs.satellites.map(s => s.id === id ? { ...s, [field]: value } : s); setInputs(p => ({ ...p, satellites: newSats })); if (field === 'ticker') syncToCloud('satellites', newSats); };
             const saveSatellites = () => syncToCloud('satellites', inputs.satellites);
             const deleteSatellite = (id) => { const newSats = inputs.satellites.filter(s => s.id !== id); setInputs(p => ({ ...p, satellites: newSats })); syncToCloud('satellites', newSats); };
-
             const toggleCashSign = () => { setInputs(prev => { const currentVal = prev.cash_balance; const numVal = parseFloat(currentVal); if (!isNaN(numVal)) { const newVal = numVal * -1; syncToCloud('cash_balance', newVal); return { ...prev, cash_balance: newVal }; } return prev; }); };
 
             const save = async () => { if (!user || isSaving) return; setIsSaving(true); try { const cleanInputs = sanitizeForFirestore(inputs); if (!cleanInputs.record_date) cleanInputs.record_date = new Date().toISOString().split('T')[0]; const payload = { date: new Date(cleanInputs.record_date).toISOString(), total_equity: metrics.totalCapital || 0, prices: sanitizeForFirestore(prices), inputs: cleanInputs, memo: cleanInputs.record_memo || '' }; await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').add(payload); await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set(cleanInputs, { merge: true }); showToast("儲存成功"); } catch(e) { showToast(`失敗: ${e.message}`); } setIsSaving(false); };
-            const deleteRecord = async (id) => { if(confirm('確定刪除此筆紀錄？')) { await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').doc(id).delete(); showToast("紀錄已刪除"); } };
+            
+            // Delete confirmation wrapper
+            const requestDeleteRecord = (id) => {
+                setModal({ type: 'DELETE_CONFIRM', data: { id, type: 'RECORD' } });
+            };
+            const confirmDelete = async () => {
+                if (modal.data.type === 'RECORD') {
+                    await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').doc(modal.data.id).delete();
+                    showToast("紀錄已刪除");
+                } else if (modal.data.type === 'OPTION_HISTORY') {
+                     const newHist = inputs.option_history.filter(h => h.id !== modal.data.id);
+                     setInputs(p => ({...p, option_history: newHist}));
+                     await syncToCloud('option_history', newHist);
+                     showToast("交易紀錄已刪除");
+                }
+                setModal({ type: null });
+            };
+
             const updateRecord = async () => { 
                 if(!modal.data?.id) return; 
                 const updatedInputs = { ...modal.data.inputs, ...modal.temp?.inputs };
@@ -374,7 +400,7 @@
                 syncToCloud('options_inventory', newInv);
                 syncToCloud('option_history', newHist);
                 setModal({type:null});
-                showToast("交易已儲存");
+                showToast(type === 'DELETE_HISTORY' ? "紀錄已刪除" : "交易已儲存");
             };
 
             const processHistoryData = (records, optionHistory) => {
@@ -438,12 +464,14 @@
                     rebalanceList.push({ ticker, pct, targetPct, diff, actionD, actionDColor, actionQ, actionQColor, color, currentVal, shareCount: getQty(Math.abs(diff), getP(ticker)).toFixed(0) });
                 };
 
-                checkItem(tickerCore2, valCore2, getV('target_core_2'), getV('tol_up_core_2_d')||15, getV('tol_down_core_2_d')||15, getV('tol_up_core_2_q')||10, getV('tol_down_core_2_q')||5, '#8b5cf6');
-                satellites.forEach((s, i) => checkItem(s.ticker, getP(s.ticker)*getNum(s.qty), getNum(s.target_pct), getNum(s.tol_up_d)||15, getNum(s.tol_down_d)||10, getNum(s.tol_up_q)||10, getNum(s.tol_down_q)||5, ['#f97316', '#10b981', '#ef4444', '#eab308'][i % 4]));
-
                 // Add Core 1 (Fund Pool) manually at end
                 const pct1 = (valCore1 / safeTotal) * 100;
-                rebalanceList.push({ ticker: tickerCore1, pct: pct1, targetPct: getV('target_core_1'), diff: 0, actionD: '資金調節池', actionDColor: 'text-blue-500 font-bold', actionQ: '', actionQColor: '', color: '#3b82f6', isPool: true, currentVal: valCore1 });
+                const target1 = getV('target_core_1');
+                rebalanceList.push({ ticker: tickerCore1, pct: pct1, targetPct: target1, diff: 0, actionD: '資金調節池', actionDColor: 'text-blue-500 font-bold', actionQ: '', actionQColor: '', color: '#3b82f6', isPool: true, currentVal: valCore1 });
+
+                checkItem(tickerCore2, valCore2, getV('target_core_2'), getV('tol_up_core_2_d')||15, getV('tol_down_core_2_d')||15, getV('tol_up_core_2_q')||10, getV('tol_down_core_2_q')||5, '#8b5cf6');
+                satellites.forEach((s, i) => checkItem(s.ticker, getP(s.ticker)*getNum(s.qty), getNum(s.target_pct), getNum(s.tol_up_d)||15, getNum(s.tol_down_d)||10, getNum(s.tol_up_q)||10, getNum(s.tol_down_q)||5, ['#f97316', '#10b981', '#ef4444', '#eab308'][i % 4]));
+                rebalanceList.sort((a,b) => b.priority - a.priority);
 
                 const defPrice = getP(tickerCore1); 
                 const defSma = getV('voo_sma200'); 
@@ -462,6 +490,7 @@
                     }
                 }
 
+                // FIXED: Pie Data includes Fund Pool (Core 1) and Cash
                 const pieData = [
                     { name: tickerCore1, value: valCore1, fill: '#3b82f6', percent: valCore1/safeTotal }, 
                     { name: tickerCore2, value: valCore2, fill: '#8b5cf6', percent: valCore2/safeTotal },
@@ -506,9 +535,6 @@
                     {isSwitching && <div className="loading-overlay"><div className="w-12 h-12 border-4 border-brand-100 border-t-brand-600 rounded-full animate-spin"></div><div className="text-brand-600 font-black">載入數據中...</div></div>}
 
                     {modal.type === 'DELETE_CONFIRM' && (<Modal title="確認刪除" icon="Trash2" isOpen={true} onClose={()=>setModal({type:null})}><div className="text-center py-4"><p className="text-slate-600 font-bold mb-4">確定要刪除此筆資料嗎？此動作無法復原。</p><div className="flex gap-2"><button onClick={()=>setModal({type:null})} className="flex-1 bg-slate-200 text-slate-600 py-3 rounded-xl font-bold">取消</button><button onClick={confirmDelete} className="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600">確認刪除</button></div></div></Modal>)}
-                    {/* ... (Previous Modals for TRADE, EDIT_INVENTORY, EDIT_HISTORY, EDIT_RECORD remain exactly same) ... */}
-                    
-                    {/* (Insert Modals Here - Shortened for brevity as logic is identical to previous successful versions) */}
                     {/* Trade Modal */}
                     {modal.type === 'TRADE' && (
                         <Modal title={modal.subType === 'OPEN' ? "建立選擇權部位" : (modal.subType === 'ROLL' ? "選擇權轉倉" : "平倉")} icon="Zap" isOpen={true} onClose={()=>setModal({type:null})}>
@@ -627,8 +653,8 @@
 
                                 <CollapsibleCard title="持倉數量" icon="Edit2" isOpen={sections.holdings} onToggle={()=>toggleSection('holdings')}>
                                     <div className="space-y-2">
-                                        <HoldingRow conf={{id:'core1', tickerKey:'ticker_core_1', defaultTicker:'VOO', qtyKey:'qty_core_1', targetKey:'target_core_1', color: 'text-blue-500'}} inputs={inputs} prices={prices} onChange={handleInputChange} onBlur={syncToCloud} />
-                                        <HoldingRow conf={{id:'core2', tickerKey:'ticker_core_2', defaultTicker:'TQQQ', qtyKey:'qty_core_2', targetKey:'target_core_2', color: 'text-purple-600'}} inputs={inputs} prices={prices} onChange={handleInputChange} onBlur={syncToCloud} />
+                                        <HoldingRow conf={{id:'core1', tickerKey:'ticker_core_1', defaultTicker:'VOO', targetPriceKey: 'target_price_core_1', qtyKey:'qty_core_1', targetKey:'target_core_1', color: 'text-blue-500'}} inputs={inputs} prices={prices} onChange={handleInputChange} onBlur={syncToCloud} />
+                                        <HoldingRow conf={{id:'core2', tickerKey:'ticker_core_2', defaultTicker:'TQQQ', targetPriceKey: 'target_price_core_2', qtyKey:'qty_core_2', targetKey:'target_core_2', color: 'text-purple-600'}} inputs={inputs} prices={prices} onChange={handleInputChange} onBlur={syncToCloud} />
                                         {(inputs.satellites || []).map(s => <HoldingRow key={s.id} conf={s} inputs={inputs} prices={prices} onChange={(id, f, v) => { const newSats = inputs.satellites.map(si => si.id === id ? { ...si, [f]: v } : si); setInputs(p => ({ ...p, satellites: newSats })); if(f==='ticker') syncToCloud('satellites', newSats); }} onBlur={()=>syncToCloud('satellites', inputs.satellites)} isDynamic={true} />)}
                                         <button onClick={addSatellite} className="w-full py-3 bg-f1f5f9 text-slate-500 text-xs font-bold rounded-xl mt-2 flex justify-center items-center gap-1 hover:bg-slate-200 transition-colors border border-slate-300 shadow-sm"><Icon name="Plus" size={14}/> 新增衛星</button>
                                         <div className="pt-2 mt-2 border-t border-slate-100 relative">
@@ -738,28 +764,35 @@
                                         <div className="pt-4 border-t border-slate-200">
                                             <div className="flex justify-between items-center px-2 mb-2"><SectionTitle title="詳細績效紀錄" iconName="List" /></div>
                                             <div className="space-y-2">
-                                                {records.sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0, 10).map(r => (
-                                                    <div key={r.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                                                        <div className="flex justify-between items-center mb-2">
-                                                            <div>
-                                                                <div className="text-xs font-black text-slate-700">{new Date(r.date).toLocaleDateString()}</div>
-                                                                <div className="text-[10px] text-slate-400 font-mono">${r.total_equity.toLocaleString()}</div>
+                                                {records.sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0, 10).map((r, idx, arr) => {
+                                                    const prev = arr[idx+1];
+                                                    const change = prev ? ((r.total_equity - prev.total_equity)/prev.total_equity)*100 : 0;
+                                                    return (
+                                                        <div key={r.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                                                            <div className="flex justify-between items-center mb-2">
+                                                                <div>
+                                                                    <div className="text-xs font-black text-slate-700">{new Date(r.date).toLocaleDateString()}</div>
+                                                                    <div className="flex gap-2 items-end">
+                                                                        <div className="text-[10px] text-slate-400 font-mono">${r.total_equity.toLocaleString()}</div>
+                                                                        {idx < arr.length-1 && <div className={`text-[9px] font-bold ${change>=0?'text-emerald-500':'text-red-500'}`}>{change>0?'+':''}{change.toFixed(1)}%</div>}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex gap-2">
+                                                                    <button onClick={()=>setModal({type:'EDIT_RECORD', data: r, temp: {}})} className="p-2 text-brand-400 hover:bg-brand-50 rounded-lg"><Icon name="Edit2" size={14}/></button>
+                                                                    <button onClick={()=>requestDeleteRecord(r.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg"><Icon name="Trash2" size={14}/></button>
+                                                                </div>
                                                             </div>
-                                                            <div className="flex gap-2">
-                                                                <button onClick={()=>setModal({type:'EDIT_RECORD', data: r, temp: {}})} className="p-2 text-brand-400 hover:bg-brand-50 rounded-lg"><Icon name="Edit2" size={14}/></button>
-                                                                <button onClick={()=>requestDeleteRecord(r.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg"><Icon name="Trash2" size={14}/></button>
-                                                            </div>
+                                                            {r.inputs && (
+                                                                <div className="flex flex-wrap gap-2 text-[9px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                                                    <span className="font-bold text-blue-600">{inputs.ticker_core_1}: {r.inputs.qty_core_1||r.inputs.qty_voo||0}</span>
+                                                                    <span className="font-bold text-purple-600">{inputs.ticker_core_2}: {r.inputs.qty_core_2||r.inputs.qty_qqq||0}</span>
+                                                                    <span className="font-bold text-slate-600">Cash: ${parseInt(r.inputs.cash_balance||0).toLocaleString()}</span>
+                                                                    {(r.inputs.satellites||[]).map(s => <span key={s.id} className="text-slate-400">{s.ticker}: {s.qty}</span>)}
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        {r.inputs && (
-                                                            <div className="flex flex-wrap gap-2 text-[9px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                                                <span className="font-bold text-blue-600">{inputs.ticker_core_1}: {r.inputs.qty_core_1||r.inputs.qty_voo||0}</span>
-                                                                <span className="font-bold text-purple-600">{inputs.ticker_core_2}: {r.inputs.qty_core_2||r.inputs.qty_qqq||0}</span>
-                                                                <span className="font-bold text-slate-600">Cash: ${parseInt(r.inputs.cash_balance||0).toLocaleString()}</span>
-                                                                {(r.inputs.satellites||[]).map(s => <span key={s.id} className="text-slate-400">{s.ticker}: {s.qty}</span>)}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     </>
