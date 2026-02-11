@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Alpha Horizon V9.9</title>
+    <title>Alpha Horizon V10.0</title>
     
     <!-- 1. Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -49,13 +49,15 @@
         .loading-overlay { position: fixed; inset: 0; background: rgba(203, 213, 225, 0.95); backdrop-filter: blur(4px); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; gap: 1rem; }
         .section-header { background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 1rem; border-top-left-radius: 1.5rem; border-top-right-radius: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
         .section-body { padding: 1.25rem; background: white; border-bottom-left-radius: 1.5rem; border-bottom-right-radius: 1.5rem; }
+        .toggle-checkbox:checked { right: 0; border-color: #3b82f6; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #3b82f6; }
     </style>
 </head>
 <body class="text-left font-bold text-slate-800">
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback, memo } = React;
-        const { ComposedChart, AreaChart, Area, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
+        const { ComposedChart, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
 
         const FINNHUB_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
         const firebaseConfig = { apiKey: "AIzaSyBpax3wlTwHTe6G3niZajtTxpoUWbgvX80", authDomain: "qldmax.firebaseapp.com", projectId: "qldmax", storageBucket: "qldmax.firebasestorage.app", messagingSenderId: "752199866954", appId: "1:752199866954:web:50d17ae522095c363d64b3" };
@@ -64,13 +66,12 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore(); const auth = firebase.auth();
 
-        // --- Utility Functions ---
         const sanitizeForFirestore = (data) => JSON.parse(JSON.stringify(data, (k, v) => v === undefined ? null : v));
         const getNum = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
         const getQty = (val, price) => (price > 0 ? Math.abs(val / price) : 0);
-        const formatMoney = (val, hide, prefix='$') => hide ? '****' : `${prefix}${Math.round(val).toLocaleString()}`;
+        const formatMoney = (val, hide, prefix='$') => hide ? '****' : `${prefix}${(val ?? 0).toLocaleString(undefined, {maximumFractionDigits:0})}`;
 
-        // --- UI Components ---
+        // --- Icons ---
         const Icon = memo(({ name, size = 20, className = "" }) => {
             const icons = { 
                 TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>, Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>, 
@@ -95,7 +96,6 @@
             return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name] || <circle cx="12" cy="12" r="10" />}</svg>;
         });
 
-        // --- Collapsible Card Component ---
         const CollapsibleCard = ({ title, icon, isOpen, onToggle, children, rightElement, className = "" }) => (
             <div className={`bg-white rounded-[1.5rem] shadow-heavy border border-slate-300 transition-all overflow-hidden ${className}`}>
                 <div className="p-4 flex justify-between items-center cursor-pointer bg-slate-50 border-b border-slate-100" onClick={onToggle}>
@@ -166,8 +166,8 @@
                         <p className="mb-1 text-slate-500">{new Date(label).toLocaleDateString()}</p>
                         {payload.map((p, i) => (
                             <p key={i} style={{ color: p.color || p.fill }}>
-                                {p.name}: {p.name.includes('%') ? '' : (hide ? '****' : `$${p.value.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}`)}{p.name.includes('%') ? (hide ? '**%' : `${p.value.toFixed(1)}%`) : ''}
-                                {p.dataKey === 'dd' ? ` (${formatMoney(Math.abs(Math.round(p.payload.ddAmt)), hide, '-$')})` : ''}
+                                {p.name}: {p.name.includes('%') ? '' : (hide ? '****' : `$${(p.value ?? 0).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}`)}{p.name.includes('%') ? (hide ? '**%' : `${(p.value ?? 0).toFixed(1)}%`) : ''}
+                                {p.dataKey === 'dd' ? ` (${formatMoney(Math.abs(Math.round(p.payload.ddAmt ?? 0)), hide, '-$')})` : ''}
                             </p>
                         ))}
                     </div>
@@ -234,7 +234,9 @@
             const [tempSyncId, setTempSyncId] = useState(customSyncId);
             
             const [isMottoLocked, setIsMottoLocked] = useState(true);
-            const [showAdvancedParams, setShowAdvancedParams] = useState(false);
+            const [showAdvancedParams, setShowAdvancedParams] = useState(true); 
+            // New state for showing strike suggestions
+            const [showStrikeSuggestions, setShowStrikeSuggestions] = useState(false);
             const [hideValues, setHideValues] = useState(() => JSON.parse(localStorage.getItem('qqq_hide_values')) || false);
             useEffect(() => localStorage.setItem('qqq_hide_values', JSON.stringify(hideValues)), [hideValues]);
 
@@ -247,8 +249,6 @@
             const [expandedYears, setExpandedYears] = useState({});
             const toggleYear = (y) => setExpandedYears(prev => ({...prev, [y]: !prev[y]}));
             const [historyTab, setHistoryTab] = useState('nav'); 
-            const [chartMode, setChartMode] = useState('DD'); 
-            const [benchmarkTicker, setBenchmarkTicker] = useState('QQQ');
 
             const [modal, setModal] = useState({ type: null, data: null }); 
             const [records, setRecords] = useState([]);
@@ -260,7 +260,7 @@
                 ticker_core_2: 'TQQQ', qty_core_2: 0, target_core_2: 35, target_price_core_2: '',
                 tol_up_core_2_d: 15, tol_down_core_2_d: 15,
                 tol_up_core_2_q: 10, tol_down_core_2_q: 5,
-                def_buy_pct: 5, def_sell_pct: 3, 
+                def_buy_pct: 5, def_sell_pct: 3, beta_coefficient: 0.33,
                 cash_balance: 0, satellites: [], options_inventory: [],
             });
 
@@ -280,10 +280,15 @@
                         if(!d.options_inventory) d.options_inventory = [];
                         if(!d.ticker_core_1) d.ticker_core_1 = 'VOO';
                         if(!d.ticker_core_2) d.ticker_core_2 = 'TQQQ';
+                        
+                        // Default maps
                         if (d.qty_qqq !== undefined && d.qty_core_2 === undefined) d.qty_core_2 = d.qty_qqq; 
                         if (d.qty_voo !== undefined && d.qty_core_1 === undefined) d.qty_core_1 = d.qty_voo; 
+                        
+                        // Map legacy single params to Daily params if not exists
                         if (d.tol_up_core_2 !== undefined && d.tol_up_core_2_d === undefined) d.tol_up_core_2_d = d.tol_up_core_2;
                         if (d.tol_down_core_2 !== undefined && d.tol_down_core_2_d === undefined) d.tol_down_core_2_d = d.tol_down_core_2;
+
                         setInputs(p => ({...p, ...d})); 
                     }
                     setIsSwitching(false); 
@@ -292,17 +297,22 @@
                 return () => { uRecs(); uConf(); };
             }, [user, customSyncId]);
 
+            // Re-fetch when inputs are loaded to ensure tickers are correct
+            // FIX: Deep Watch Satellites
             useEffect(() => {
-                if (inputs.ticker_core_1 && inputs.ticker_core_2) fetchPrices(true);
+                if (inputs.ticker_core_1 && inputs.ticker_core_2) {
+                    fetchPrices(true); // Force fetch on inputs change
+                }
             }, [inputs.ticker_core_1, inputs.ticker_core_2, JSON.stringify(inputs.satellites)]);
 
             const fetchPrices = useCallback(async (force = false) => { 
                 if (loadingPrices && !force) return; 
                 const syms = [...new Set([inputs.ticker_core_1, inputs.ticker_core_2, 'QQQ', 'VOO', 'SGOV', ...inputs.satellites.map(s=>s.ticker), ...inputs.satellites.map(s=>s.trackingTicker)].filter(Boolean).map(s=>s.trim().toUpperCase()))]; 
-                setLoadingPrices(true); 
+                setLoadingPrices(true);
+                // Artificial delay to ensure data settled
                 setTimeout(async () => {
                     try { const res = await Promise.allSettled(syms.map(s => fetch(`https://finnhub.io/api/v1/quote?symbol=${s}&token=${FINNHUB_KEY}`).then(r => r.json()).then(d => ({s, p: d.c})))); setPrices(p => ({...p, ...res.reduce((acc, curr) => (curr.status === 'fulfilled' && curr.value.p > 0 ? {...acc, [curr.value.s]: curr.value.p} : acc), {})})); } catch(e) { console.error(e); } finally { setLoadingPrices(false); }
-                }, 500);
+                }, 500); 
             }, [inputs.ticker_core_1, inputs.ticker_core_2, inputs.satellites, loadingPrices]);
 
             const showToast = (txt) => { setMessage(txt); setTimeout(() => setMessage(null), 3000); };
@@ -428,20 +438,38 @@
                     let actionD = '平時無須變動'; let actionDColor = 'text-slate-400 font-medium';
                     let actionQ = isQuarterEnd ? '季末無須變動' : '季末無須變動(預)'; let actionQColor = 'text-slate-400 font-medium';
                     
-                    // Daily
-                    if (pct > targetPct * (1 + (tolUpD/100))) { actionD = '平時賣'; actionDColor = 'text-red-500 font-black'; } 
-                    else if (pct < targetPct * (1 - (tolDownD/100))) { actionD = '平時買'; actionDColor = 'text-emerald-500 font-black'; }
-                    
-                    // Quarterly
-                    if (pct > targetPct * (1 + (tolUpQ/100))) { actionQ = isQuarterEnd ? '季末賣' : '季末賣(預)'; actionQColor = isQuarterEnd ? 'text-amber-500 font-black' : 'text-slate-500 font-bold'; }
-                    else if (pct < targetPct * (1 - (tolDownQ/100))) { actionQ = isQuarterEnd ? '季末買' : '季末買(預)'; actionQColor = isQuarterEnd ? 'text-blue-500 font-black' : 'text-slate-500 font-bold'; }
+                    // Daily - Absolute Logic: Target + Tolerance
+                    // 35% + 5% = 40% threshold
+                    const limitSellD = targetPct + tolUpD;
+                    const limitBuyD = targetPct - tolDownD;
 
-                    rebalanceList.push({ ticker, pct, targetPct, diff, actionD, actionDColor, actionQ, actionQColor, color, currentVal, shareCount: getQty(Math.abs(diff), getP(ticker)).toFixed(0) });
+                    if (pct > limitSellD) { actionD = '平時賣'; actionDColor = 'text-red-500 font-black'; } 
+                    else if (pct < limitBuyD) { actionD = '平時買'; actionDColor = 'text-emerald-500 font-black'; }
+                    
+                    // Quarterly - Absolute Logic
+                    const limitSellQ = targetPct + tolUpQ;
+                    const limitBuyQ = targetPct - tolDownQ;
+
+                    if (pct > limitSellQ) { 
+                        actionQ = isQuarterEnd ? '季末賣' : '季末賣(預)'; 
+                        actionQColor = isQuarterEnd ? 'text-amber-500 font-black' : 'text-slate-500 font-bold'; 
+                    }
+                    else if (pct < limitBuyQ) { 
+                        actionQ = isQuarterEnd ? '季末買' : '季末買(預)'; 
+                        actionQColor = isQuarterEnd ? 'text-blue-500 font-black' : 'text-slate-500 font-bold'; 
+                    }
+
+                    // For displayed suggestion amount, we prioritize Daily > Quarterly > 0
+                    let suggestDiff = 0;
+                    if(actionD !== '平時無須變動') suggestDiff = diff;
+                    else if (actionQ.includes('季末賣') || actionQ.includes('季末買')) suggestDiff = diff;
+
+                    rebalanceList.push({ ticker, pct, targetPct, diff: suggestDiff, actionD, actionDColor, actionQ, actionQColor, color, currentVal, shareCount: getQty(Math.abs(suggestDiff), getP(ticker)).toFixed(0) });
                 };
 
                 // Add Core 1 (Fund Pool) manually at end
                 const pct1 = (valCore1 / safeTotal) * 100;
-                rebalanceList.push({ ticker: tickerCore1, pct: pct1, targetPct: getV('target_core_1'), diff: 0, actionD: '資金調節池', actionDColor: 'text-blue-500 font-bold', actionQ: '', actionQColor: '', color: '#3b82f6', isPool: true, currentVal: valCore1 });
+                rebalanceList.push({ ticker: tickerCore1, pct: pct1 || 0, targetPct: getV('target_core_1'), diff: 0, actionD: '資金調節池', actionDColor: 'text-blue-500 font-bold', actionQ: '', actionQColor: '', color: '#3b82f6', isPool: true, currentVal: valCore1 });
 
                 checkItem(tickerCore2, valCore2, getV('target_core_2'), getV('tol_up_core_2_d')||15, getV('tol_down_core_2_d')||15, getV('tol_up_core_2_q')||10, getV('tol_down_core_2_q')||5, '#8b5cf6');
                 satellites.forEach((s, i) => checkItem(s.ticker, getP(s.ticker)*getNum(s.qty), getNum(s.target_pct), getNum(s.tol_up_d)||15, getNum(s.tol_down_d)||10, getNum(s.tol_up_q)||10, getNum(s.tol_down_q)||5, ['#f97316', '#10b981', '#ef4444', '#eab308'][i % 4]));
@@ -458,45 +486,61 @@
                 
                 if (defSma > 0 && defPrice > 0) {
                     if (defPrice > buyPrice) {
-                        defenseStatus = { type: 'opportunity', msg: `多頭確認：${tickerCore1} 站上年線 +${buyBuff}% ($${buyPrice.toFixed(0)})。保持持有。` };
+                        defenseStatus = { type: 'opportunity', msg: `多頭確認：${tickerCore1} 站上年線 +${buyBuff}% ($${buyPrice.toFixed(0)})。趨勢向上，維持持有。` };
                     } else if (defPrice < sellPrice) {
                         defenseStatus = { type: 'danger', msg: `空頭確認：${tickerCore1} 跌破年線 -${sellBuff}% ($${sellPrice.toFixed(0)})。建議防禦，賣出攻擊部位，分 6 個月投入大盤。` };
                     }
                 }
 
-                // New Dynamic Strike Price Calculator (V9.9)
-                const beta = 0.33; // From V9.9 spec
+                // New Dynamic Strike Price Calculator (V9.9.6) - EXACT SOLVER
+                const beta = getNum('beta_coefficient') || 0.33; 
                 const currentTqqqPrice = getP(tickerCore2);
-                const sellLimit = getV('target_core_2') * (1 + (getV('tol_up_core_2_d') || 15) / 100) / 100;
-                const buyLimit = getV('target_core_2') * (1 - (getV('tol_down_core_2_d') || 15) / 100) / 100;
                 
-                // Helper to simulate weight
-                const findStrike = (direction) => {
-                    if (!currentTqqqPrice || !total) return 0;
-                    let price = currentTqqqPrice;
-                    const step = price * 0.005; // 0.5% steps
-                    const otherEquity = total - (currentTqqqPrice * getV('qty_core_2')) - getV('cash_balance');
+                // Initialize safe values
+                let cStrike = 0, pStrike = 0, callRebal = {val:0, count:0}, putRebal = {val:0, count:0};
+                let sellLimit = 0, buyLimit = 0;
+
+                if (currentTqqqPrice > 0 && total > 0) {
+                    // ABSOLUTE PERCENTAGE CALCULATION
+                    // Target 35%, Up 5% -> 40% (Not 35 * 1.05)
+                    sellLimit = (getV('target_core_2') + (getV('tol_up_core_2_q') || 10)) / 100;
+                    buyLimit = (getV('target_core_2') - (getV('tol_down_core_2_q') || 5)) / 100;
                     
-                    for(let i=0; i<500; i++) { // Max iterations to prevent hang
-                        price += (direction === 'UP' ? step : -step);
-                        const changePct = (price - currentTqqqPrice) / currentTqqqPrice;
-                        const tqqqVal = price * getV('qty_core_2');
-                        const otherVal = otherEquity * (1 + changePct * beta); // Apply Beta
-                        const newTotal = tqqqVal + otherVal + getV('cash_balance');
-                        const weight = tqqqVal / newTotal;
+                    const solveStrike = (isSell) => {
+                        const limit = isSell ? sellLimit : buyLimit;
+                        const V_tqqq = currentTqqqPrice * getV('qty_core_2');
+                        const V_other = total - V_tqqq - getV('cash_balance'); 
+                        
+                        // Formula: X = [ Limit * (V_other * (1 - Beta) + C) ] / [ V_tqqq * (1 - Limit) - (Limit * V_other * Beta) ]
+                        const C = getV('cash_balance');
+                        const numerator = limit * (V_other * (1 - beta) + C);
+                        const denominator = (V_tqqq * (1 - limit)) - (limit * V_other * beta);
+                        
+                        if (denominator === 0) return 0;
+                        const X = numerator / denominator; // Target Multiple
+                        return currentTqqqPrice * X;
+                    };
 
-                        if (direction === 'UP' && weight >= sellLimit) return price;
-                        if (direction === 'DOWN' && weight <= buyLimit) return price;
-                    }
-                    return 0; // Not found within reasonable range
-                };
+                    cStrike = solveStrike(true);
+                    pStrike = solveStrike(false);
+                    
+                    // Calculate Option Contracts needed
+                    const getContracts = (strike, targetPct) => {
+                        if(!strike || strike < 0) return { val: 0, count: 0 };
+                        const T_new = strike * getV('qty_core_2');
+                        const P_change = (strike - currentTqqqPrice) / currentTqqqPrice;
+                        const O_new = (total - (currentTqqqPrice * getV('qty_core_2')) - getV('cash_balance')) * (1 + P_change * beta);
+                        const Total_new = T_new + O_new + getV('cash_balance');
+                        const Target_val = Total_new * (targetPct / 100);
+                        const Diff = Math.abs(T_new - Target_val);
+                        const Count = Diff / (strike * 100);
+                        return { val: Diff, count: Count };
+                    };
 
-                const callStrike = findStrike('UP');
-                const putStrike = findStrike('DOWN');
-                const callWeight = sellLimit * 100;
-                const putWeight = buyLimit * 100;
+                    callRebal = getContracts(cStrike, getV('target_core_2'));
+                    putRebal = getContracts(pStrike, getV('target_core_2'));
+                }
 
-                // Pie Data
                 const pieData = [
                     { name: tickerCore1, value: valCore1, fill: '#3b82f6', percent: valCore1/safeTotal }, 
                     { name: tickerCore2, value: valCore2, fill: '#8b5cf6', percent: valCore2/safeTotal },
@@ -517,14 +561,31 @@
                     const startM = sorted.find(r => new Date(r.date).getMonth() === new Date().getMonth() && new Date(r.date).getFullYear() === new Date().getFullYear()) || sorted[sorted.length-1];
                     mtd = startM.total_equity > 0 ? ((total - startM.total_equity) / startM.total_equity) * 100 : 0;
                 }
+                
+                // Ensure default values to prevent undefined errors
+                const finalMetrics = { 
+                    totalCapital: total || 0, 
+                    pieData: pieData || [], 
+                    rebalanceList: rebalanceList || [], 
+                    defenseStatus: defenseStatus || { type: 'warning', msg: 'Loading...' }, 
+                    performanceStats: { mtd: mtd || 0 }, 
+                    graphData: gData || [], 
+                    tickerCore1: tickerCore1 || 'VOO', 
+                    callStrike: cStrike || 0, 
+                    putStrike: pStrike || 0, 
+                    callWeight: (sellLimit || 0) * 100, 
+                    putWeight: (buyLimit || 0) * 100, 
+                    callRebalance: callRebal || {val:0, count:0}, 
+                    putRebalance: putRebal || {val:0, count:0} 
+                };
+                return finalMetrics;
 
-                return { totalCapital: total, pieData, rebalanceList, defenseStatus, performanceStats: { mtd }, graphData: gData, tickerCore1, callStrike, putStrike, callWeight, putWeight };
             }, [prices, inputs, records]);
             
             // Calculator Logic
             const calcResults = useMemo(() => {
                 if (!simulatedTotal) return [];
-                const nTot = metrics.totalCapital + parseFloat(simulatedTotal);
+                const nTot = (metrics.totalCapital || 0) + parseFloat(simulatedTotal);
                 const res = [];
                 const getP = (t) => prices[(t || "").toUpperCase()] || 0;
                 const getV = (k) => getNum(inputs[k]);
@@ -540,9 +601,6 @@
                     {isSwitching && <div className="loading-overlay"><div className="w-12 h-12 border-4 border-brand-100 border-t-brand-600 rounded-full animate-spin"></div><div className="text-brand-600 font-black">載入數據中...</div></div>}
 
                     {modal.type === 'DELETE_CONFIRM' && (<Modal title="確認刪除" icon="Trash2" isOpen={true} onClose={()=>setModal({type:null})}><div className="text-center py-4"><p className="text-slate-600 font-bold mb-4">確定要刪除此筆資料嗎？此動作無法復原。</p><div className="flex gap-2"><button onClick={()=>setModal({type:null})} className="flex-1 bg-slate-200 text-slate-600 py-3 rounded-xl font-bold">取消</button><button onClick={confirmDelete} className="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600">確認刪除</button></div></div></Modal>)}
-                    {/* ... (Previous Modals for TRADE, EDIT_INVENTORY, EDIT_HISTORY, EDIT_RECORD remain exactly same) ... */}
-                    
-                    {/* (Insert Modals Here - Shortened for brevity as logic is identical to previous successful versions) */}
                     {/* Trade Modal */}
                     {modal.type === 'TRADE' && (
                         <Modal title={modal.subType === 'OPEN' ? "建立選擇權部位" : (modal.subType === 'ROLL' ? "選擇權轉倉" : "平倉")} icon="Zap" isOpen={true} onClose={()=>setModal({type:null})}>
@@ -552,7 +610,7 @@
                                         <div className="grid grid-cols-2 gap-2"><div><label className="text-xs text-slate-500">標的代號</label><input className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={inputs.ticker_core_2} onChange={e=>setModal({...modal, temp: {...modal.temp, ticker: e.target.value.toUpperCase()}})} /></div><div><label className="text-xs text-slate-500">交易類型</label><select className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" onChange={e=>setModal({...modal, temp: {...modal.temp, type: e.target.value}})}><option value="SC">Sell Call</option><option value="SP">Sell Put</option></select></div></div>
                                         <div className="grid grid-cols-2 gap-2"><div><label className="text-xs text-slate-500">到期日</label><input type="date" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold text-xs" onChange={e=>setModal({...modal, temp: {...modal.temp, newExpiry: e.target.value}})} /></div><div><label className="text-xs text-slate-500">履約價</label><input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" placeholder="Strike" onChange={e=>setModal({...modal, temp: {...modal.temp, newStrike: e.target.value}})} /></div></div>
                                         <div className="grid grid-cols-2 gap-2"><div><label className="text-xs text-slate-500">權利金(單股)</label><input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" placeholder="0.00" onChange={e=>setModal({...modal, temp: {...modal.temp, newPremium: e.target.value}})} /></div><div><label className="text-xs text-slate-500">張數</label><input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={1} onChange={e=>setModal({...modal, temp: {...modal.temp, contracts: e.target.value}})} /></div></div>
-                                        <div className="bg-emerald-50 p-2 rounded-lg text-center text-emerald-600 font-bold text-sm">預估收入: ${((parseFloat(modal.temp?.newPremium)||0) * (parseFloat(modal.temp?.contracts)||1) * 100).toFixed(0)}</div>
+                                        <div className="bg-emerald-50 p-2 rounded-lg text-center text-emerald-600 font-bold text-sm">預估收入: ${formatMoney(((parseFloat(modal.temp?.newPremium)||0) * (parseFloat(modal.temp?.contracts)||1) * 100), hideValues, '')}</div>
                                         <button onClick={()=>handleOptionTrade('OPEN', modal.temp)} className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold mt-2">確認建立</button>
                                     </>
                                 )}
@@ -598,13 +656,13 @@
                                     </div>
                                     <div className="mt-2"><label className="text-[10px] text-slate-400">Cash ($)</label><input type="number" className="w-full bg-white p-1 rounded font-bold text-sm" defaultValue={modal.data.inputs?.cash_balance} onChange={e=>setModal({...modal, temp: {...modal.temp, inputs: {...(modal.temp?.inputs || modal.data.inputs), cash_balance: e.target.value}}})} /></div>
                                 </div>
-                                <button onClick={updateRecord} className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold mt-2">儲存修正</button>
+                                <button onClick={updateRecord} className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold">儲存修正</button>
                             </div>
                         </Modal>
                     )}
 
                     <header className="fixed top-0 inset-x-0 bg-f8fafc z-50 px-5 py-4 pt-6 flex justify-between items-center shadow-sm border-b border-e2e8f0">
-                        <div className="flex items-center gap-2 font-black"><div className="bg-brand-50 p-2 rounded-2xl"><Icon name="Shield" className="text-brand-600" size={18} /></div><h1 className="text-lg text-slate-800">Alpha Horizon V9.9</h1></div>
+                        <div className="flex items-center gap-2 font-black"><div className="bg-brand-50 p-2 rounded-2xl"><Icon name="Shield" className="text-brand-600" size={18} /></div><h1 className="text-lg text-slate-800">Alpha Horizon V10.0</h1></div>
                         <div className="flex gap-2"><button onClick={() => setView('sync_settings')} className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 shadow-sm hover:bg-slate-50"><Icon name="Settings" size={20} /></button><button onClick={() => fetchPrices(true)} className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 shadow-sm hover:bg-slate-50"><Icon name="RefreshCcw" size={20} className={loadingPrices?"animate-spin":""} /></button></div>
                     </header>
 
@@ -655,13 +713,13 @@
                                                     <div className="flex justify-between items-center mb-1">
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-2 h-2 rounded-full" style={{backgroundColor: item.color}}></div>
-                                                            <div className="flex flex-col"><span className="text-xs font-black text-slate-700">{item.ticker}</span><span className="text-[9px] text-slate-400">現:{hideValues ? '**%' : item.pct.toFixed(1)+'%'} 目:{item.targetPct}%</span></div>
+                                                            <div className="flex flex-col"><span className="text-xs font-black text-slate-700">{item.ticker}</span><span className="text-[9px] text-slate-400">現:{hideValues ? '**%' : (item.pct?.toFixed(1) || '0.0')+'%'} 目:{item.targetPct}%</span></div>
                                                         </div>
                                                         {item.isPool ? <span className="text-xs font-bold text-blue-500">資金調節池</span> : <div className="text-right"><div className={`text-xs ${item.actionDColor}`}>{item.actionD}</div><div className={`text-xs ${item.actionQColor}`}>{item.actionQ}</div></div>}
                                                     </div>
                                                     {!item.isPool && item.diff !== 0 && (
                                                         <div className="flex justify-end gap-2 text-[9px] font-mono text-slate-400 font-bold border-t border-slate-100 pt-1 mt-1">
-                                                            <span>{formatMoney(Math.abs(item.diff), hideValues)}</span>
+                                                            <span>建議金額: {formatMoney(Math.abs(item.diff), hideValues)}</span>
                                                             <span>({item.shareCount}股)</span>
                                                         </div>
                                                     )}
@@ -687,24 +745,44 @@
 
                                 <CollapsibleCard title="選擇權帳本" icon="Zap" isOpen={sections.options} onToggle={()=>toggleSection('options')} rightElement={<button onClick={(e)=>{e.stopPropagation(); setModal({type:'TRADE', subType:'OPEN', temp:{}});}} className="text-[10px] bg-brand-600 text-white px-3 py-1 rounded-lg font-bold shadow-sm">+ 新建</button>}>
                                     
-                                    {/* V9.9 New Feature: Dynamic Strikes */}
-                                    <div className="mb-4 bg-purple-50 p-4 rounded-xl border border-purple-100">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <div className="flex items-center gap-2"><Icon name="Target" size={16} className="text-purple-600"/> <span className="text-xs font-black text-purple-700 uppercase">動態履約價建議 (Beta 0.33)</span></div>
-                                            <div className="text-[10px] font-mono font-bold text-slate-500">{inputs.ticker_core_2}: ${prices[inputs.ticker_core_2]?.toFixed(2)}</div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div className="bg-white p-2 rounded-lg text-center border border-purple-200 shadow-sm">
-                                                <div className="text-[9px] text-slate-400 mb-1">Sell Call (目標 {metrics.callWeight.toFixed(1)}%)</div>
-                                                <div className="text-lg font-black font-mono text-purple-600">${metrics.callStrike.toFixed(2)}</div>
+                                    <div className="mb-4 bg-purple-50 rounded-xl border border-purple-100 overflow-hidden transition-all">
+                                        <div 
+                                            className="p-4 flex justify-between items-center cursor-pointer hover:bg-purple-100/50 transition-colors"
+                                            onClick={() => setShowStrikeSuggestions(!showStrikeSuggestions)}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <Icon name="Target" size={16} className="text-purple-600"/> 
+                                                <span className="text-xs font-black text-purple-700 uppercase">動態履約價建議 (Beta {inputs.beta_coefficient})</span>
                                             </div>
-                                            <div className="bg-white p-2 rounded-lg text-center border border-purple-200 shadow-sm">
-                                                <div className="text-[9px] text-slate-400 mb-1">Sell Put (目標 {metrics.putWeight.toFixed(1)}%)</div>
-                                                <div className="text-lg font-black font-mono text-purple-600">${metrics.putStrike.toFixed(2)}</div>
+                                            <div className="flex items-center gap-2">
+                                                 <div className="text-[10px] font-mono font-bold text-slate-500">{inputs.ticker_core_2}: ${prices[inputs.ticker_core_2]?.toFixed(2)}</div>
+                                                 <Icon name={showStrikeSuggestions ? "ChevronUp" : "ChevronDown"} size={16} className="text-purple-400" />
                                             </div>
                                         </div>
+                                        
+                                        {showStrikeSuggestions && (
+                                            <div className="px-4 pb-4 animate-in fade-in slide-in-from-top-1">
+                                                 <div className="grid grid-cols-2 gap-3">
+                                                    <div className="bg-white p-2 rounded-lg text-center border border-purple-200 shadow-sm">
+                                                        <div className="text-[9px] text-slate-400 mb-1">Sell Call (權重 &gt; {(metrics.callWeight ?? 0).toFixed(1)}%)</div>
+                                                        <div className="text-lg font-black font-mono text-purple-600">${(metrics.callStrike ?? 0).toFixed(2)}</div>
+                                                        <div className="mt-1 pt-1 border-t border-purple-100">
+                                                            <div className="text-[10px] text-red-500 font-bold">賣 {formatMoney(metrics.callRebalance?.val ?? 0, hideValues)}</div>
+                                                            <div className="text-[9px] text-slate-400">({(metrics.callRebalance?.count ?? 0).toFixed(1)} 張)</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="bg-white p-2 rounded-lg text-center border border-purple-200 shadow-sm">
+                                                        <div className="text-[9px] text-slate-400 mb-1">Sell Put (權重 &lt; {(metrics.putWeight ?? 0).toFixed(1)}%)</div>
+                                                        <div className="text-lg font-black font-mono text-purple-600">${(metrics.putStrike ?? 0).toFixed(2)}</div>
+                                                        <div className="mt-1 pt-1 border-t border-purple-100">
+                                                            <div className="text-[10px] text-emerald-500 font-bold">買 {formatMoney(metrics.putRebalance?.val ?? 0, hideValues)}</div>
+                                                            <div className="text-[9px] text-slate-400">({(metrics.putRebalance?.count ?? 0).toFixed(1)} 張)</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                    {/* End of V9.9 Feature */}
 
                                     <div className="space-y-2">
                                         {(inputs.options_inventory || []).map(opt => (
@@ -749,17 +827,20 @@
                                                     <div className="grid grid-cols-4 gap-2">
                                                         <div className="col-span-1"><input type="number" value={inputs.tol_up_core_2_d} onChange={e=>handleInputChange('tol_up_core_2_d',e.target.value)} onBlur={e=>syncToCloud('tol_up_core_2_d',e.target.value)} className="bg-white p-1 rounded-lg text-center w-full text-xs font-bold text-red-600 border border-slate-300" placeholder="漲%賣"/></div>
                                                         <div className="col-span-1"><input type="number" value={inputs.tol_down_core_2_d} onChange={e=>handleInputChange('tol_down_core_2_d',e.target.value)} onBlur={e=>syncToCloud('tol_down_core_2_d',e.target.value)} className="bg-white p-1 rounded-lg text-center w-full text-xs font-bold text-emerald-600 border border-slate-300" placeholder="跌%買"/></div>
-                                                        <div className="col-span-1"><input type="number" value={inputs.tol_up_core_2_q} onChange={e=>handleInputChange('tol_up_core_2_q',e.target.value)} onBlur={e=>syncToCloud('tol_up_core_2_q',e.target.value)} className="bg-blue-50 p-1 rounded-lg text-center w-full text-[10px] font-bold text-blue-600 border border-blue-200" placeholder="季漲%"/></div>
-                                                        <div className="col-span-1"><input type="number" value={inputs.tol_down_core_2_q} onChange={e=>handleInputChange('tol_down_core_2_q',e.target.value)} onBlur={e=>syncToCloud('tol_down_core_2_q',e.target.value)} className="bg-blue-50 p-1 rounded-lg text-center w-full text-[10px] font-bold text-blue-600 border border-blue-200" placeholder="季跌%"/></div>
+                                                        <div className="col-span-1"><input type="number" value={inputs.tol_up_core_2_q} onChange={e=>handleInputChange('tol_up_core_2_q',e.target.value)} onBlur={e=>syncToCloud('tol_up_core_2_q',e.target.value)} className="bg-blue-50 p-1 rounded-lg text-center w-full text-xs font-bold text-blue-600 border border-blue-200" placeholder="季漲%"/></div>
+                                                        <div className="col-span-1"><input type="number" value={inputs.tol_down_core_2_q} onChange={e=>handleInputChange('tol_down_core_2_q',e.target.value)} onBlur={e=>syncToCloud('tol_down_core_2_q',e.target.value)} className="bg-blue-50 p-1 rounded-lg text-center w-full text-xs font-bold text-blue-600 border border-blue-200" placeholder="季跌%"/></div>
                                                     </div>
                                                 </div>
                                             )}
                                         </div>
 
                                         <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                                            <div className="text-xs font-black text-slate-400 mb-2 text-center uppercase">防禦指標</div>
-                                            <div className="grid grid-cols-3 gap-2">
-                                                <div><label className="text-[9px] text-slate-500 block mb-1 text-center">200 SMA</label><input type="number" value={inputs.voo_sma200} onChange={e=>handleInputChange('voo_sma200',e.target.value)} onBlur={e=>syncToCloud('voo_sma200',e.target.value)} className="bg-white p-2 rounded-lg text-center w-full font-bold shadow-inner border border-slate-300"/></div>
+                                            <div className="text-xs font-black text-slate-400 mb-2 text-center uppercase">防禦 & 選擇權參數</div>
+                                            <div className="grid grid-cols-2 gap-2 mb-2">
+                                                 <div><label className="text-[9px] text-purple-500 block mb-1 text-center">Beta 係數</label><input type="number" step="0.01" value={inputs.beta_coefficient} onChange={e=>handleInputChange('beta_coefficient',e.target.value)} onBlur={e=>syncToCloud('beta_coefficient',e.target.value)} className="bg-white p-2 rounded-lg text-center w-full font-bold shadow-inner border border-slate-300 text-purple-600"/></div>
+                                                 <div><label className="text-[9px] text-slate-500 block mb-1 text-center">200 SMA</label><input type="number" value={inputs.voo_sma200} onChange={e=>handleInputChange('voo_sma200',e.target.value)} onBlur={e=>syncToCloud('voo_sma200',e.target.value)} className="bg-white p-2 rounded-lg text-center w-full font-bold shadow-inner border border-slate-300"/></div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
                                                 <div><label className="text-[9px] text-emerald-500 block mb-1 text-center">站上 +% 買進</label><input type="number" value={inputs.def_buy_pct} onChange={e=>handleInputChange('def_buy_pct',e.target.value)} onBlur={e=>syncToCloud('def_buy_pct',e.target.value)} className="bg-white p-2 rounded-lg text-center w-full font-bold shadow-inner border border-slate-300 text-emerald-600"/></div>
                                                 <div><label className="text-[9px] text-red-500 block mb-1 text-center">跌破 -% 賣出</label><input type="number" value={inputs.def_sell_pct} onChange={e=>handleInputChange('def_sell_pct',e.target.value)} onBlur={e=>syncToCloud('def_sell_pct',e.target.value)} className="bg-white p-2 rounded-lg text-center w-full font-bold shadow-inner border border-slate-300 text-red-600"/></div>
                                             </div>
@@ -773,111 +854,6 @@
                                         {inputs.satellites.length === 0 && <div className="text-center text-xs text-slate-400 py-4">無衛星配置</div>}
                                     </div>
                                 </Card>
-                            </div>
-                        )}
-
-                        {view === 'history' && (
-                            <div className="space-y-6 animate-in fade-in">
-                                <div className="flex bg-slate-200 rounded-2xl p-1"><button onClick={()=>setHistoryTab('nav')} className={`flex-1 py-2.5 rounded-xl text-xs font-black ${historyTab==='nav'?'bg-white shadow text-brand-600':'text-slate-500'}`}>資產走勢</button><button onClick={()=>setHistoryTab('income')} className={`flex-1 py-2.5 rounded-xl text-xs font-black ${historyTab==='income'?'bg-white shadow text-amber-500':'text-slate-500'}`}>選擇權收益</button></div>
-                                
-                                {historyTab === 'nav' && (
-                                    <>
-                                        <Card className="h-72 p-2 border-none shadow-heavy">
-                                            <div className="flex justify-between items-center px-4 pt-2 mb-1">
-                                                <div className="text-xs font-black text-slate-500">總資產趨勢</div>
-                                                <button onClick={(e)=>{e.stopPropagation(); setHideValues(!hideValues);}} className={`text-xs ${hideValues ? 'text-brand-600' : 'text-slate-400'}`}><Icon name={hideValues ? "EyeOff" : "Eye"} size={16}/></button>
-                                            </div>
-                                            <ResponsiveContainer>
-                                                <ComposedChart data={metrics.graphData} margin={{top:10,right:0,left:0,bottom:0}}>
-                                                    <defs>
-                                                        <linearGradient id="colorEq" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
-                                                        <linearGradient id="colorDD" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.1}/><stop offset="95%" stopColor="#ef4444" stopOpacity={0.3}/></linearGradient>
-                                                    </defs>
-                                                    <XAxis dataKey="date" tickFormatter={v=>new Date(v).toLocaleDateString(undefined,{month:'numeric',day:'numeric'})} tick={{fontSize:10, fill:'#94a3b8'}}/>
-                                                    <YAxis yAxisId="left" tickFormatter={v=>hideValues ? '****' : `${(v/1000).toFixed(0)}k`} tick={{fontSize:10, fill:'#94a3b8'}}/>
-                                                    <YAxis yAxisId="right" orientation="right" tickFormatter={v=>hideValues ? '**%' : `${v.toFixed(0)}%`} tick={{fontSize:10, fill:'#ef4444'}} hide/>
-                                                    <Tooltip content={<CustomGraphTooltip hide={hideValues} />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1 }} />
-                                                    <Area yAxisId="left" type="monotone" dataKey="equity" stroke="#3b82f6" strokeWidth={2} fill="url(#colorEq)" name="總資產"/>
-                                                    <Area yAxisId="right" type="monotone" dataKey="dd" stroke="none" fill="url(#colorDD)" name="最大跌幅"/>
-                                                </ComposedChart>
-                                            </ResponsiveContainer>
-                                        </Card>
-                                        <div className="pt-4 border-t border-slate-200">
-                                            <div className="flex justify-between items-center px-2 mb-2"><SectionTitle title="詳細績效紀錄" iconName="List" /></div>
-                                            <div className="space-y-2">
-                                                {records.sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0, 10).map((r, idx, arr) => {
-                                                    const prev = arr[idx+1];
-                                                    const change = prev ? ((r.total_equity - prev.total_equity)/prev.total_equity)*100 : 0;
-                                                    return (
-                                                        <div key={r.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                                                            <div className="flex justify-between items-center mb-2">
-                                                                <div>
-                                                                    <div className="text-xs font-black text-slate-700">{new Date(r.date).toLocaleDateString()}</div>
-                                                                    <div className="flex gap-2 items-end">
-                                                                        <div className="text-[10px] text-slate-400 font-mono">{formatMoney(r.total_equity, hideValues)}</div>
-                                                                        {idx < arr.length-1 && <div className={`text-[9px] font-bold ${change>=0?'text-emerald-500':'text-red-500'}`}>{hideValues ? '**%' : (change>0?'+':'') + change.toFixed(1) + '%'}</div>}
-                                                                    </div>
-                                                                </div>
-                                                                <div className="flex gap-2">
-                                                                    <button onClick={()=>setModal({type:'EDIT_RECORD', data: r, temp: {}})} className="p-2 text-brand-400 hover:bg-brand-50 rounded-lg"><Icon name="Edit2" size={14}/></button>
-                                                                    <button onClick={()=>requestDeleteRecord(r.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg"><Icon name="Trash2" size={14}/></button>
-                                                                </div>
-                                                            </div>
-                                                            {r.inputs && (
-                                                                <div className="flex flex-wrap gap-2 text-[9px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                                                    <span className="font-bold text-blue-600">{inputs.ticker_core_1}: {r.inputs.qty_core_1||r.inputs.qty_voo||0}</span>
-                                                                    <span className="font-bold text-purple-600">{inputs.ticker_core_2}: {r.inputs.qty_core_2||r.inputs.qty_qqq||0}</span>
-                                                                    <span className="font-bold text-slate-600">Cash: {formatMoney(parseInt(r.inputs.cash_balance||0), hideValues)}</span>
-                                                                    {(r.inputs.satellites||[]).map(s => <span key={s.id} className="text-slate-400">{s.ticker}: {s.qty}</span>)}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-
-                                {historyTab === 'income' && (
-                                    <>
-                                        <Card className="bg-amber-50 border border-amber-100 shadow-sm p-5 text-center">
-                                            <div className="text-xs font-black text-amber-600 uppercase mb-1">歷史已實現總權利金</div>
-                                            <div className="text-3xl font-black font-mono text-slate-800">{formatMoney((inputs.option_history||[]).reduce((a,b)=>a+(parseFloat(b.pnl)||0),0), hideValues)}</div>
-                                        </Card>
-                                        <div className="space-y-3">
-                                            {historyGroups.map(g => (
-                                                <div key={g.year} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-heavy">
-                                                    <div onClick={() => toggleYear(g.year)} className="p-4 flex justify-between items-center cursor-pointer bg-white hover:bg-slate-50 transition-colors">
-                                                        <div className="font-bold text-slate-700 flex items-center gap-2"><span className="bg-brand-100 text-brand-700 px-2 py-0.5 rounded text-xs">{g.year}</span></div>
-                                                        <div className="text-emerald-500 font-mono font-black">+{formatMoney(g.optPnl, hideValues)} <Icon name={expandedYears[g.year] ? "ChevronUp" : "ChevronDown"} size={16} className="text-slate-400"/></div>
-                                                    </div>
-                                                    {expandedYears[g.year] && <div className="border-t border-slate-100">
-                                                        {g.months.map(m => (
-                                                            <div key={m.month} className="p-3 px-5 border-b border-slate-50 last:border-0 hover:bg-f1f5f9">
-                                                                <div className="flex justify-between items-center mb-2">
-                                                                    <span className="text-xs font-bold text-slate-500">{m.month} 月</span>
-                                                                    <span className="text-xs font-black text-emerald-500">+{formatMoney(m.optPnl, hideValues)}</span>
-                                                                </div>
-                                                                <div className="space-y-1 pl-2 border-l-2 border-slate-200">
-                                                                    {(inputs.option_history||[]).filter(t => { const d=new Date(t.date); return d.getFullYear()===parseInt(g.year) && d.getMonth()+1===parseInt(m.month); }).map(t => (
-                                                                        <div key={t.id} className="flex justify-between items-center text-[10px]">
-                                                                            <span className="text-slate-600">{new Date(t.date).getDate()}日 {t.ticker} {t.type} <span className="text-slate-400 ml-1">@{t.strike}</span></span>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className={t.pnl>=0?'text-emerald-500 font-bold':'text-red-500 font-bold'}>{t.pnl>0?'+':''}{formatMoney(t.pnl, hideValues, '')}</span>
-                                                                                <button onClick={()=>setModal({type:'EDIT_HISTORY', data: t, temp: {}})} className="text-slate-300 hover:text-brand-500"><Icon name="Edit2" size={10}/></button>
-                                                                            </div>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </>
-                                )}
                             </div>
                         )}
 
