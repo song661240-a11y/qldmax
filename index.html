@@ -410,8 +410,8 @@
                     const closePrice = parseFloat(data.closePrice)||0;
                     const closeQty = parseFloat(data.closeContracts) ?? opt.contracts;
                     
-                    // 收益四捨五入到小數第二位
-                    const rawPnl = (opt.premium - closePrice) * closeQty * 100;
+                    // 修正：平倉當下只有「買回成本」的現金流流出
+                    const rawPnl = -closePrice * closeQty * 100;
                     const pnlVal = parseFloat(rawPnl.toFixed(2));
 
                     newHist.unshift({ id: Date.now(), date: now, ticker: opt.ticker, type: 'CLOSE', pnl: pnlVal, closePrice: closePrice, closeQty: closeQty });
@@ -427,8 +427,8 @@
                     const p = parseFloat(data.newPremium)||0;
                     const c = parseFloat(data.contracts)||opt.contracts;
 
-                    // 收益四捨五入到小數第二位
-                    const closePnlVal = parseFloat(((opt.premium - ep) * opt.contracts * 100).toFixed(2));
+                    // 修正：轉倉包含「舊單買回成本」的流出，以及「新單權利金」的流入
+                    const closePnlVal = parseFloat((-ep * opt.contracts * 100).toFixed(2));
                     const openPnlVal = parseFloat((p * c * 100).toFixed(2));
 
                     newHist.unshift({ id: Date.now(), date: now, ticker: opt.ticker, type: 'ROLL_CLOSE', pnl: closePnlVal });
@@ -666,7 +666,7 @@
                                         
                                         {(modal.temp?.closePrice && modal.temp?.closeContracts) && (
                                             <div className={`p-3 rounded-xl text-center font-black mt-2 ${((modal.data.premium - parseFloat(modal.temp.closePrice)) * parseFloat(modal.temp.closeContracts) * 100) >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                                                預估損益: ${((modal.data.premium - parseFloat(modal.temp.closePrice)) * parseFloat(modal.temp.closeContracts) * 100).toFixed(2)}
+                                                平倉總淨利: ${((modal.data.premium - parseFloat(modal.temp.closePrice)) * parseFloat(modal.temp.closeContracts) * 100).toFixed(2)}
                                             </div>
                                         )}
                                         <button onClick={()=>handleOptionTrade('CLOSE', modal.temp)} className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold mt-2">確認平倉</button>
@@ -722,7 +722,7 @@
                             <div className="space-y-3">
                                 <div>
                                     <label className="text-xs text-slate-500">損益 ($)</label>
-                                    <input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={modal.data.pnl} onChange={e=>setModal({...modal, temp: {...modal.temp, pnl: parseFloat(e.target.value)}})} />
+                                    <input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={parseFloat(modal.data?.pnl || 0).toFixed(2)} onChange={e=>setModal({...modal, temp: {...modal.temp, pnl: parseFloat(e.target.value)}})} />
                                 </div>
                                 <div className="flex gap-2">
                                     <button onClick={()=>setModal({type:'DELETE_CONFIRM', data:{id:modal.data.id, type:'OPTION_HISTORY'}})} className="p-3 bg-red-100 text-red-500 rounded-xl"><Icon name="Trash2"/></button>
@@ -781,8 +781,7 @@
                     <main className="max-w-md mx-auto p-4 pt-28 space-y-6">
                         {view === 'dashboard' && (
                             <div className="space-y-6 animate-in fade-in">
-                                <CollapsibleCard title="投資座右銘" icon="Quote" isOpen={sections.motto} onToggle={()=>toggleSection('motto')} className="relative group">
-                                    <div className="flex justify-end mb-2 relative z-10"><button onClick={(e) => {e.stopPropagation(); setIsMottoLocked(!isMottoLocked);}} className="p-1.5 bg-slate-100 rounded-full text-slate-400 hover:text-brand-600"><Icon name={isMottoLocked?"Lock":"Unlock"} size={12}/></button></div>
+                                <CollapsibleCard title="投資座右銘" icon="Quote" isOpen={sections.motto} onToggle={()=>toggleSection('motto')} className="relative group" rightElement={<button onClick={(e) => {e.stopPropagation(); setIsMottoLocked(!isMottoLocked);}} className="p-1.5 bg-slate-200 rounded-full text-slate-500 hover:text-brand-600 shadow-sm transition-colors"><Icon name={isMottoLocked?"Lock":"Unlock"} size={12}/></button>}>
                                     <textarea value={inputs.motto} readOnly={isMottoLocked} onChange={e=>handleInputChange('motto',e.target.value)} onBlur={e=>syncToCloud('motto',e.target.value)} className={`w-full bg-transparent text-sm font-bold text-slate-700 outline-none resize-none leading-relaxed text-center ${isMottoLocked?'':'bg-f8fafc rounded-xl border border-dashed border-slate-300 p-2'}`} rows="3" placeholder="輸入您的投資心法..." onClick={e=>e.stopPropagation()} />
                                     <div className="absolute right-0 bottom-0 opacity-5 pointer-events-none transform translate-x-4 translate-y-4"><Icon name="Quote" size={80} /></div>
                                 </CollapsibleCard>
@@ -1029,7 +1028,7 @@
                                                                         <div key={t.id} className="flex justify-between items-center text-[10px]">
                                                                             <span className="text-slate-600">{new Date(t.date).getDate()}日 {t.ticker} {t.type} <span className="text-slate-400 ml-1">@{t.strike}</span></span>
                                                                             <div className="flex items-center gap-2">
-                                                                                <span className={t.pnl>=0?'text-emerald-500 font-bold':'text-red-500 font-bold'}>{t.pnl>0?'+':''}{t.pnl}</span>
+                                                                                <span className={t.pnl>=0?'text-emerald-500 font-bold':'text-red-500 font-bold'}>{t.pnl>0?'+':''}{parseFloat(t.pnl).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}</span>
                                                                                 <button onClick={()=>setModal({type:'EDIT_HISTORY', data: t, temp: {}})} className="text-slate-300 hover:text-brand-500"><Icon name="Edit2" size={10}/></button>
                                                                             </div>
                                                                         </div>
