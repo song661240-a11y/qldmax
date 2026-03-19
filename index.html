@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Alpha Horizon V11.4</title>
+    <title>Alpha Horizon V11.6</title>
     
     <!-- 1. Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -54,7 +54,7 @@
 <body class="text-left font-bold text-slate-800">
     <div id="root"></div>
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useCallback, memo } = React;
+        const { useState, useEffect, useMemo, useCallback, memo, useRef } = React;
         const { ComposedChart, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
 
         const FINNHUB_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
@@ -229,14 +229,14 @@
                 {showAdvanced && (
                     <div className="animate-in fade-in slide-in-from-top-1 duration-200 mt-2 pt-2 border-t border-slate-200">
                         <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-slate-400 mb-1">
-                            <div className="col-span-1 text-center bg-slate-200 rounded">平時監控</div>
-                            <div className="col-span-1 text-center bg-blue-100 text-blue-600 rounded">季度再平衡</div>
+                            <div className="col-span-1 text-center bg-slate-200 rounded">平時監控(絕對%)</div>
+                            <div className="col-span-1 text-center bg-blue-100 text-blue-600 rounded">季度再平衡(絕對%)</div>
                         </div>
                         <div className="grid grid-cols-4 gap-2">
-                            <div className="col-span-1"><input type="number" value={item.tol_up_d} onChange={e=>onChange(item.id, 'tol_up_d', e.target.value)} onBlur={onBlur} className="bg-white p-1 rounded-lg text-center w-full text-[10px] font-bold text-red-600 border border-slate-300" placeholder="漲+賣"/></div>
-                            <div className="col-span-1"><input type="number" value={item.tol_down_d} onChange={e=>onChange(item.id, 'tol_down_d', e.target.value)} onBlur={onBlur} className="bg-white p-1 rounded-lg text-center w-full text-[10px] font-bold text-emerald-600 border border-slate-300" placeholder="跌-買"/></div>
-                            <div className="col-span-1"><input type="number" value={item.tol_up_q} onChange={e=>onChange(item.id, 'tol_up_q', e.target.value)} onBlur={onBlur} className="bg-blue-50 p-1 rounded-lg text-center w-full text-[10px] font-bold text-blue-600 border border-blue-200" placeholder="季漲+"/></div>
-                            <div className="col-span-1"><input type="number" value={item.tol_down_q} onChange={e=>onChange(item.id, 'tol_down_q', e.target.value)} onBlur={onBlur} className="bg-blue-50 p-1 rounded-lg text-center w-full text-[10px] font-bold text-blue-600 border border-blue-200" placeholder="季跌-"/></div>
+                            <div className="col-span-1"><input type="number" value={item.tol_up_d} onChange={e=>onChange(item.id, 'tol_up_d', e.target.value)} onBlur={onBlur} className="bg-white p-1 rounded-lg text-center w-full text-[10px] font-bold text-red-600 border border-slate-300" placeholder="上限%賣"/></div>
+                            <div className="col-span-1"><input type="number" value={item.tol_down_d} onChange={e=>onChange(item.id, 'tol_down_d', e.target.value)} onBlur={onBlur} className="bg-white p-1 rounded-lg text-center w-full text-[10px] font-bold text-emerald-600 border border-slate-300" placeholder="下限%買"/></div>
+                            <div className="col-span-1"><input type="number" value={item.tol_up_q} onChange={e=>onChange(item.id, 'tol_up_q', e.target.value)} onBlur={onBlur} className="bg-blue-50 p-1 rounded-lg text-center w-full text-[10px] font-bold text-blue-600 border border-blue-200" placeholder="季上限%"/></div>
+                            <div className="col-span-1"><input type="number" value={item.tol_down_q} onChange={e=>onChange(item.id, 'tol_down_q', e.target.value)} onBlur={onBlur} className="bg-blue-50 p-1 rounded-lg text-center w-full text-[10px] font-bold text-blue-600 border border-blue-200" placeholder="季下限%"/></div>
                         </div>
                     </div>
                 )}
@@ -271,7 +271,6 @@
             const [records, setRecords] = useState([]);
             const [simulatedTotal, setSimulatedTotal] = useState(''); 
             
-            // 獨立抓取當地時間，保持最新日期
             const [recordDate, setRecordDate] = useState(() => { 
                 const d = new Date(); 
                 return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0]; 
@@ -281,10 +280,14 @@
                 motto: '', current_rsi: '', qqq_ath: 0, option_history: [], qqq_sma200: 0, voo_sma200: 0,
                 ticker_core_1: 'VOO', qty_core_1: 0, target_core_1: 35,
                 ticker_core_2: 'TQQQ', qty_core_2: 0, target_core_2: 35, 
-                tol_up_core_2_d: 15, tol_down_core_2_d: 15,
-                tol_up_core_2_q: 10, tol_down_core_2_q: 5,
+                tol_up_core_2_d: '', tol_down_core_2_d: '',
+                tol_up_core_2_q: '', tol_down_core_2_q: '',
                 cash_balance: 0, satellites: [], options_inventory: [],
             });
+
+            // 解決衛星參數 blur 時 closure state 陳舊的問題
+            const inputsRef = useRef(inputs);
+            useEffect(() => { inputsRef.current = inputs; }, [inputs]);
 
             const effectiveUserId = customSyncId || (user ? user.uid : null);
             
@@ -311,8 +314,6 @@
                         if(!d.ticker_core_2) d.ticker_core_2 = 'TQQQ';
                         if (d.qty_qqq !== undefined && d.qty_core_2 === undefined) d.qty_core_2 = d.qty_qqq; 
                         if (d.qty_voo !== undefined && d.qty_core_1 === undefined) d.qty_core_1 = d.qty_voo; 
-                        if (d.tol_up_core_2 !== undefined && d.tol_up_core_2_d === undefined) d.tol_up_core_2_d = d.tol_up_core_2;
-                        if (d.tol_down_core_2 !== undefined && d.tol_down_core_2_d === undefined) d.tol_down_core_2_d = d.tol_down_core_2;
                         setInputs(p => ({...p, ...d})); 
                     }
                     setIsSwitching(false); 
@@ -339,9 +340,16 @@
             const handleInputChange = (f, v) => setInputs(p => ({ ...p, [f]: v }));
             const syncToCloud = async (f, v) => { if (user) { const safeV = sanitizeForFirestore(v); await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ [f]: safeV }, { merge: true }); } };
             
-            const addSatellite = () => { const newSat = { id: Date.now().toString(), ticker: '', qty: 0, target_pct: 5, tol_up_d: 15, tol_down_d: 10, tol_up_q: 10, tol_down_q: 5 }; const newSats = [...(inputs.satellites || []), newSat]; setInputs(p => ({ ...p, satellites: newSats })); syncToCloud('satellites', newSats); };
-            const updateSatellite = (id, field, value) => { const newSats = inputs.satellites.map(s => s.id === id ? { ...s, [field]: value } : s); setInputs(p => ({ ...p, satellites: newSats })); if (field === 'ticker') syncToCloud('satellites', newSats); };
-            const saveSatellites = () => syncToCloud('satellites', inputs.satellites);
+            const addSatellite = () => { const newSat = { id: Date.now().toString(), ticker: '', qty: 0, target_pct: 5, tol_up_d: '', tol_down_d: '', tol_up_q: '', tol_down_q: '' }; const newSats = [...(inputs.satellites || []), newSat]; setInputs(p => ({ ...p, satellites: newSats })); syncToCloud('satellites', newSats); };
+            const updateSatellite = (id, field, value) => { 
+                setInputs(p => {
+                    const newSats = p.satellites.map(s => s.id === id ? { ...s, [field]: value } : s);
+                    return { ...p, satellites: newSats };
+                });
+            };
+            // 透過 useRef 抓最新的 inputs 來存檔，解決舊版 closure bug
+            const saveSatellites = () => syncToCloud('satellites', inputsRef.current.satellites);
+            
             const deleteSatellite = (id) => { const newSats = inputs.satellites.filter(s => s.id !== id); setInputs(p => ({ ...p, satellites: newSats })); syncToCloud('satellites', newSats); };
 
             const toggleCashSign = () => { setInputs(prev => { const currentVal = prev.cash_balance; const numVal = parseFloat(currentVal); if (!isNaN(numVal)) { const newVal = numVal * -1; syncToCloud('cash_balance', newVal); return { ...prev, cash_balance: newVal }; } return prev; }); };
@@ -400,9 +408,7 @@
                     const tickerName = data.ticker || 'TQQQ';
                     const tradeType = data.type || 'SC';
                     
-                    // 收益四捨五入到小數第二位
                     const pnlVal = parseFloat((p * c * 100).toFixed(2));
-
                     newInv.push({ id: Date.now(), ticker: tickerName, type: tradeType, strike: data.newStrike, expiry: data.newExpiry, contracts: c, premium: p, delta: data.newDelta });
                     newHist.unshift({ id: Date.now(), date: now, ticker: tickerName, type: 'OPEN', pnl: pnlVal });
                 } else if (type === 'CLOSE') {
@@ -410,7 +416,6 @@
                     const closePrice = parseFloat(data.closePrice)||0;
                     const closeQty = parseFloat(data.closeContracts) ?? opt.contracts;
                     
-                    // 修正：平倉當下只有「買回成本」的現金流流出
                     const rawPnl = -closePrice * closeQty * 100;
                     const pnlVal = parseFloat(rawPnl.toFixed(2));
 
@@ -427,7 +432,6 @@
                     const p = parseFloat(data.newPremium)||0;
                     const c = parseFloat(data.contracts)||opt.contracts;
 
-                    // 修正：轉倉包含「舊單買回成本」的流出，以及「新單權利金」的流入
                     const closePnlVal = parseFloat((-ep * opt.contracts * 100).toFixed(2));
                     const openPnlVal = parseFloat((p * c * 100).toFixed(2));
 
@@ -437,7 +441,6 @@
                 } else if (type === 'EDIT_INVENTORY') {
                     newInv = newInv.map(o => o.id === modal.data.id ? { ...o, ...data } : o);
                 } else if (type === 'EDIT_HISTORY') {
-                    // 編輯歷史紀錄也確保小數點第二位
                     const editedData = { ...data };
                     if (editedData.pnl !== undefined) {
                         editedData.pnl = parseFloat(parseFloat(editedData.pnl).toFixed(2));
@@ -482,8 +485,8 @@
                 const getP = (t) => prices[(t || "").toUpperCase()] || 0;
                 const getV = (k) => getNum(inputs[k]);
                 
-                const tickerCore1 = (inputs.ticker_core_1 || 'VOO').toUpperCase(); // Fund Pool
-                const tickerCore2 = (inputs.ticker_core_2 || 'TQQQ').toUpperCase(); // Aggressive
+                const tickerCore1 = (inputs.ticker_core_1 || 'VOO').toUpperCase();
+                const tickerCore2 = (inputs.ticker_core_2 || 'TQQQ').toUpperCase();
                 
                 let total = getV('cash_balance');
                 const valCore1 = getP(tickerCore1) * getV('qty_core_1'); 
@@ -497,21 +500,39 @@
                 const today = new Date();
                 const isQuarterEnd = (today.getMonth() + 1) % 3 === 0 && today.getDate() >= 20;
 
-                // 改為「絕對加減法」
-                const checkItem = (ticker, currentVal, targetPct, tolUpD, tolDownD, tolUpQ, tolDownQ, color) => {
+                // 新增輔助函式確保如果沒輸入絕對值，有一個安全退路(Target + 15 / Target - 15)
+                const getLim = (key, defaultLim) => {
+                    const val = inputs[key];
+                    if (val !== undefined && val !== null && val !== '') {
+                        const num = parseFloat(val);
+                        if (!isNaN(num)) return num;
+                    }
+                    return defaultLim;
+                };
+
+                const getSatLim = (val, defaultLim) => {
+                    if (val !== undefined && val !== null && val !== '') {
+                        const num = parseFloat(val);
+                        if (!isNaN(num)) return num;
+                    }
+                    return defaultLim;
+                };
+
+                // 核心的絕對加減法檢查邏輯
+                const checkItem = (ticker, currentVal, targetPct, upLimitD, downLimitD, upLimitQ, downLimitQ, color) => {
                     const diff = (total * (targetPct / 100)) - currentVal;
                     const pct = (currentVal / safeTotal) * 100;
                     
                     let actionD = '平時無須變動'; let actionDColor = 'text-slate-400 font-medium';
                     let actionQ = isQuarterEnd ? '季末無須變動' : '季末無須變動(預)'; let actionQColor = 'text-slate-400 font-medium';
                     
-                    // Daily (絕對加減法)
-                    if (pct > (targetPct + tolUpD)) { actionD = '平時賣'; actionDColor = 'text-red-500 font-black'; } 
-                    else if (pct < (targetPct - tolDownD)) { actionD = '平時買'; actionDColor = 'text-emerald-500 font-black'; }
+                    // Daily (絕對佔比)
+                    if (pct > upLimitD) { actionD = '平時賣'; actionDColor = 'text-red-500 font-black'; } 
+                    else if (pct < downLimitD) { actionD = '平時買'; actionDColor = 'text-emerald-500 font-black'; }
                     
-                    // Quarterly (絕對加減法)
-                    if (pct > (targetPct + tolUpQ)) { actionQ = isQuarterEnd ? '季末賣' : '季末賣(預)'; actionQColor = isQuarterEnd ? 'text-amber-500 font-black' : 'text-slate-500 font-bold'; }
-                    else if (pct < (targetPct - tolDownQ)) { actionQ = isQuarterEnd ? '季末買' : '季末買(預)'; actionQColor = isQuarterEnd ? 'text-blue-500 font-black' : 'text-slate-500 font-bold'; }
+                    // Quarterly (絕對佔比)
+                    if (pct > upLimitQ) { actionQ = isQuarterEnd ? '季末賣' : '季末賣(預)'; actionQColor = isQuarterEnd ? 'text-amber-500 font-black' : 'text-slate-500 font-bold'; }
+                    else if (pct < downLimitQ) { actionQ = isQuarterEnd ? '季末買' : '季末買(預)'; actionQColor = isQuarterEnd ? 'text-blue-500 font-black' : 'text-slate-500 font-bold'; }
 
                     rebalanceList.push({ ticker, pct, targetPct, diff, actionD, actionDColor, actionQ, actionQColor, color, currentVal, shareCount: getQty(Math.abs(diff), getP(ticker)).toFixed(0) });
                 };
@@ -519,8 +540,32 @@
                 const pct1 = (valCore1 / safeTotal) * 100;
                 rebalanceList.push({ ticker: tickerCore1, pct: pct1, targetPct: getV('target_core_1'), diff: 0, actionD: '資金調節池', actionDColor: 'text-blue-500 font-bold', actionQ: '', actionQColor: '', color: '#3b82f6', isPool: true, currentVal: valCore1 });
 
-                checkItem(tickerCore2, valCore2, getV('target_core_2'), getV('tol_up_core_2_d')||15, getV('tol_down_core_2_d')||15, getV('tol_up_core_2_q')||10, getV('tol_down_core_2_q')||5, '#8b5cf6');
-                satellites.forEach((s, i) => checkItem(s.ticker, getP(s.ticker)*getNum(s.qty), getNum(s.target_pct), getNum(s.tol_up_d)||15, getNum(s.tol_down_d)||10, getNum(s.tol_up_q)||10, getNum(s.tol_down_q)||5, ['#f97316', '#10b981', '#ef4444', '#eab308'][i % 4]));
+                const tC2 = getV('target_core_2');
+                checkItem(
+                    tickerCore2, 
+                    valCore2, 
+                    tC2, 
+                    getLim('tol_up_core_2_d', tC2 + 15), 
+                    getLim('tol_down_core_2_d', Math.max(0, tC2 - 15)), 
+                    getLim('tol_up_core_2_q', tC2 + 10), 
+                    getLim('tol_down_core_2_q', Math.max(0, tC2 - 5)), 
+                    '#8b5cf6'
+                );
+
+                satellites.forEach((s, i) => {
+                    const sT = getNum(s.target_pct);
+                    checkItem(
+                        s.ticker, 
+                        getP(s.ticker)*getNum(s.qty), 
+                        sT, 
+                        getSatLim(s.tol_up_d, sT + 15), 
+                        getSatLim(s.tol_down_d, Math.max(0, sT - 10)), 
+                        getSatLim(s.tol_up_q, sT + 10), 
+                        getSatLim(s.tol_down_q, Math.max(0, sT - 5)), 
+                        ['#f97316', '#10b981', '#ef4444', '#eab308'][i % 4]
+                    )
+                });
+
                 rebalanceList.sort((a,b) => b.priority - a.priority);
 
                 const defPrice = getP(tickerCore1); 
@@ -562,7 +607,6 @@
                     const startM = sorted.find(r => new Date(r.date).getMonth() === new Date().getMonth() && new Date(r.date).getFullYear() === new Date().getFullYear()) || sorted[sorted.length-1];
                     mtd = startM.total_equity > 0 ? ((total - startM.total_equity) / startM.total_equity) * 100 : 0;
                     
-                    // YTD 計算邏輯
                     const currentYear = new Date().getFullYear();
                     const ytdStartRecord = sorted.find(r => new Date(r.date).getFullYear() === currentYear);
                     if (ytdStartRecord && ytdStartRecord.total_equity > 0) {
@@ -774,7 +818,7 @@
                     )}
 
                     <header className="fixed top-0 inset-x-0 bg-f8fafc z-50 px-5 py-4 pt-6 flex justify-between items-center shadow-sm border-b border-e2e8f0">
-                        <div className="flex items-center gap-2 font-black"><div className="bg-brand-50 p-2 rounded-2xl"><Icon name="ShieldAlert" className="text-brand-600" size={18} /></div><h1 className="text-lg text-slate-800">Alpha Horizon V11.4</h1></div>
+                        <div className="flex items-center gap-2 font-black"><div className="bg-brand-50 p-2 rounded-2xl"><Icon name="ShieldAlert" className="text-brand-600" size={18} /></div><h1 className="text-lg text-slate-800">Alpha Horizon V11.6</h1></div>
                         <div className="flex gap-2"><button onClick={() => setView('sync_settings')} className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 shadow-sm hover:bg-slate-50"><Icon name="Settings" size={20} /></button><button onClick={() => fetchPrices(true)} className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 shadow-sm hover:bg-slate-50"><Icon name="RefreshCcw" size={20} className={loadingPrices?"animate-spin":""} /></button></div>
                     </header>
 
@@ -798,7 +842,6 @@
                                     <div className="flex justify-between relative z-10"><label className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Total (USD)</label></div>
                                     <div className="mt-2 relative z-10">
                                         <div className="text-4xl font-black font-mono text-slate-800 tracking-tight">${metrics.totalCapital.toLocaleString(undefined,{maximumFractionDigits:0})}</div>
-                                        {/* YTD 區塊 */}
                                         {metrics.performanceStats.hasYtd && (
                                             <div className={`mt-3 flex items-center gap-1.5 text-xs font-black ${metrics.performanceStats.ytdAmount >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                                                 <div className={`p-1 rounded-md ${metrics.performanceStats.ytdAmount >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
@@ -851,7 +894,6 @@
 
                                 <CollapsibleCard title="持倉數量" icon="Edit2" isOpen={sections.holdings} onToggle={()=>toggleSection('holdings')}>
                                     <div className="space-y-2">
-                                        {/* 日期選擇器 */}
                                         <div className="mb-3 bg-f8fafc p-2 rounded-xl border border-slate-200 flex justify-between items-center shadow-sm">
                                             <div className="flex items-center gap-2">
                                                 <div className="bg-white p-1 rounded-lg shadow-sm border border-slate-100">
@@ -864,7 +906,7 @@
 
                                         <HoldingRow conf={{id:'core1', tickerKey:'ticker_core_1', defaultTicker:'VOO', qtyKey:'qty_core_1', targetKey:'target_core_1', color: 'text-blue-500'}} inputs={inputs} prices={prices} onChange={handleInputChange} onBlur={syncToCloud} />
                                         <HoldingRow conf={{id:'core2', tickerKey:'ticker_core_2', defaultTicker:'TQQQ', qtyKey:'qty_core_2', targetKey:'target_core_2', color: 'text-purple-600'}} inputs={inputs} prices={prices} onChange={handleInputChange} onBlur={syncToCloud} />
-                                        {(inputs.satellites || []).map(s => <HoldingRow key={s.id} conf={s} inputs={inputs} prices={prices} onChange={(id, f, v) => { const newSats = inputs.satellites.map(si => si.id === id ? { ...si, [f]: v } : si); setInputs(p => ({ ...p, satellites: newSats })); if(f==='ticker') syncToCloud('satellites', newSats); }} onBlur={()=>syncToCloud('satellites', inputs.satellites)} isDynamic={true} />)}
+                                        {(inputs.satellites || []).map(s => <HoldingRow key={s.id} conf={s} inputs={inputs} prices={prices} onChange={(id, f, v) => { const newSats = inputs.satellites.map(si => si.id === id ? { ...si, [f]: v } : si); setInputs(p => ({ ...p, satellites: newSats })); }} onBlur={saveSatellites} isDynamic={true} />)}
                                         <button onClick={addSatellite} className="w-full py-3 bg-f1f5f9 text-slate-500 text-xs font-bold rounded-xl mt-2 flex justify-center items-center gap-1 hover:bg-slate-200 transition-colors border border-slate-300 shadow-sm"><Icon name="Plus" size={14}/> 新增衛星</button>
                                         <div className="pt-2 mt-2 border-t border-slate-100 relative">
                                             <label className="text-[10px] font-black text-slate-400 block text-center mb-1">現金 (USD)</label>
@@ -914,12 +956,12 @@
 
                                             {showAdvancedParams && (
                                                 <div className="animate-in fade-in slide-in-from-top-1 duration-200 mt-2 pt-2 border-t border-purple-200">
-                                                    <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-slate-400 mb-1"><div className="col-span-1 text-center bg-slate-200 rounded">平時監控</div><div className="col-span-1 text-center bg-blue-100 text-blue-600 rounded">季度再平衡</div></div>
+                                                    <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-slate-400 mb-1"><div className="col-span-1 text-center bg-slate-200 rounded">平時監控(絕對%)</div><div className="col-span-1 text-center bg-blue-100 text-blue-600 rounded">季度再平衡(絕對%)</div></div>
                                                     <div className="grid grid-cols-4 gap-2">
-                                                        <div className="col-span-1"><input type="number" value={inputs.tol_up_core_2_d} onChange={e=>handleInputChange('tol_up_core_2_d',e.target.value)} onBlur={e=>syncToCloud('tol_up_core_2_d',e.target.value)} className="bg-white p-1 rounded-lg text-center w-full text-xs font-bold text-red-600 border border-slate-300" placeholder="漲+賣"/></div>
-                                                        <div className="col-span-1"><input type="number" value={inputs.tol_down_core_2_d} onChange={e=>handleInputChange('tol_down_core_2_d',e.target.value)} onBlur={e=>syncToCloud('tol_down_core_2_d',e.target.value)} className="bg-white p-1 rounded-lg text-center w-full text-xs font-bold text-emerald-600 border border-slate-300" placeholder="跌-買"/></div>
-                                                        <div className="col-span-1"><input type="number" value={inputs.tol_up_core_2_q} onChange={e=>handleInputChange('tol_up_core_2_q',e.target.value)} onBlur={e=>syncToCloud('tol_up_core_2_q',e.target.value)} className="bg-blue-50 p-1 rounded-lg text-center w-full text-xs font-bold text-blue-600 border border-blue-200" placeholder="季漲+"/></div>
-                                                        <div className="col-span-1"><input type="number" value={inputs.tol_down_core_2_q} onChange={e=>handleInputChange('tol_down_core_2_q',e.target.value)} onBlur={e=>syncToCloud('tol_down_core_2_q',e.target.value)} className="bg-blue-50 p-1 rounded-lg text-center w-full text-xs font-bold text-blue-600 border border-blue-200" placeholder="季跌-"/></div>
+                                                        <div className="col-span-1"><input type="number" value={inputs.tol_up_core_2_d} onChange={e=>handleInputChange('tol_up_core_2_d',e.target.value)} onBlur={e=>syncToCloud('tol_up_core_2_d',e.target.value)} className="bg-white p-1 rounded-lg text-center w-full text-[10px] font-bold text-red-600 border border-slate-300" placeholder="上限%賣"/></div>
+                                                        <div className="col-span-1"><input type="number" value={inputs.tol_down_core_2_d} onChange={e=>handleInputChange('tol_down_core_2_d',e.target.value)} onBlur={e=>syncToCloud('tol_down_core_2_d',e.target.value)} className="bg-white p-1 rounded-lg text-center w-full text-[10px] font-bold text-emerald-600 border border-slate-300" placeholder="下限%買"/></div>
+                                                        <div className="col-span-1"><input type="number" value={inputs.tol_up_core_2_q} onChange={e=>handleInputChange('tol_up_core_2_q',e.target.value)} onBlur={e=>syncToCloud('tol_up_core_2_q',e.target.value)} className="bg-blue-50 p-1 rounded-lg text-center w-full text-[10px] font-bold text-blue-600 border border-blue-200" placeholder="季上限%"/></div>
+                                                        <div className="col-span-1"><input type="number" value={inputs.tol_down_core_2_q} onChange={e=>handleInputChange('tol_down_core_2_q',e.target.value)} onBlur={e=>syncToCloud('tol_down_core_2_q',e.target.value)} className="bg-blue-50 p-1 rounded-lg text-center w-full text-[10px] font-bold text-blue-600 border border-blue-200" placeholder="季下限%"/></div>
                                                     </div>
                                                 </div>
                                             )}
@@ -1006,7 +1048,7 @@
                                 {historyTab === 'income' && (
                                     <>
                                         <Card className="bg-amber-50 border border-amber-100 shadow-sm p-5 text-center">
-                                            <div className="text-xs font-black text-amber-600 uppercase mb-1">歷史已實現總權利金</div>
+                                            <div className="text-xs font-black text-amber-600 uppercase mb-1">歷史已實現總淨利</div>
                                             <div className="text-3xl font-black font-mono text-slate-800">${(inputs.option_history||[]).reduce((a,b)=>a+(parseFloat(b.pnl)||0),0).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}</div>
                                         </Card>
                                         <div className="space-y-3">
