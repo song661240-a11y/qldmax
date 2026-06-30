@@ -65,12 +65,15 @@
     const pctNum = (v, digits=1) => `${(Number(v)||0).toFixed(digits)}%`;
     const round2 = v => Math.round((Number(v)||0)*100)/100;
     const sanitize = data => JSON.parse(JSON.stringify(data, (k,v) => v === undefined ? null : v));
+    const signedPctText = (v, digits=1) => `${v >= 0 ? "+" : ""}${(Number(v)||0).toFixed(digits)}%`;
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, Number(v)||0));
 
     const DEFAULT = {
       spy:"", spySma:"", qqq:"", qqqSma:"", tqqq:"", sgov:"", marketDate:"",
       entryBuffer:4, exitBuffer:3, hot1:30, hot2:40, cooldown:25,
       dcaMonth:0, dcaPoolUsd:0, currentState:"auto", notes:"",
       sharesTqqq:0, sharesQqq:0, sharesSpy:0, sharesSgov:0, cashUsd:0, otherUsd:0, usdtwd:32, currency:"USD", assetHighUsd:0, lastExecutedAt:"", lastExecutionSummary:"",
+      scenarioSign:-1, scenarioAbsPct:10,
       history:[]
     };
     const STRATEGY_TEXT = `SPY 200SMA +4/-3 改良版\n\n1. Risk-On：SPY 收盤價 > SPY 200SMA × 1.04，允許 100% TQQQ。\n2. Risk-Off：SPY 收盤價 < SPY 200SMA × 0.97，賣出 TQQQ，接著分 6 個月 DCA 進 QQQ。\n3. 中間區：SPY 位於 +4% 到 -3% 之間，不做新動作，維持原部位。\n4. QQQ 過熱一階：QQQ > QQQ 200SMA +30%，降為 50% TQQQ / 50% QQQ。\n5. QQQ 過熱二階：QQQ > QQQ 200SMA +40%，降為 100% QQQ。\n6. 過熱解除：QQQ 回落到 200SMA +25% 以下，且 SPY 仍 Risk-On，才恢復 TQQQ。\n7. 紀律：訊號以收盤資料判斷，不因新聞、情緒或帳面損益改變規則。`;
@@ -210,7 +213,40 @@
           targetRows.forEach(r => { if(r.target != null && Math.abs(r.diff) >= 10) actionLines.push(`${r.diff>0?'買入':'賣出'} ${r.sym} 約 ${money(Math.abs(r.shareDiff),4)} 股，金額約 $${money(Math.abs(r.diff),0)}。`); });
           if(!actionLines.length) actionLines.push('目前部位與目標接近，不需要交易。');
         }
-        return {valid, signal, tone, title, instruction, alloc, spyDev, qqqDev, entryPx, exitPx, qHot1, qHot2, qCool, rows, totalUsd, totalDisplay, targetRows, assetHighUsd, drawdown, completedDca, nextDcaMonth, remainingDcaMonths, dcaPool, dcaBuyUsd, dcaBuyShares, actionLines};
+        const distanceItems = valid ? [
+          {key:'riskOn', label:'距離 Risk-On', value:((entryPx/spy)-1)*100, price:entryPx, hint:`SPY 需高於 $${money(entryPx,2)}`},
+          {key:'riskOff', label:'距離 Risk-Off', value:((exitPx/spy)-1)*100, price:exitPx, hint:`SPY 低於 $${money(exitPx,2)} 觸發`},
+          {key:'hot30', label:`距離 QQQ +${data.hot1}%`, value:((qHot1/qqq)-1)*100, price:qHot1, hint:`QQQ 高於 $${money(qHot1,2)} 降半槓桿`},
+          {key:'hot40', label:`距離 QQQ +${data.hot2}%`, value:((qHot2/qqq)-1)*100, price:qHot2, hint:`QQQ 高於 $${money(qHot2,2)} 全切 QQQ`},
+          {key:'cooldown', label:`距離過熱解除 +${data.cooldown}%`, value:((qCool/qqq)-1)*100, price:qCool, hint:`QQQ 回到 $${money(qCool,2)} 以下才解除`}
+        ] : [];
+        const scenarioMove = (getNum(data.scenarioSign) || -1) * Math.abs(getNum(data.scenarioAbsPct));
+        const scenarioFactor = 1 + scenarioMove / 100;
+        const scenarioQqq = qqq > 0 ? qqq * scenarioFactor : 0;
+        const scenarioTqqq = tqqq > 0 ? Math.max(0, tqqq * (1 + scenarioMove * 3 / 100)) : 0;
+        const scenarioRows = [
+          {name:'TQQQ', value:getNum(data.sharesTqqq) * scenarioTqqq},
+          {name:'QQQ', value:getNum(data.sharesQqq) * scenarioQqq},
+          {name:'SPY', value:getNum(data.sharesSpy) * spy},
+          {name:'SGOV', value:getNum(data.sharesSgov) * sgov},
+          {name:'現金', value:getNum(data.cashUsd)},
+          {name:'其他資產', value:getNum(data.otherUsd)}
+        ];
+        const scenarioTotalUsd = scenarioRows.reduce((sum, r) => sum + getNum(r.value), 0);
+        const scenarioPnlUsd = scenarioTotalUsd - totalUsd;
+        const scenarioPnlPct = totalUsd > 0 ? scenarioPnlUsd / totalUsd : 0;
+        const scenarioQqqDev = qqqSma > 0 && scenarioQqq > 0 ? scenarioQqq / qqqSma - 1 : NaN;
+        const scenarioFlags = [];
+        if(valid){
+          if(spy < exitPx) scenarioFlags.push('Risk-Off 已觸發');
+          if(scenarioQqq > qHot2) scenarioFlags.push(`QQQ +${data.hot2}% 過熱二階`);
+          else if(scenarioQqq > qHot1) scenarioFlags.push(`QQQ +${data.hot1}% 過熱一階`);
+          if(scenarioQqq <= qCool) scenarioFlags.push(`QQQ 回到 +${data.cooldown}% 解除線以下`);
+          if(scenarioMove <= -10) scenarioFlags.push('QQQ 明顯回撤，檢查 DCA/風控紀律');
+          if(!scenarioFlags.length) scenarioFlags.push('未新增觸發，維持目前規則判斷');
+        } else scenarioFlags.push('資料不足，無法判斷觸發');
+        const scenario = {movePct:scenarioMove, qqq:scenarioQqq, tqqq:scenarioTqqq, totalUsd:scenarioTotalUsd, totalTwd:scenarioTotalUsd*rate, pnlUsd:scenarioPnlUsd, pnlPct:scenarioPnlPct, qqqDev:scenarioQqqDev, flags:scenarioFlags};
+        return {valid, signal, tone, title, instruction, alloc, spyDev, qqqDev, entryPx, exitPx, qHot1, qHot2, qCool, rows, totalUsd, totalDisplay, targetRows, assetHighUsd, drawdown, completedDca, nextDcaMonth, remainingDcaMonths, dcaPool, dcaBuyUsd, dcaBuyShares, actionLines, distanceItems, scenario};
       }, [data]);
 
       const fetchPrices = async () => {
@@ -235,8 +271,30 @@
         patch("history", [buildLogItem('snapshot'), ...(Array.isArray(data.history)?data.history:[])].slice(0,200));
         showToast("已加入歷史紀錄");
       };
+      const copyTodayPlan = async () => {
+        const text = `日期：${todayStr()}
+狀態：${metrics.title}
+總資產：$${money(metrics.totalUsd,2)} / NT$${money(metrics.totalUsd*(getNum(data.usdtwd)||1),0)}
+SPY：${money(getNum(data.spy),2)}｜SPY 200SMA：${money(getNum(data.spySma),2)}
+QQQ：${money(getNum(data.qqq),2)}｜QQQ 200SMA：${money(getNum(data.qqqSma),2)}
+
+今日動作：
+${metrics.actionLines.map(x=>'・'+x).join('\n')}
+
+備註：${data.notes || '-'}`;
+        try { await navigator.clipboard.writeText(text); showToast('已複製今日指令'); }
+        catch(e){ showToast('複製失敗，請手動選取'); }
+      };
+      const nextCheckText = () => {
+        const d = new Date();
+        const day = d.getDay();
+        const add = day === 1 ? 7 : ((8 - day) % 7 || 7);
+        const n = new Date(d.getFullYear(), d.getMonth(), d.getDate() + add);
+        return `${n.getFullYear()}/${String(n.getMonth()+1).padStart(2,'0')}/${String(n.getDate()).padStart(2,'0')}（一）美股收盤後`;
+      };
       const confirmExecution = () => {
         if(!metrics.valid){ showToast("資料不足，不能確認執行"); return; }
+        if((metrics.signal === 'OFF' || metrics.signal === 'HOT2') && !confirm('目前是高風險狀態，請確認價格、股數、DCA 期數都正確。確定要寫入已執行紀錄？')) return;
         const item = buildLogItem('execution');
         const next = { history:[item, ...(Array.isArray(data.history)?data.history:[])].slice(0,200), assetHighUsd:Math.max(getNum(data.assetHighUsd), metrics.totalUsd), lastExecutedAt:new Date().toLocaleString("zh-TW"), lastExecutionSummary:metrics.actionLines.join(" "), currentState:metrics.signal };
         if(metrics.signal === 'OFF') { next.dcaMonth = Math.min(6, metrics.completedDca + 1); if(getNum(data.dcaPoolUsd) <= 0) next.dcaPoolUsd = metrics.dcaPool; }
@@ -247,6 +305,15 @@
       const resetAssetHigh = () => { if(confirm('把目前總資產設為新的高點？')) { patch('assetHighUsd', metrics.totalUsd); showToast('已重設資產高點'); } };
 
       const Header = () => <div className="sticky top-0 z-30 bg-slate-100/85 backdrop-blur border-b border-slate-200"><div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3"><div><div className="text-[10px] font-black text-brand-600 tracking-widest">SPY 200SMA +4/-3</div><h1 className="text-lg font-black text-slate-900 leading-tight">TQQQ 策略訊號儀表板</h1></div><div className="flex items-center gap-2"><Pill tone={user?.isAnonymous ? "amber" : "green"}>{user?.isAnonymous ? "匿名同步" : "Google同步"}</Pill><button onClick={fetchPrices} disabled={loadingPrice} className="px-3 py-2 rounded-2xl bg-slate-900 text-white text-xs font-black active:scale-95 disabled:opacity-50">{loadingPrice ? "抓取中" : "更新股價"}</button></div></div></div>;
+
+      const distanceTone = (v) => Math.abs(v) <= 2 ? 'red' : Math.abs(v) <= 5 ? 'amber' : 'green';
+      const distanceLabel = (v) => Math.abs(v) <= 2 ? '即將觸發' : Math.abs(v) <= 5 ? '接近' : '尚有距離';
+      const DistanceCard = () => <Card className="p-4 mt-4"><SectionTitle title="距離下一個訊號" desc="負數代表已經越過該觸發線；正數代表還差多少。" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">{metrics.distanceItems.length ? metrics.distanceItems.map(item => <div key={item.key} className="bg-slate-50 border border-slate-100 rounded-2xl p-3"><div className="flex items-center justify-between gap-2 mb-1"><div className="text-[10px] font-black text-slate-500">{item.label}</div><Pill tone={distanceTone(item.value)}>{distanceLabel(item.value)}</Pill></div><div className={`font-mono text-xl font-black ${item.value < 0 ? 'text-red-600' : 'text-slate-900'}`}>{signedPctText(item.value)}</div><div className="text-[10px] text-slate-400 font-bold mt-1">{item.hint}</div></div>) : <div className="text-sm text-slate-400 font-bold">資料不足，無法計算距離。</div>}</div>
+      </Card>;
+      const ScenarioCard = () => <Card className="p-4 mt-4"><SectionTitle title="QQQ 情境模擬" desc="三星手機友善：不用輸入負號，用＋／－切換方向。TQQQ 以約 3 倍 QQQ 變動粗估。" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><div className="bg-slate-50 border border-slate-100 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-500 mb-2">設定 QQQ 變動</div><div className="flex items-center gap-2"><button onClick={()=>patch('scenarioSign', -1)} className={`px-4 py-3 rounded-2xl font-black active:scale-95 ${getNum(data.scenarioSign)<0?'bg-red-600 text-white':'bg-white border border-slate-200 text-slate-700'}`}>－</button><button onClick={()=>patch('scenarioSign', 1)} className={`px-4 py-3 rounded-2xl font-black active:scale-95 ${getNum(data.scenarioSign)>0?'bg-emerald-600 text-white':'bg-white border border-slate-200 text-slate-700'}`}>＋</button><input type="number" inputMode="decimal" value={data.scenarioAbsPct ?? 10} onChange={e=>patch('scenarioAbsPct', e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl text-center font-mono font-black text-lg min-h-[48px]" style={{fontSize:'16px'}} /><span className="font-black text-slate-400">%</span></div><div className="grid grid-cols-4 gap-2 mt-3">{[-5,-10,-15,-20,-30,5,10,20,30].map(v => <button key={v} onClick={()=>merge({scenarioSign:v<0?-1:1, scenarioAbsPct:Math.abs(v)})} className={`py-2 rounded-xl text-xs font-black active:scale-95 ${v<0?'bg-red-50 text-red-700':'bg-emerald-50 text-emerald-700'}`}>{v>0?'+':''}{v}%</button>)}</div></div><div className="bg-slate-950 rounded-2xl p-4 text-white"><div className="text-[10px] font-black text-slate-300">模擬結果：QQQ {signedPctText(metrics.scenario.movePct)}</div><div className="grid grid-cols-2 gap-2 mt-3"><div className="bg-white/10 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-300">預估總資產</div><div className="font-mono text-lg font-black">${money(metrics.scenario.totalUsd,0)}</div><div className="text-[10px] text-slate-400">NT${money(metrics.scenario.totalTwd,0)}</div></div><div className="bg-white/10 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-300">預估損益</div><div className={`font-mono text-lg font-black ${metrics.scenario.pnlUsd<0?'text-red-300':'text-emerald-300'}`}>{metrics.scenario.pnlUsd>=0?'+':'-'}${money(Math.abs(metrics.scenario.pnlUsd),0)}</div><div className="text-[10px] text-slate-400">{signedPctText(metrics.scenario.pnlPct*100)}</div></div></div><div className="mt-3 space-y-1">{metrics.scenario.flags.map((f,i)=><div key={i} className="text-xs font-bold text-slate-200">☑ {f}</div>)}</div></div></div>
+      </Card>;
 
       const Home = () => <main className="max-w-5xl mx-auto px-4 pt-4 content-bottom-space">
         <Card className="p-5 bg-slate-950 text-white border-slate-900 overflow-hidden relative">
@@ -260,9 +327,11 @@
           </div>
         </Card>
 
+        <DistanceCard />
+        <ScenarioCard />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-          <Card className="p-4"><SectionTitle title="今日交易清單" desc="依目前股價與規則產生，含目標股數；不含稅費與滑價。" right={<div className="flex gap-2"><button onClick={addSnapshot} className="px-3 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-black active:scale-95">記錄</button><button onClick={confirmExecution} className="px-3 py-2 rounded-xl bg-brand-600 text-white text-xs font-black active:scale-95">已執行</button></div>} />
-            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 mb-3"><div className="text-[10px] font-black text-slate-500 mb-1">執行摘要</div><div className="text-sm font-black text-slate-900 leading-relaxed">{metrics.instruction}</div>{metrics.signal==="OFF" && <div className="mt-2 text-xs font-bold text-red-600">DCA 進度：已完成 {metrics.completedDca}/6，本期第 {metrics.nextDcaMonth}/6；本期買 QQQ 約 ${money(metrics.dcaBuyUsd,0)}，約 {money(metrics.dcaBuyShares,4)} 股。</div>}{data.lastExecutedAt && <div className="mt-2 text-[11px] text-slate-400 font-bold">上次確認：{data.lastExecutedAt}</div>}</div>
+          <Card className="p-4"><SectionTitle title="今日交易清單" desc="依目前股價與規則產生，含目標股數；不含稅費與滑價。" right={<div className="flex gap-2 flex-wrap justify-end"><button onClick={copyTodayPlan} className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-black active:scale-95">複製</button><button onClick={addSnapshot} className="px-3 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-black active:scale-95">記錄</button><button onClick={confirmExecution} className="px-3 py-2 rounded-xl bg-brand-600 text-white text-xs font-black active:scale-95">已執行</button></div>} />
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 mb-3"><div className="text-[10px] font-black text-slate-500 mb-1">執行摘要</div><div className="text-sm font-black text-slate-900 leading-relaxed">{metrics.instruction}</div>{metrics.signal==="OFF" && <div className="mt-2 text-xs font-bold text-red-600">DCA 進度：已完成 {metrics.completedDca}/6，本期第 {metrics.nextDcaMonth}/6；本期買 QQQ 約 ${money(metrics.dcaBuyUsd,0)}，約 {money(metrics.dcaBuyShares,4)} 股。</div>}{data.lastExecutedAt && <div className="mt-2 text-[11px] text-slate-400 font-bold">上次確認：{data.lastExecutedAt}</div>}<div className="mt-2 text-[11px] text-brand-700 font-black">建議下次檢查：{nextCheckText()}</div></div>
             <div className="space-y-2 mb-3">{metrics.actionLines.map((a,i)=><div key={i} className="flex gap-2 text-sm font-black leading-relaxed items-start"><span className="mt-0.5 shrink-0 w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[11px]">{i+1}</span><span className="text-slate-800">{a}</span></div>)}</div>
             <div className="space-y-2">{metrics.targetRows.map(r => <div key={r.sym} className="flex items-center justify-between gap-3 py-2 border-b border-slate-100 last:border-0"><div><div className="font-black text-sm text-slate-800">{r.sym}</div><div className="text-[10px] font-bold text-slate-400">目前 {money(r.currentShares,4)} 股 / ${money(r.current,2)}{r.target!=null ? `｜目標 ${money(r.targetShares,4)} 股` : "｜中間區不指定目標"}</div></div><div className={`font-mono text-sm font-black text-right ${r.target==null || Math.abs(r.diff)<10 ? "text-slate-400" : r.diff>0 ? "text-red-600" : "text-emerald-600"}`}>{r.target==null || Math.abs(r.diff)<10 ? "不動" : `${r.diff>0 ? "買" : "賣"} ${money(Math.abs(r.shareDiff),4)} 股`}<div className="text-[10px] font-bold">{r.target==null ? "" : `$${money(Math.abs(r.diff),0)}`}</div></div></div>)}</div>
           </Card>
