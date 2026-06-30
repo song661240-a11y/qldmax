@@ -57,6 +57,7 @@
     const APP_ID = "tqqq-spy200-strategy";
     const DOC_PATH = ["strategyDashboards", "tqqq-spy200-auto-main"];
     const LOCAL_KEY = "tqqqSpy200AutoDash";
+    const FINNHUB_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
 
     const todayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
     const getNum = v => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
@@ -95,10 +96,45 @@
     );
     const SectionTitle = ({title, desc, right}) => <div className="flex items-end justify-between gap-3 mb-3"><div><h2 className="font-black text-slate-900">{title}</h2>{desc && <p className="text-xs text-slate-500 mt-1 leading-relaxed">{desc}</p>}</div>{right}</div>;
 
+    async function fetchJson(url){ const r = await fetch(url, {cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status); return await r.json(); }
     async function fetchCsv(url){ const r = await fetch(url, {cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status); return await r.text(); }
-    function parseDailyCsv(csv){ return csv.trim().split(/\r?\n/).slice(1).map(l=>{ const [Date,Open,High,Low,Close] = l.split(','); return {Date, Close:parseFloat(Close)}; }).filter(x=>x.Date && Number.isFinite(x.Close)); }
-    function sma(rows,n){ if(rows.length<n) return NaN; return rows.slice(-n).reduce((s,x)=>s+x.Close,0)/n; }
-    async function fetchSymbol(symbol){ const csv = await fetchCsv(`https://stooq.com/q/d/l/?s=${symbol.toLowerCase()}.us&i=d`); const rows = parseDailyCsv(csv); if(!rows.length) throw new Error(symbol+" 無資料"); return {symbol, date:rows.at(-1).Date, close:rows.at(-1).Close, sma200:sma(rows,200)}; }
+    function parseDailyCsv(csv){ return csv.trim().split(/
+?
+/).slice(1).map(l=>{ const [Date,Open,High,Low,Close] = l.split(','); return {Date, Close:parseFloat(Close)}; }).filter(x=>x.Date && Number.isFinite(x.Close)); }
+    function sma(rows,n){ if(rows.length<n) return NaN; return rows.slice(-n).reduce((sum,x)=>sum+x.Close,0)/n; }
+    const dateFromUnix = ts => { const d = new Date(ts * 1000); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+    async function fetchFinnhubQuote(symbol){
+      const d = await fetchJson(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_KEY}`);
+      const close = getNum(d.c);
+      if(close <= 0) throw new Error(symbol + " Finnhub 報價無資料");
+      return { symbol, close, date: todayStr() };
+    }
+    async function fetchFinnhubSma(symbol){
+      const to = Math.floor(Date.now()/1000);
+      const from = to - 370*24*60*60;
+      const d = await fetchJson(`https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(symbol)}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_KEY}`);
+      if(d?.s !== "ok" || !Array.isArray(d.c) || d.c.length < 200) throw new Error(symbol + " Finnhub 200SMA 無資料");
+      const rows = d.c.map((c,i)=>({Date:dateFromUnix(d.t[i]), Close:Number(c)})).filter(x=>Number.isFinite(x.Close));
+      return { symbol, date:rows.at(-1).Date, close:rows.at(-1).Close, sma200:sma(rows,200) };
+    }
+    async function fetchStooqSymbol(symbol){
+      const csv = await fetchCsv(`https://stooq.com/q/d/l/?s=${symbol.toLowerCase()}.us&i=d`);
+      const rows = parseDailyCsv(csv);
+      if(!rows.length) throw new Error(symbol+" Stooq 無資料");
+      return {symbol, date:rows.at(-1).Date, close:rows.at(-1).Close, sma200:sma(rows,200)};
+    }
+    async function fetchSymbol(symbol){
+      const [quoteRes, smaRes, stooqRes] = await Promise.allSettled([
+        fetchFinnhubQuote(symbol),
+        (symbol === "SPY" || symbol === "QQQ") ? fetchFinnhubSma(symbol) : Promise.resolve(null),
+        (symbol === "SPY" || symbol === "QQQ") ? fetchStooqSymbol(symbol) : Promise.resolve(null)
+      ]);
+      const quote = quoteRes.status === "fulfilled" ? quoteRes.value : null;
+      const smaSource = smaRes.status === "fulfilled" && smaRes.value ? smaRes.value : (stooqRes.status === "fulfilled" ? stooqRes.value : null);
+      const close = quote?.close || smaSource?.close || 0;
+      if(close <= 0) throw new Error(symbol + " 報價抓取失敗");
+      return { symbol, date:smaSource?.date || quote?.date || todayStr(), close, sma200:smaSource?.sma200 || NaN };
+    }
 
     const App = () => {
       const [data, setData] = useState(() => { try { return {...DEFAULT, ...(JSON.parse(localStorage.getItem(LOCAL_KEY) || "{}"))}; } catch(e){ return DEFAULT; } });
@@ -253,9 +289,22 @@
         if(loadingPrice) return;
         setLoadingPrice(true); showToast("正在抓取股價");
         try {
-          const [spy, qqq, tqqq, sgov] = await Promise.all([fetchSymbol("SPY"), fetchSymbol("QQQ"), fetchSymbol("TQQQ"), fetchSymbol("SGOV")]);
-          merge({ spy:round2(spy.close), spySma:round2(spy.sma200), qqq:round2(qqq.close), qqqSma:round2(qqq.sma200), tqqq:round2(tqqq.close), sgov:round2(sgov.close), marketDate:spy.date });
-          showToast("股價已更新");
+          const results = await Promise.allSettled(["SPY","QQQ","TQQQ","SGOV"].map(fetchSymbol));
+          const ok = {};
+          const failed = [];
+          results.forEach((res, idx) => {
+            const sym = ["SPY","QQQ","TQQQ","SGOV"][idx];
+            if(res.status !== "fulfilled") { failed.push(sym); return; }
+            const x = res.value;
+            if(sym === "SPY") { ok.spy = round2(x.close); if(Number.isFinite(x.sma200) && x.sma200 > 0) ok.spySma = round2(x.sma200); if(x.date) ok.marketDate = x.date; }
+            if(sym === "QQQ") { ok.qqq = round2(x.close); if(Number.isFinite(x.sma200) && x.sma200 > 0) ok.qqqSma = round2(x.sma200); if(!ok.marketDate && x.date) ok.marketDate = x.date; }
+            if(sym === "TQQQ") ok.tqqq = round2(x.close);
+            if(sym === "SGOV") ok.sgov = round2(x.close);
+          });
+          if(Object.keys(ok).length) {
+            merge(ok);
+            showToast(failed.length ? `部分更新成功，失敗：${failed.join('、')}` : "股價已用 Finnhub 更新");
+          } else showToast("自動抓價失敗，請手動輸入");
         } catch(e){ showToast("自動抓價失敗，請手動輸入"); }
         finally { setLoadingPrice(false); }
       };
@@ -360,7 +409,7 @@ ${metrics.actionLines.map(x=>'・'+x).join('\n')}
       </main>;
 
       const Inputs = () => <main className="max-w-5xl mx-auto px-4 pt-4 content-bottom-space">
-        <Card className="p-4"><SectionTitle title="市場資料" desc="可自動抓 Stooq 日線資料；若瀏覽器擋住，就手動輸入。" right={<button onClick={fetchPrices} className="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black">自動抓股價</button>} />
+        <Card className="p-4"><SectionTitle title="市場資料" desc="主要用 Finnhub 抓報價；SPY/QQQ 的 200SMA 用 Finnhub，失敗時備援 Stooq。" right={<button onClick={fetchPrices} className="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black">自動抓股價</button>} />
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <NumInput label="SPY 收盤價" value={data.spy} onChange={v=>patch('spy',v)} />
             <NumInput label="SPY 200SMA" value={data.spySma} onChange={v=>patch('spySma',v)} />
