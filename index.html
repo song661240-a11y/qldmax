@@ -18,7 +18,6 @@
   </script>
   <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -40,422 +39,720 @@
 <body>
   <div id="root"></div>
 
-  <script type="text/babel">
-    const { useCallback, useEffect, useMemo, useRef, useState } = React;
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyBpax3wlTwHTe6G3niZajtTxpoUWbgvX80",
-      authDomain: "qldmax.firebaseapp.com",
-      projectId: "qldmax",
-      storageBucket: "qldmax.firebasestorage.app",
-      messagingSenderId: "752199866954",
-      appId: "1:752199866954:web:50d17ae522095c363d64b3"
-    };
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    const APP_ID = "tqqq-spy200-strategy";
-    const DOC_PATH = ["strategyDashboards", "tqqq-spy200-auto-main"];
-    const LOCAL_KEY = "tqqqSpy200AutoDash";
-    const FINNHUB_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
-
-    const todayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
-    const getNum = v => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
-    const money = (v, digits=0) => (Number(v)||0).toLocaleString("en-US", { maximumFractionDigits:digits, minimumFractionDigits:digits });
-    const pct = (v, digits=2) => Number.isFinite(v) ? `${(v*100).toFixed(digits)}%` : "-";
-    const pctNum = (v, digits=1) => `${(Number(v)||0).toFixed(digits)}%`;
-    const round2 = v => Math.round((Number(v)||0)*100)/100;
-    const sanitize = data => JSON.parse(JSON.stringify(data, (k,v) => v === undefined ? null : v));
-    const signedPctText = (v, digits=1) => `${v >= 0 ? "+" : ""}${(Number(v)||0).toFixed(digits)}%`;
-    const clamp = (v, min, max) => Math.max(min, Math.min(max, Number(v)||0));
-
-    const DEFAULT = {
-      spy:"", spySma:"", qqq:"", qqqSma:"", tqqq:"", sgov:"", marketDate:"",
-      entryBuffer:4, exitBuffer:3, hot1:30, hot2:40, cooldown:25,
-      dcaMonth:0, dcaPoolUsd:0, currentState:"auto", notes:"",
-      sharesTqqq:0, sharesQqq:0, sharesSpy:0, sharesSgov:0, cashUsd:0, otherUsd:0, usdtwd:32, currency:"USD", assetHighUsd:0, lastExecutedAt:"", lastExecutionSummary:"",
-      scenarioSign:-1, scenarioAbsPct:10,
-      history:[]
-    };
-    const STRATEGY_TEXT = `SPY 200SMA +4/-3 改良版\n\n1. Risk-On：SPY 收盤價 > SPY 200SMA × 1.04，允許 100% TQQQ。\n2. Risk-Off：SPY 收盤價 < SPY 200SMA × 0.97，賣出 TQQQ，接著分 6 個月 DCA 進 QQQ。\n3. 中間區：SPY 位於 +4% 到 -3% 之間，不做新動作，維持原部位。\n4. QQQ 過熱一階：QQQ > QQQ 200SMA +30%，降為 50% TQQQ / 50% QQQ。\n5. QQQ 過熱二階：QQQ > QQQ 200SMA +40%，降為 100% QQQ。\n6. 過熱解除：QQQ 回落到 200SMA +25% 以下，且 SPY 仍 Risk-On，才恢復 TQQQ。\n7. 紀律：訊號以收盤資料判斷，不因新聞、情緒或帳面損益改變規則。`;
-
-    const Card = ({children, className=""}) => <div className={`bg-white rounded-3xl border border-slate-200 shadow-soft ${className}`}>{children}</div>;
-    const Pill = ({children, tone="slate"}) => {
-      const cls = {slate:"bg-slate-100 text-slate-700 border-slate-200", blue:"bg-brand-50 text-brand-700 border-brand-100", green:"bg-emerald-50 text-emerald-700 border-emerald-100", red:"bg-red-50 text-red-700 border-red-100", amber:"bg-amber-50 text-amber-700 border-amber-100", purple:"bg-purple-700 text-white border-purple-700", dark:"bg-slate-900 text-white border-slate-800"}[tone];
-      return <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-[11px] font-black ${cls}`}>{children}</span>;
-    };
-    const NumInput = ({label, value, onChange, suffix="", hint=""}) => (
-      <label className="block bg-slate-50 border border-slate-200 rounded-2xl p-3 focus-within:ring-2 focus-within:ring-brand-100 focus-within:border-brand-400">
-        <div className="text-[10px] font-black text-slate-500 mb-1">{label}</div>
-        <div className="flex items-center gap-2">
-          <input type="number" inputMode="decimal" value={value ?? ""} onChange={e=>onChange(e.target.value)} className="w-full bg-transparent text-center font-mono font-black text-lg text-slate-900 min-h-[44px]" style={{fontSize:"16px"}} />
-          {suffix && <span className="text-xs font-black text-slate-400">{suffix}</span>}
-        </div>
-        {hint && <div className="text-[10px] text-slate-400 mt-1 leading-relaxed">{hint}</div>}
-      </label>
-    );
-    const SectionTitle = ({title, desc, right}) => <div className="flex items-end justify-between gap-3 mb-3"><div><h2 className="font-black text-slate-900">{title}</h2>{desc && <p className="text-xs text-slate-500 mt-1 leading-relaxed">{desc}</p>}</div>{right}</div>;
-
-    async function fetchJson(url){ const r = await fetch(url, {cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status); return await r.json(); }
-    async function fetchCsv(url){ const r = await fetch(url, {cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status); return await r.text(); }
-    function parseDailyCsv(csv){ return csv.trim().split(/
-?
-/).slice(1).map(l=>{ const [Date,Open,High,Low,Close] = l.split(','); return {Date, Close:parseFloat(Close)}; }).filter(x=>x.Date && Number.isFinite(x.Close)); }
-    function sma(rows,n){ if(rows.length<n) return NaN; return rows.slice(-n).reduce((sum,x)=>sum+x.Close,0)/n; }
-    const dateFromUnix = ts => { const d = new Date(ts * 1000); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
-    async function fetchFinnhubQuote(symbol){
-      const d = await fetchJson(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_KEY}`);
-      const close = getNum(d.c);
-      if(close <= 0) throw new Error(symbol + " Finnhub 報價無資料");
-      return { symbol, close, date: todayStr() };
-    }
-    async function fetchFinnhubSma(symbol){
-      const to = Math.floor(Date.now()/1000);
-      const from = to - 370*24*60*60;
-      const d = await fetchJson(`https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(symbol)}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_KEY}`);
-      if(d?.s !== "ok" || !Array.isArray(d.c) || d.c.length < 200) throw new Error(symbol + " Finnhub 200SMA 無資料");
-      const rows = d.c.map((c,i)=>({Date:dateFromUnix(d.t[i]), Close:Number(c)})).filter(x=>Number.isFinite(x.Close));
-      return { symbol, date:rows.at(-1).Date, close:rows.at(-1).Close, sma200:sma(rows,200) };
-    }
-    async function fetchStooqSymbol(symbol){
-      const csv = await fetchCsv(`https://stooq.com/q/d/l/?s=${symbol.toLowerCase()}.us&i=d`);
-      const rows = parseDailyCsv(csv);
-      if(!rows.length) throw new Error(symbol+" Stooq 無資料");
-      return {symbol, date:rows.at(-1).Date, close:rows.at(-1).Close, sma200:sma(rows,200)};
-    }
-    async function fetchSymbol(symbol){
-      const [quoteRes, smaRes, stooqRes] = await Promise.allSettled([
+  <script>
+window.addEventListener('error', function(e){var root=document.getElementById('root'); if(root && !root.innerHTML){root.innerHTML='<div style="padding:20px;font-family:sans-serif;color:#b91c1c;background:#fff1f2;min-height:100vh"><h2>網頁載入錯誤</h2><p>'+ (e.message||'未知錯誤') +'</p><p>請重新上傳最新版 index.html。</p></div>';}});
+const { useCallback, useEffect, useMemo, useRef, useState } = React;
+const firebaseConfig = {
+    apiKey: "AIzaSyBpax3wlTwHTe6G3niZajtTxpoUWbgvX80",
+    authDomain: "qldmax.firebaseapp.com",
+    projectId: "qldmax",
+    storageBucket: "qldmax.firebasestorage.app",
+    messagingSenderId: "752199866954",
+    appId: "1:752199866954:web:50d17ae522095c363d64b3"
+};
+const HAS_FIREBASE = typeof firebase !== "undefined" && firebase.apps;
+if (HAS_FIREBASE && !firebase.apps.length)
+    firebase.initializeApp(firebaseConfig);
+const auth = HAS_FIREBASE ? firebase.auth() : null;
+const db = HAS_FIREBASE ? firebase.firestore() : null;
+const APP_ID = "tqqq-spy200-strategy";
+const DOC_PATH = ["strategyDashboards", "tqqq-spy200-auto-main"];
+const LOCAL_KEY = "tqqqSpy200AutoDash";
+const FINNHUB_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
+const todayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+const getNum = v => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
+const money = (v, digits = 0) => (Number(v) || 0).toLocaleString("en-US", { maximumFractionDigits: digits, minimumFractionDigits: digits });
+const pct = (v, digits = 2) => Number.isFinite(v) ? `${(v * 100).toFixed(digits)}%` : "-";
+const pctNum = (v, digits = 1) => `${(Number(v) || 0).toFixed(digits)}%`;
+const round2 = v => Math.round((Number(v) || 0) * 100) / 100;
+const sanitize = data => JSON.parse(JSON.stringify(data, (k, v) => v === undefined ? null : v));
+const signedPctText = (v, digits = 1) => `${v >= 0 ? "+" : ""}${(Number(v) || 0).toFixed(digits)}%`;
+const clamp = (v, min, max) => Math.max(min, Math.min(max, Number(v) || 0));
+const DEFAULT = {
+    spy: "", spySma: "", qqq: "", qqqSma: "", tqqq: "", sgov: "", marketDate: "",
+    entryBuffer: 4, exitBuffer: 3, hot1: 30, hot2: 40, cooldown: 25,
+    dcaMonth: 0, dcaPoolUsd: 0, currentState: "auto", notes: "",
+    sharesTqqq: 0, sharesQqq: 0, sharesSpy: 0, sharesSgov: 0, cashUsd: 0, otherUsd: 0, usdtwd: 32, currency: "USD", assetHighUsd: 0, lastExecutedAt: "", lastExecutionSummary: "",
+    scenarioSign: -1, scenarioAbsPct: 10,
+    history: []
+};
+const STRATEGY_TEXT = `SPY 200SMA +4/-3 改良版\n\n1. Risk-On：SPY 收盤價 > SPY 200SMA × 1.04，允許 100% TQQQ。\n2. Risk-Off：SPY 收盤價 < SPY 200SMA × 0.97，賣出 TQQQ，接著分 6 個月 DCA 進 QQQ。\n3. 中間區：SPY 位於 +4% 到 -3% 之間，不做新動作，維持原部位。\n4. QQQ 過熱一階：QQQ > QQQ 200SMA +30%，降為 50% TQQQ / 50% QQQ。\n5. QQQ 過熱二階：QQQ > QQQ 200SMA +40%，降為 100% QQQ。\n6. 過熱解除：QQQ 回落到 200SMA +25% 以下，且 SPY 仍 Risk-On，才恢復 TQQQ。\n7. 紀律：訊號以收盤資料判斷，不因新聞、情緒或帳面損益改變規則。`;
+const Card = ({ children, className = "" }) => React.createElement("div", { className: `bg-white rounded-3xl border border-slate-200 shadow-soft ${className}` }, children);
+const Pill = ({ children, tone = "slate" }) => {
+    const cls = { slate: "bg-slate-100 text-slate-700 border-slate-200", blue: "bg-brand-50 text-brand-700 border-brand-100", green: "bg-emerald-50 text-emerald-700 border-emerald-100", red: "bg-red-50 text-red-700 border-red-100", amber: "bg-amber-50 text-amber-700 border-amber-100", purple: "bg-purple-700 text-white border-purple-700", dark: "bg-slate-900 text-white border-slate-800" }[tone];
+    return React.createElement("span", { className: `inline-flex items-center px-2.5 py-1 rounded-full border text-[11px] font-black ${cls}` }, children);
+};
+const NumInput = ({ label, value, onChange, suffix = "", hint = "" }) => (React.createElement("label", { className: "block bg-slate-50 border border-slate-200 rounded-2xl p-3 focus-within:ring-2 focus-within:ring-brand-100 focus-within:border-brand-400" },
+    React.createElement("div", { className: "text-[10px] font-black text-slate-500 mb-1" }, label),
+    React.createElement("div", { className: "flex items-center gap-2" },
+        React.createElement("input", { type: "number", inputMode: "decimal", value: value !== null && value !== void 0 ? value : "", onChange: e => onChange(e.target.value), className: "w-full bg-transparent text-center font-mono font-black text-lg text-slate-900 min-h-[44px]", style: { fontSize: "16px" } }),
+        suffix && React.createElement("span", { className: "text-xs font-black text-slate-400" }, suffix)),
+    hint && React.createElement("div", { className: "text-[10px] text-slate-400 mt-1 leading-relaxed" }, hint)));
+const SectionTitle = ({ title, desc, right }) => React.createElement("div", { className: "flex items-end justify-between gap-3 mb-3" },
+    React.createElement("div", null,
+        React.createElement("h2", { className: "font-black text-slate-900" }, title),
+        desc && React.createElement("p", { className: "text-xs text-slate-500 mt-1 leading-relaxed" }, desc)),
+    right);
+async function fetchJson(url) { const r = await fetch(url, { cache: "no-store" }); if (!r.ok)
+    throw new Error("HTTP " + r.status); return await r.json(); }
+async function fetchCsv(url) { const r = await fetch(url, { cache: "no-store" }); if (!r.ok)
+    throw new Error("HTTP " + r.status); return await r.text(); }
+function parseDailyCsv(csv) { return csv.trim().split(/\r?\n/).slice(1).map(l => { const [Date, Open, High, Low, Close] = l.split(','); return { Date, Close: parseFloat(Close) }; }).filter(x => x.Date && Number.isFinite(x.Close)); }
+function sma(rows, n) { if (rows.length < n)
+    return NaN; return rows.slice(-n).reduce((sum, x) => sum + x.Close, 0) / n; }
+const dateFromUnix = ts => { const d = new Date(ts * 1000); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+async function fetchFinnhubQuote(symbol) {
+    const d = await fetchJson(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_KEY}`);
+    const close = getNum(d.c);
+    if (close <= 0)
+        throw new Error(symbol + " Finnhub 報價無資料");
+    return { symbol, close, date: todayStr() };
+}
+async function fetchFinnhubSma(symbol) {
+    const to = Math.floor(Date.now() / 1000);
+    const from = to - 370 * 24 * 60 * 60;
+    const d = await fetchJson(`https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(symbol)}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_KEY}`);
+    if ((d === null || d === void 0 ? void 0 : d.s) !== "ok" || !Array.isArray(d.c) || d.c.length < 200)
+        throw new Error(symbol + " Finnhub 200SMA 無資料");
+    const rows = d.c.map((c, i) => ({ Date: dateFromUnix(d.t[i]), Close: Number(c) })).filter(x => Number.isFinite(x.Close));
+    return { symbol, date: rows.at(-1).Date, close: rows.at(-1).Close, sma200: sma(rows, 200) };
+}
+async function fetchStooqSymbol(symbol) {
+    const csv = await fetchCsv(`https://stooq.com/q/d/l/?s=${symbol.toLowerCase()}.us&i=d`);
+    const rows = parseDailyCsv(csv);
+    if (!rows.length)
+        throw new Error(symbol + " Stooq 無資料");
+    return { symbol, date: rows.at(-1).Date, close: rows.at(-1).Close, sma200: sma(rows, 200) };
+}
+async function fetchSymbol(symbol) {
+    const [quoteRes, smaRes, stooqRes] = await Promise.allSettled([
         fetchFinnhubQuote(symbol),
         (symbol === "SPY" || symbol === "QQQ") ? fetchFinnhubSma(symbol) : Promise.resolve(null),
         (symbol === "SPY" || symbol === "QQQ") ? fetchStooqSymbol(symbol) : Promise.resolve(null)
-      ]);
-      const quote = quoteRes.status === "fulfilled" ? quoteRes.value : null;
-      const smaSource = smaRes.status === "fulfilled" && smaRes.value ? smaRes.value : (stooqRes.status === "fulfilled" ? stooqRes.value : null);
-      const close = quote?.close || smaSource?.close || 0;
-      if(close <= 0) throw new Error(symbol + " 報價抓取失敗");
-      return { symbol, date:smaSource?.date || quote?.date || todayStr(), close, sma200:smaSource?.sma200 || NaN };
+    ]);
+    const quote = quoteRes.status === "fulfilled" ? quoteRes.value : null;
+    const smaSource = smaRes.status === "fulfilled" && smaRes.value ? smaRes.value : (stooqRes.status === "fulfilled" ? stooqRes.value : null);
+    const close = (quote === null || quote === void 0 ? void 0 : quote.close) || (smaSource === null || smaSource === void 0 ? void 0 : smaSource.close) || 0;
+    if (close <= 0)
+        throw new Error(symbol + " 報價抓取失敗");
+    return { symbol, date: (smaSource === null || smaSource === void 0 ? void 0 : smaSource.date) || (quote === null || quote === void 0 ? void 0 : quote.date) || todayStr(), close, sma200: (smaSource === null || smaSource === void 0 ? void 0 : smaSource.sma200) || NaN };
+}
+const App = () => {
+    const [data, setData] = useState(() => { try {
+        return { ...DEFAULT, ...(JSON.parse(localStorage.getItem(LOCAL_KEY) || "{}")) };
     }
-
-    const App = () => {
-      const [data, setData] = useState(() => { try { return {...DEFAULT, ...(JSON.parse(localStorage.getItem(LOCAL_KEY) || "{}"))}; } catch(e){ return DEFAULT; } });
-      const [user, setUser] = useState(null);
-      const [page, setPage] = useState("home");
-      const [toast, setToast] = useState("");
-      const [syncText, setSyncText] = useState("準備中");
-      const [loadingPrice, setLoadingPrice] = useState(false);
-      const saveTimer = useRef(null);
-      const ignoreCloud = useRef(false);
-      const showToast = useCallback(txt => { setToast(txt); setTimeout(()=>setToast(""),2600); }, []);
-      const patch = useCallback((key, value) => setData(prev => ({...prev, [key]:value})), []);
-      const merge = useCallback(obj => setData(prev => ({...prev, ...obj})), []);
-      const docRef = useCallback(() => db.collection(DOC_PATH[0]).doc(DOC_PATH[1]), []);
-
-      useEffect(() => {
-        const unsub = auth.onAuthStateChanged(async usr => {
-          if (usr) setUser(usr);
-          else { try { await auth.signInAnonymously(); } catch(e){ setSyncText("匿名登入失敗"); } }
+    catch (e) {
+        return DEFAULT;
+    } });
+    const [user, setUser] = useState(null);
+    const [page, setPage] = useState("home");
+    const [toast, setToast] = useState("");
+    const [syncText, setSyncText] = useState("準備中");
+    const [loadingPrice, setLoadingPrice] = useState(false);
+    const saveTimer = useRef(null);
+    const ignoreCloud = useRef(false);
+    const showToast = useCallback(txt => { setToast(txt); setTimeout(() => setToast(""), 2600); }, []);
+    const patch = useCallback((key, value) => setData(prev => ({ ...prev, [key]: value })), []);
+    const merge = useCallback(obj => setData(prev => ({ ...prev, ...obj })), []);
+    const docRef = useCallback(() => db ? db.collection(DOC_PATH[0]).doc(DOC_PATH[1]) : null, []);
+    useEffect(() => {
+        if (!auth) {
+            setSyncText("Firebase 未載入，僅本機模式");
+            return () => { };
+        }
+        const unsub = auth.onAuthStateChanged(async (usr) => {
+            if (usr)
+                setUser(usr);
+            else {
+                try {
+                    await auth.signInAnonymously();
+                }
+                catch (e) {
+                    setSyncText("匿名登入失敗");
+                }
+            }
         });
         return () => unsub();
-      }, []);
-
-      useEffect(() => {
-        if(!user) return;
+    }, []);
+    useEffect(() => {
+        if (!user || !docRef())
+            return;
         const unsub = docRef().onSnapshot(snap => {
-          if(ignoreCloud.current) return;
-          if(snap.exists){ const cloud = snap.data(); setData(prev => ({...DEFAULT, ...prev, ...cloud, history:Array.isArray(cloud.history)?cloud.history:[]})); setSyncText("已讀取雲端資料"); }
-          else setSyncText("雲端尚無資料");
+            if (ignoreCloud.current)
+                return;
+            if (snap.exists) {
+                const cloud = snap.data();
+                setData(prev => ({ ...DEFAULT, ...prev, ...cloud, history: Array.isArray(cloud.history) ? cloud.history : [] }));
+                setSyncText("已讀取雲端資料");
+            }
+            else
+                setSyncText("雲端尚無資料");
         }, err => setSyncText("雲端讀取失敗：" + err.message));
         return () => unsub();
-      }, [user]);
-
-      useEffect(() => {
+    }, [user]);
+    useEffect(() => {
         localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
-        if(!user) return;
+        if (!user || !docRef())
+            return;
         clearTimeout(saveTimer.current);
-        saveTimer.current = setTimeout(async()=>{
-          try { ignoreCloud.current = true; await docRef().set(sanitize({...data, updatedAtText:new Date().toLocaleString("zh-TW"), updatedAt:firebase.firestore.FieldValue.serverTimestamp()}), {merge:true}); setSyncText("已同步 " + new Date().toLocaleTimeString("zh-TW", {hour:"2-digit", minute:"2-digit"})); setTimeout(()=>ignoreCloud.current=false,500); }
-          catch(e){ ignoreCloud.current=false; setSyncText("同步失敗：" + e.message); }
+        saveTimer.current = setTimeout(async () => {
+            try {
+                ignoreCloud.current = true;
+                await docRef().set(sanitize({ ...data, updatedAtText: new Date().toLocaleString("zh-TW"), updatedAt: firebase.firestore.FieldValue.serverTimestamp() }), { merge: true });
+                setSyncText("已同步 " + new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" }));
+                setTimeout(() => ignoreCloud.current = false, 500);
+            }
+            catch (e) {
+                ignoreCloud.current = false;
+                setSyncText("同步失敗：" + e.message);
+            }
         }, 1000);
         return () => clearTimeout(saveTimer.current);
-      }, [data, user]);
-
-      const manualSave = async () => { try { await docRef().set(sanitize({...data, updatedAtText:new Date().toLocaleString("zh-TW"), updatedAt:firebase.firestore.FieldValue.serverTimestamp()}), {merge:true}); showToast("已手動同步"); } catch(e){ showToast("同步失敗"); } };
-      const loginGoogle = async () => { try { const provider = new firebase.auth.GoogleAuthProvider(); if(auth.currentUser?.isAnonymous){ try { await auth.currentUser.linkWithPopup(provider); } catch(e){ if(e.code === "auth/credential-already-in-use") await auth.signInWithPopup(provider); else throw e; } } else await auth.signInWithPopup(provider); showToast("Google 同步已啟用"); } catch(e){ showToast(e.message || "登入失敗"); } };
-      const logout = async () => { await auth.signOut(); await auth.signInAnonymously(); showToast("已切回匿名同步"); };
-
-      const metrics = useMemo(() => {
-        const spy=getNum(data.spy), spySma=getNum(data.spySma), qqq=getNum(data.qqq), qqqSma=getNum(data.qqqSma), tqqq=getNum(data.tqqq), sgov=getNum(data.sgov);
-        const entry=getNum(data.entryBuffer)/100, exit=getNum(data.exitBuffer)/100, hot1=getNum(data.hot1)/100, hot2=getNum(data.hot2)/100, cooldown=getNum(data.cooldown)/100;
-        const valid = spy>0 && spySma>0 && qqq>0 && qqqSma>0;
-        const spyDev = valid ? spy/spySma - 1 : NaN;
-        const qqqDev = valid ? qqq/qqqSma - 1 : NaN;
-        const entryPx = spySma*(1+entry), exitPx = spySma*(1-exit), qHot1=qqqSma*(1+hot1), qHot2=qqqSma*(1+hot2), qCool=qqqSma*(1+cooldown);
-        let signal="DATA", tone="slate", title="資料不足", instruction="請先自動抓股價或手動輸入 SPY / QQQ 與 200SMA。", alloc={TQQQ:null, QQQ:null, SGOV:null, label:"尚未判斷"};
-        if(valid){
-          signal="NEUTRAL"; tone="amber"; title="中間區：維持原狀"; instruction="SPY 位於 +4% 到 -3% 緩衝區，不做新動作，維持原本部位。"; alloc={label:"維持原狀"};
-          if(spy < exitPx){ signal="OFF"; tone="red"; title="Risk-Off：離開 TQQQ"; instruction=`SPY 已低於 200SMA -${data.exitBuffer}%。賣出 TQQQ；接著依 6 個月 DCA 計畫分批買 QQQ。`; alloc={TQQQ:0, QQQ:null, SGOV:null, label:"6 個月 DCA QQQ"}; }
-          else if(spy > entryPx){
-            const prevState = String(data.currentState || "").toUpperCase();
-            const keepHot2 = prevState === "HOT2" && qqq > qCool;
-            const keepHot1 = prevState === "HOT1" && qqq > qCool;
-            signal="ON"; tone="green"; title="Risk-On：100% TQQQ"; instruction=`SPY 已高於 200SMA +${data.entryBuffer}%，且 QQQ 未在過熱保護區。目標可持有 TQQQ。`; alloc={TQQQ:100, QQQ:0, SGOV:0, label:"100% TQQQ"};
-            if(qqq > qHot2 || keepHot2){ signal="HOT2"; tone="purple"; title="過熱二階：100% QQQ"; instruction=`QQQ 高於 200SMA +${data.hot2}% 後，未回落到 +${data.cooldown}% 以下前，TQQQ 全數切成 QQQ，避免泡沫末端滿槓桿。`; alloc={TQQQ:0, QQQ:100, SGOV:0, label:"100% QQQ"}; }
-            else if(qqq > qHot1 || keepHot1){ signal="HOT1"; tone="purple"; title="過熱一階：降半槓桿"; instruction=`QQQ 高於 200SMA +${data.hot1}% 後，未回落到 +${data.cooldown}% 以下前，TQQQ 降為一半，目標 50% TQQQ / 50% QQQ。`; alloc={TQQQ:50, QQQ:50, SGOV:0, label:"50% TQQQ / 50% QQQ"}; }
-          }
+    }, [data, user]);
+    const manualSave = async () => { if (!docRef()) {
+        showToast("Firebase 未載入，已保留本機資料");
+        return;
+    } try {
+        await docRef().set(sanitize({ ...data, updatedAtText: new Date().toLocaleString("zh-TW"), updatedAt: firebase.firestore.FieldValue.serverTimestamp() }), { merge: true });
+        showToast("已手動同步");
+    }
+    catch (e) {
+        showToast("同步失敗");
+    } };
+    const loginGoogle = async () => { var _a; if (!auth || typeof firebase === "undefined") {
+        showToast("Firebase 未載入，無法 Google 登入");
+        return;
+    } try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        if ((_a = auth.currentUser) === null || _a === void 0 ? void 0 : _a.isAnonymous) {
+            try {
+                await auth.currentUser.linkWithPopup(provider);
+            }
+            catch (e) {
+                if (e.code === "auth/credential-already-in-use")
+                    await auth.signInWithPopup(provider);
+                else
+                    throw e;
+            }
+        }
+        else
+            await auth.signInWithPopup(provider);
+        showToast("Google 同步已啟用");
+    }
+    catch (e) {
+        showToast(e.message || "登入失敗");
+    } };
+    const logout = async () => { if (!auth) {
+        showToast("Firebase 未載入");
+        return;
+    } await auth.signOut(); await auth.signInAnonymously(); showToast("已切回匿名同步"); };
+    const metrics = useMemo(() => {
+        var _a, _b;
+        const spy = getNum(data.spy), spySma = getNum(data.spySma), qqq = getNum(data.qqq), qqqSma = getNum(data.qqqSma), tqqq = getNum(data.tqqq), sgov = getNum(data.sgov);
+        const entry = getNum(data.entryBuffer) / 100, exit = getNum(data.exitBuffer) / 100, hot1 = getNum(data.hot1) / 100, hot2 = getNum(data.hot2) / 100, cooldown = getNum(data.cooldown) / 100;
+        const valid = spy > 0 && spySma > 0 && qqq > 0 && qqqSma > 0;
+        const spyDev = valid ? spy / spySma - 1 : NaN;
+        const qqqDev = valid ? qqq / qqqSma - 1 : NaN;
+        const entryPx = spySma * (1 + entry), exitPx = spySma * (1 - exit), qHot1 = qqqSma * (1 + hot1), qHot2 = qqqSma * (1 + hot2), qCool = qqqSma * (1 + cooldown);
+        let signal = "DATA", tone = "slate", title = "資料不足", instruction = "請先自動抓股價或手動輸入 SPY / QQQ 與 200SMA。", alloc = { TQQQ: null, QQQ: null, SGOV: null, label: "尚未判斷" };
+        if (valid) {
+            signal = "NEUTRAL";
+            tone = "amber";
+            title = "中間區：維持原狀";
+            instruction = "SPY 位於 +4% 到 -3% 緩衝區，不做新動作，維持原本部位。";
+            alloc = { label: "維持原狀" };
+            if (spy < exitPx) {
+                signal = "OFF";
+                tone = "red";
+                title = "Risk-Off：離開 TQQQ";
+                instruction = `SPY 已低於 200SMA -${data.exitBuffer}%。賣出 TQQQ；接著依 6 個月 DCA 計畫分批買 QQQ。`;
+                alloc = { TQQQ: 0, QQQ: null, SGOV: null, label: "6 個月 DCA QQQ" };
+            }
+            else if (spy > entryPx) {
+                const prevState = String(data.currentState || "").toUpperCase();
+                const keepHot2 = prevState === "HOT2" && qqq > qCool;
+                const keepHot1 = prevState === "HOT1" && qqq > qCool;
+                signal = "ON";
+                tone = "green";
+                title = "Risk-On：100% TQQQ";
+                instruction = `SPY 已高於 200SMA +${data.entryBuffer}%，且 QQQ 未在過熱保護區。目標可持有 TQQQ。`;
+                alloc = { TQQQ: 100, QQQ: 0, SGOV: 0, label: "100% TQQQ" };
+                if (qqq > qHot2 || keepHot2) {
+                    signal = "HOT2";
+                    tone = "purple";
+                    title = "過熱二階：100% QQQ";
+                    instruction = `QQQ 高於 200SMA +${data.hot2}% 後，未回落到 +${data.cooldown}% 以下前，TQQQ 全數切成 QQQ，避免泡沫末端滿槓桿。`;
+                    alloc = { TQQQ: 0, QQQ: 100, SGOV: 0, label: "100% QQQ" };
+                }
+                else if (qqq > qHot1 || keepHot1) {
+                    signal = "HOT1";
+                    tone = "purple";
+                    title = "過熱一階：降半槓桿";
+                    instruction = `QQQ 高於 200SMA +${data.hot1}% 後，未回落到 +${data.cooldown}% 以下前，TQQQ 降為一半，目標 50% TQQQ / 50% QQQ。`;
+                    alloc = { TQQQ: 50, QQQ: 50, SGOV: 0, label: "50% TQQQ / 50% QQQ" };
+                }
+            }
         }
         const rows = [
-          {name:"TQQQ", shares:getNum(data.sharesTqqq), price:tqqq},
-          {name:"QQQ", shares:getNum(data.sharesQqq), price:qqq},
-          {name:"SPY", shares:getNum(data.sharesSpy), price:spy},
-          {name:"SGOV", shares:getNum(data.sharesSgov), price:sgov},
-          {name:"現金", shares:1, price:getNum(data.cashUsd)},
-          {name:"其他資產", shares:1, price:getNum(data.otherUsd)}
-        ].map(r => ({...r, value:(getNum(r.shares)*getNum(r.price))}));
-        const totalUsd = rows.reduce((s,r)=>s+r.value,0);
-        rows.forEach(r => r.weight = totalUsd>0 ? r.value/totalUsd : 0);
+            { name: "TQQQ", shares: getNum(data.sharesTqqq), price: tqqq },
+            { name: "QQQ", shares: getNum(data.sharesQqq), price: qqq },
+            { name: "SPY", shares: getNum(data.sharesSpy), price: spy },
+            { name: "SGOV", shares: getNum(data.sharesSgov), price: sgov },
+            { name: "現金", shares: 1, price: getNum(data.cashUsd) },
+            { name: "其他資產", shares: 1, price: getNum(data.otherUsd) }
+        ].map(r => ({ ...r, value: (getNum(r.shares) * getNum(r.price)) }));
+        const totalUsd = rows.reduce((s, r) => s + r.value, 0);
+        rows.forEach(r => r.weight = totalUsd > 0 ? r.value / totalUsd : 0);
         const rate = getNum(data.usdtwd) || 1;
-        const totalDisplay = data.currency === "TWD" ? "NT$" + money(totalUsd*rate,0) : "$" + money(totalUsd,2);
-        const highFromHistory = Math.max(0, ...(Array.isArray(data.history)?data.history:[]).map(h=>getNum(h.totalUsd)));
+        const totalDisplay = data.currency === "TWD" ? "NT$" + money(totalUsd * rate, 0) : "$" + money(totalUsd, 2);
+        const highFromHistory = Math.max(0, ...(Array.isArray(data.history) ? data.history : []).map(h => getNum(h.totalUsd)));
         const assetHighUsd = Math.max(getNum(data.assetHighUsd), highFromHistory, totalUsd);
         const drawdown = assetHighUsd > 0 ? (totalUsd / assetHighUsd - 1) : 0;
-        const completedDca = Math.min(6, Math.max(0, parseInt(data.dcaMonth||0)));
+        const completedDca = Math.min(6, Math.max(0, parseInt(data.dcaMonth || 0)));
         const nextDcaMonth = Math.min(6, completedDca + 1);
         const remainingDcaMonths = Math.max(1, 6 - completedDca);
-        const tqqqValue = rows.find(r=>r.name==='TQQQ')?.value || 0;
-        const qqqValue = rows.find(r=>r.name==='QQQ')?.value || 0;
+        const tqqqValue = ((_a = rows.find(r => r.name === 'TQQQ')) === null || _a === void 0 ? void 0 : _a.value) || 0;
+        const qqqValue = ((_b = rows.find(r => r.name === 'QQQ')) === null || _b === void 0 ? void 0 : _b.value) || 0;
         const cashValue = getNum(data.cashUsd);
         const initialDcaPool = getNum(data.dcaPoolUsd);
         const dcaPool = signal === 'OFF' ? (initialDcaPool > 0 ? initialDcaPool : Math.max(0, cashValue + tqqqValue)) : 0;
         const dcaBuyUsd = signal === 'OFF' && completedDca < 6 ? dcaPool / 6 : 0;
         const dcaBuyShares = qqq > 0 ? dcaBuyUsd / qqq : 0;
-        const targetRows = ["TQQQ","QQQ","SGOV"].map(sym => {
-          const targetPct = alloc[sym];
-          const row = rows.find(r=>r.name===sym) || {value:0, shares:0, price:0};
-          let target = targetPct == null ? null : totalUsd * targetPct/100;
-          if(signal === 'OFF' && sym === 'TQQQ') target = 0;
-          if(signal === 'OFF' && sym === 'QQQ') target = qqqValue + dcaBuyUsd;
-          const targetShares = target == null || row.price <= 0 ? null : target / row.price;
-          const shareDiff = targetShares == null ? 0 : targetShares - row.shares;
-          return {sym, current:row.value, currentShares:row.shares, price:row.price, target, diff:target==null?0:target-row.value, targetPct, targetShares, shareDiff};
+        const targetRows = ["TQQQ", "QQQ", "SGOV"].map(sym => {
+            const targetPct = alloc[sym];
+            const row = rows.find(r => r.name === sym) || { value: 0, shares: 0, price: 0 };
+            let target = targetPct == null ? null : totalUsd * targetPct / 100;
+            if (signal === 'OFF' && sym === 'TQQQ')
+                target = 0;
+            if (signal === 'OFF' && sym === 'QQQ')
+                target = qqqValue + dcaBuyUsd;
+            const targetShares = target == null || row.price <= 0 ? null : target / row.price;
+            const shareDiff = targetShares == null ? 0 : targetShares - row.shares;
+            return { sym, current: row.value, currentShares: row.shares, price: row.price, target, diff: target == null ? 0 : target - row.value, targetPct, targetShares, shareDiff };
         });
         const actionLines = [];
-        if(!valid) actionLines.push('資料不足，先更新或手動輸入市場資料。');
-        else if(signal === 'NEUTRAL') actionLines.push('中間區不做新動作，只檢查持倉是否與你上次狀態一致。');
-        else if(signal === 'OFF'){
-          if(tqqqValue > 10) actionLines.push(`賣出 TQQQ 約 ${money(getNum(data.sharesTqqq),4)} 股，金額約 $${money(tqqqValue,0)}。`);
-          if(dcaBuyUsd > 10) actionLines.push(`本期 DCA 買入 QQQ 約 ${money(dcaBuyShares,4)} 股，金額約 $${money(dcaBuyUsd,0)}（第 ${nextDcaMonth}/6 期）。`);
-          if(completedDca >= 6) actionLines.push('6 個月 DCA 已完成；維持 QQQ，等 SPY 重新站上 +4%。');
-        } else {
-          targetRows.forEach(r => { if(r.target != null && Math.abs(r.diff) >= 10) actionLines.push(`${r.diff>0?'買入':'賣出'} ${r.sym} 約 ${money(Math.abs(r.shareDiff),4)} 股，金額約 $${money(Math.abs(r.diff),0)}。`); });
-          if(!actionLines.length) actionLines.push('目前部位與目標接近，不需要交易。');
+        if (!valid)
+            actionLines.push('資料不足，先更新或手動輸入市場資料。');
+        else if (signal === 'NEUTRAL')
+            actionLines.push('中間區不做新動作，只檢查持倉是否與你上次狀態一致。');
+        else if (signal === 'OFF') {
+            if (tqqqValue > 10)
+                actionLines.push(`賣出 TQQQ 約 ${money(getNum(data.sharesTqqq), 4)} 股，金額約 $${money(tqqqValue, 0)}。`);
+            if (dcaBuyUsd > 10)
+                actionLines.push(`本期 DCA 買入 QQQ 約 ${money(dcaBuyShares, 4)} 股，金額約 $${money(dcaBuyUsd, 0)}（第 ${nextDcaMonth}/6 期）。`);
+            if (completedDca >= 6)
+                actionLines.push('6 個月 DCA 已完成；維持 QQQ，等 SPY 重新站上 +4%。');
+        }
+        else {
+            targetRows.forEach(r => { if (r.target != null && Math.abs(r.diff) >= 10)
+                actionLines.push(`${r.diff > 0 ? '買入' : '賣出'} ${r.sym} 約 ${money(Math.abs(r.shareDiff), 4)} 股，金額約 $${money(Math.abs(r.diff), 0)}。`); });
+            if (!actionLines.length)
+                actionLines.push('目前部位與目標接近，不需要交易。');
         }
         const distanceItems = valid ? [
-          {key:'riskOn', label:'距離 Risk-On', value:((entryPx/spy)-1)*100, price:entryPx, hint:`SPY 需高於 $${money(entryPx,2)}`},
-          {key:'riskOff', label:'距離 Risk-Off', value:((exitPx/spy)-1)*100, price:exitPx, hint:`SPY 低於 $${money(exitPx,2)} 觸發`},
-          {key:'hot30', label:`距離 QQQ +${data.hot1}%`, value:((qHot1/qqq)-1)*100, price:qHot1, hint:`QQQ 高於 $${money(qHot1,2)} 降半槓桿`},
-          {key:'hot40', label:`距離 QQQ +${data.hot2}%`, value:((qHot2/qqq)-1)*100, price:qHot2, hint:`QQQ 高於 $${money(qHot2,2)} 全切 QQQ`},
-          {key:'cooldown', label:`距離過熱解除 +${data.cooldown}%`, value:((qCool/qqq)-1)*100, price:qCool, hint:`QQQ 回到 $${money(qCool,2)} 以下才解除`}
+            { key: 'riskOn', label: '距離 Risk-On', value: ((entryPx / spy) - 1) * 100, price: entryPx, hint: `SPY 需高於 $${money(entryPx, 2)}` },
+            { key: 'riskOff', label: '距離 Risk-Off', value: ((exitPx / spy) - 1) * 100, price: exitPx, hint: `SPY 低於 $${money(exitPx, 2)} 觸發` },
+            { key: 'hot30', label: `距離 QQQ +${data.hot1}%`, value: ((qHot1 / qqq) - 1) * 100, price: qHot1, hint: `QQQ 高於 $${money(qHot1, 2)} 降半槓桿` },
+            { key: 'hot40', label: `距離 QQQ +${data.hot2}%`, value: ((qHot2 / qqq) - 1) * 100, price: qHot2, hint: `QQQ 高於 $${money(qHot2, 2)} 全切 QQQ` },
+            { key: 'cooldown', label: `距離過熱解除 +${data.cooldown}%`, value: ((qCool / qqq) - 1) * 100, price: qCool, hint: `QQQ 回到 $${money(qCool, 2)} 以下才解除` }
         ] : [];
         const scenarioMove = (getNum(data.scenarioSign) || -1) * Math.abs(getNum(data.scenarioAbsPct));
         const scenarioFactor = 1 + scenarioMove / 100;
         const scenarioQqq = qqq > 0 ? qqq * scenarioFactor : 0;
         const scenarioTqqq = tqqq > 0 ? Math.max(0, tqqq * (1 + scenarioMove * 3 / 100)) : 0;
         const scenarioRows = [
-          {name:'TQQQ', value:getNum(data.sharesTqqq) * scenarioTqqq},
-          {name:'QQQ', value:getNum(data.sharesQqq) * scenarioQqq},
-          {name:'SPY', value:getNum(data.sharesSpy) * spy},
-          {name:'SGOV', value:getNum(data.sharesSgov) * sgov},
-          {name:'現金', value:getNum(data.cashUsd)},
-          {name:'其他資產', value:getNum(data.otherUsd)}
+            { name: 'TQQQ', value: getNum(data.sharesTqqq) * scenarioTqqq },
+            { name: 'QQQ', value: getNum(data.sharesQqq) * scenarioQqq },
+            { name: 'SPY', value: getNum(data.sharesSpy) * spy },
+            { name: 'SGOV', value: getNum(data.sharesSgov) * sgov },
+            { name: '現金', value: getNum(data.cashUsd) },
+            { name: '其他資產', value: getNum(data.otherUsd) }
         ];
         const scenarioTotalUsd = scenarioRows.reduce((sum, r) => sum + getNum(r.value), 0);
         const scenarioPnlUsd = scenarioTotalUsd - totalUsd;
         const scenarioPnlPct = totalUsd > 0 ? scenarioPnlUsd / totalUsd : 0;
         const scenarioQqqDev = qqqSma > 0 && scenarioQqq > 0 ? scenarioQqq / qqqSma - 1 : NaN;
         const scenarioFlags = [];
-        if(valid){
-          if(spy < exitPx) scenarioFlags.push('Risk-Off 已觸發');
-          if(scenarioQqq > qHot2) scenarioFlags.push(`QQQ +${data.hot2}% 過熱二階`);
-          else if(scenarioQqq > qHot1) scenarioFlags.push(`QQQ +${data.hot1}% 過熱一階`);
-          if(scenarioQqq <= qCool) scenarioFlags.push(`QQQ 回到 +${data.cooldown}% 解除線以下`);
-          if(scenarioMove <= -10) scenarioFlags.push('QQQ 明顯回撤，檢查 DCA/風控紀律');
-          if(!scenarioFlags.length) scenarioFlags.push('未新增觸發，維持目前規則判斷');
-        } else scenarioFlags.push('資料不足，無法判斷觸發');
-        const scenario = {movePct:scenarioMove, qqq:scenarioQqq, tqqq:scenarioTqqq, totalUsd:scenarioTotalUsd, totalTwd:scenarioTotalUsd*rate, pnlUsd:scenarioPnlUsd, pnlPct:scenarioPnlPct, qqqDev:scenarioQqqDev, flags:scenarioFlags};
-        return {valid, signal, tone, title, instruction, alloc, spyDev, qqqDev, entryPx, exitPx, qHot1, qHot2, qCool, rows, totalUsd, totalDisplay, targetRows, assetHighUsd, drawdown, completedDca, nextDcaMonth, remainingDcaMonths, dcaPool, dcaBuyUsd, dcaBuyShares, actionLines, distanceItems, scenario};
-      }, [data]);
-
-      const fetchPrices = async () => {
-        if(loadingPrice) return;
-        setLoadingPrice(true); showToast("正在抓取股價");
+        if (valid) {
+            if (spy < exitPx)
+                scenarioFlags.push('Risk-Off 已觸發');
+            if (scenarioQqq > qHot2)
+                scenarioFlags.push(`QQQ +${data.hot2}% 過熱二階`);
+            else if (scenarioQqq > qHot1)
+                scenarioFlags.push(`QQQ +${data.hot1}% 過熱一階`);
+            if (scenarioQqq <= qCool)
+                scenarioFlags.push(`QQQ 回到 +${data.cooldown}% 解除線以下`);
+            if (scenarioMove <= -10)
+                scenarioFlags.push('QQQ 明顯回撤，檢查 DCA/風控紀律');
+            if (!scenarioFlags.length)
+                scenarioFlags.push('未新增觸發，維持目前規則判斷');
+        }
+        else
+            scenarioFlags.push('資料不足，無法判斷觸發');
+        const scenario = { movePct: scenarioMove, qqq: scenarioQqq, tqqq: scenarioTqqq, totalUsd: scenarioTotalUsd, totalTwd: scenarioTotalUsd * rate, pnlUsd: scenarioPnlUsd, pnlPct: scenarioPnlPct, qqqDev: scenarioQqqDev, flags: scenarioFlags };
+        return { valid, signal, tone, title, instruction, alloc, spyDev, qqqDev, entryPx, exitPx, qHot1, qHot2, qCool, rows, totalUsd, totalDisplay, targetRows, assetHighUsd, drawdown, completedDca, nextDcaMonth, remainingDcaMonths, dcaPool, dcaBuyUsd, dcaBuyShares, actionLines, distanceItems, scenario };
+    }, [data]);
+    const fetchPrices = async () => {
+        if (loadingPrice)
+            return;
+        setLoadingPrice(true);
+        showToast("正在抓取股價");
         try {
-          const results = await Promise.allSettled(["SPY","QQQ","TQQQ","SGOV"].map(fetchSymbol));
-          const ok = {};
-          const failed = [];
-          results.forEach((res, idx) => {
-            const sym = ["SPY","QQQ","TQQQ","SGOV"][idx];
-            if(res.status !== "fulfilled") { failed.push(sym); return; }
-            const x = res.value;
-            if(sym === "SPY") { ok.spy = round2(x.close); if(Number.isFinite(x.sma200) && x.sma200 > 0) ok.spySma = round2(x.sma200); if(x.date) ok.marketDate = x.date; }
-            if(sym === "QQQ") { ok.qqq = round2(x.close); if(Number.isFinite(x.sma200) && x.sma200 > 0) ok.qqqSma = round2(x.sma200); if(!ok.marketDate && x.date) ok.marketDate = x.date; }
-            if(sym === "TQQQ") ok.tqqq = round2(x.close);
-            if(sym === "SGOV") ok.sgov = round2(x.close);
-          });
-          if(Object.keys(ok).length) {
-            merge(ok);
-            showToast(failed.length ? `部分更新成功，失敗：${failed.join('、')}` : "股價已用 Finnhub 更新");
-          } else showToast("自動抓價失敗，請手動輸入");
-        } catch(e){ showToast("自動抓價失敗，請手動輸入"); }
-        finally { setLoadingPrice(false); }
-      };
-
-      const buildLogItem = (kind='snapshot') => ({
-        time:new Date().toISOString(), timeText:new Date().toLocaleString("zh-TW"), marketDate:data.marketDate,
-        kind, signal:metrics.title, allocation:metrics.alloc.label, totalUsd:metrics.totalUsd, totalDisplay:metrics.totalDisplay,
-        spy:getNum(data.spy), qqq:getNum(data.qqq), tqqq:getNum(data.tqqq), spySma:getNum(data.spySma), qqqSma:getNum(data.qqqSma),
-        actions:metrics.actionLines, dcaMonth:metrics.completedDca, notes:data.notes
-      });
-      const addSnapshot = () => {
-        if(!metrics.valid){ showToast("資料不足，不能紀錄"); return; }
-        patch("history", [buildLogItem('snapshot'), ...(Array.isArray(data.history)?data.history:[])].slice(0,200));
+            const results = await Promise.allSettled(["SPY", "QQQ", "TQQQ", "SGOV"].map(fetchSymbol));
+            const ok = {};
+            const failed = [];
+            results.forEach((res, idx) => {
+                const sym = ["SPY", "QQQ", "TQQQ", "SGOV"][idx];
+                if (res.status !== "fulfilled") {
+                    failed.push(sym);
+                    return;
+                }
+                const x = res.value;
+                if (sym === "SPY") {
+                    ok.spy = round2(x.close);
+                    if (Number.isFinite(x.sma200) && x.sma200 > 0)
+                        ok.spySma = round2(x.sma200);
+                    if (x.date)
+                        ok.marketDate = x.date;
+                }
+                if (sym === "QQQ") {
+                    ok.qqq = round2(x.close);
+                    if (Number.isFinite(x.sma200) && x.sma200 > 0)
+                        ok.qqqSma = round2(x.sma200);
+                    if (!ok.marketDate && x.date)
+                        ok.marketDate = x.date;
+                }
+                if (sym === "TQQQ")
+                    ok.tqqq = round2(x.close);
+                if (sym === "SGOV")
+                    ok.sgov = round2(x.close);
+            });
+            if (Object.keys(ok).length) {
+                merge(ok);
+                showToast(failed.length ? `部分更新成功，失敗：${failed.join('、')}` : "股價已用 Finnhub 更新");
+            }
+            else
+                showToast("自動抓價失敗，請手動輸入");
+        }
+        catch (e) {
+            showToast("自動抓價失敗，請手動輸入");
+        }
+        finally {
+            setLoadingPrice(false);
+        }
+    };
+    const buildLogItem = (kind = 'snapshot') => ({
+        time: new Date().toISOString(), timeText: new Date().toLocaleString("zh-TW"), marketDate: data.marketDate,
+        kind, signal: metrics.title, allocation: metrics.alloc.label, totalUsd: metrics.totalUsd, totalDisplay: metrics.totalDisplay,
+        spy: getNum(data.spy), qqq: getNum(data.qqq), tqqq: getNum(data.tqqq), spySma: getNum(data.spySma), qqqSma: getNum(data.qqqSma),
+        actions: metrics.actionLines, dcaMonth: metrics.completedDca, notes: data.notes
+    });
+    const addSnapshot = () => {
+        if (!metrics.valid) {
+            showToast("資料不足，不能紀錄");
+            return;
+        }
+        patch("history", [buildLogItem('snapshot'), ...(Array.isArray(data.history) ? data.history : [])].slice(0, 200));
         showToast("已加入歷史紀錄");
-      };
-      const copyTodayPlan = async () => {
+    };
+    const copyTodayPlan = async () => {
         const text = `日期：${todayStr()}
 狀態：${metrics.title}
-總資產：$${money(metrics.totalUsd,2)} / NT$${money(metrics.totalUsd*(getNum(data.usdtwd)||1),0)}
-SPY：${money(getNum(data.spy),2)}｜SPY 200SMA：${money(getNum(data.spySma),2)}
-QQQ：${money(getNum(data.qqq),2)}｜QQQ 200SMA：${money(getNum(data.qqqSma),2)}
+總資產：$${money(metrics.totalUsd, 2)} / NT$${money(metrics.totalUsd * (getNum(data.usdtwd) || 1), 0)}
+SPY：${money(getNum(data.spy), 2)}｜SPY 200SMA：${money(getNum(data.spySma), 2)}
+QQQ：${money(getNum(data.qqq), 2)}｜QQQ 200SMA：${money(getNum(data.qqqSma), 2)}
 
 今日動作：
-${metrics.actionLines.map(x=>'・'+x).join('\n')}
+${metrics.actionLines.map(x => '・' + x).join('\n')}
 
 備註：${data.notes || '-'}`;
-        try { await navigator.clipboard.writeText(text); showToast('已複製今日指令'); }
-        catch(e){ showToast('複製失敗，請手動選取'); }
-      };
-      const nextCheckText = () => {
+        try {
+            await navigator.clipboard.writeText(text);
+            showToast('已複製今日指令');
+        }
+        catch (e) {
+            showToast('複製失敗，請手動選取');
+        }
+    };
+    const nextCheckText = () => {
         const d = new Date();
         const day = d.getDay();
         const add = day === 1 ? 7 : ((8 - day) % 7 || 7);
         const n = new Date(d.getFullYear(), d.getMonth(), d.getDate() + add);
-        return `${n.getFullYear()}/${String(n.getMonth()+1).padStart(2,'0')}/${String(n.getDate()).padStart(2,'0')}（一）美股收盤後`;
-      };
-      const confirmExecution = () => {
-        if(!metrics.valid){ showToast("資料不足，不能確認執行"); return; }
-        if((metrics.signal === 'OFF' || metrics.signal === 'HOT2') && !confirm('目前是高風險狀態，請確認價格、股數、DCA 期數都正確。確定要寫入已執行紀錄？')) return;
+        return `${n.getFullYear()}/${String(n.getMonth() + 1).padStart(2, '0')}/${String(n.getDate()).padStart(2, '0')}（一）美股收盤後`;
+    };
+    const confirmExecution = () => {
+        if (!metrics.valid) {
+            showToast("資料不足，不能確認執行");
+            return;
+        }
+        if ((metrics.signal === 'OFF' || metrics.signal === 'HOT2') && !confirm('目前是高風險狀態，請確認價格、股數、DCA 期數都正確。確定要寫入已執行紀錄？'))
+            return;
         const item = buildLogItem('execution');
-        const next = { history:[item, ...(Array.isArray(data.history)?data.history:[])].slice(0,200), assetHighUsd:Math.max(getNum(data.assetHighUsd), metrics.totalUsd), lastExecutedAt:new Date().toLocaleString("zh-TW"), lastExecutionSummary:metrics.actionLines.join(" "), currentState:metrics.signal };
-        if(metrics.signal === 'OFF') { next.dcaMonth = Math.min(6, metrics.completedDca + 1); if(getNum(data.dcaPoolUsd) <= 0) next.dcaPoolUsd = metrics.dcaPool; }
-        else { next.dcaMonth = 0; next.dcaPoolUsd = 0; }
+        const next = { history: [item, ...(Array.isArray(data.history) ? data.history : [])].slice(0, 200), assetHighUsd: Math.max(getNum(data.assetHighUsd), metrics.totalUsd), lastExecutedAt: new Date().toLocaleString("zh-TW"), lastExecutionSummary: metrics.actionLines.join(" "), currentState: metrics.signal };
+        if (metrics.signal === 'OFF') {
+            next.dcaMonth = Math.min(6, metrics.completedDca + 1);
+            if (getNum(data.dcaPoolUsd) <= 0)
+                next.dcaPoolUsd = metrics.dcaPool;
+        }
+        else {
+            next.dcaMonth = 0;
+            next.dcaPoolUsd = 0;
+        }
         merge(next);
         showToast(metrics.signal === 'OFF' ? "已確認執行，DCA 月份已往前一格" : "已確認執行並寫入紀錄");
-      };
-      const resetAssetHigh = () => { if(confirm('把目前總資產設為新的高點？')) { patch('assetHighUsd', metrics.totalUsd); showToast('已重設資產高點'); } };
-
-      const Header = () => <div className="sticky top-0 z-30 bg-slate-100/85 backdrop-blur border-b border-slate-200"><div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3"><div><div className="text-[10px] font-black text-brand-600 tracking-widest">SPY 200SMA +4/-3</div><h1 className="text-lg font-black text-slate-900 leading-tight">TQQQ 策略訊號儀表板</h1></div><div className="flex items-center gap-2"><Pill tone={user?.isAnonymous ? "amber" : "green"}>{user?.isAnonymous ? "匿名同步" : "Google同步"}</Pill><button onClick={fetchPrices} disabled={loadingPrice} className="px-3 py-2 rounded-2xl bg-slate-900 text-white text-xs font-black active:scale-95 disabled:opacity-50">{loadingPrice ? "抓取中" : "更新股價"}</button></div></div></div>;
-
-      const distanceTone = (v) => Math.abs(v) <= 2 ? 'red' : Math.abs(v) <= 5 ? 'amber' : 'green';
-      const distanceLabel = (v) => Math.abs(v) <= 2 ? '即將觸發' : Math.abs(v) <= 5 ? '接近' : '尚有距離';
-      const DistanceCard = () => <Card className="p-4 mt-4"><SectionTitle title="距離下一個訊號" desc="負數代表已經越過該觸發線；正數代表還差多少。" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">{metrics.distanceItems.length ? metrics.distanceItems.map(item => <div key={item.key} className="bg-slate-50 border border-slate-100 rounded-2xl p-3"><div className="flex items-center justify-between gap-2 mb-1"><div className="text-[10px] font-black text-slate-500">{item.label}</div><Pill tone={distanceTone(item.value)}>{distanceLabel(item.value)}</Pill></div><div className={`font-mono text-xl font-black ${item.value < 0 ? 'text-red-600' : 'text-slate-900'}`}>{signedPctText(item.value)}</div><div className="text-[10px] text-slate-400 font-bold mt-1">{item.hint}</div></div>) : <div className="text-sm text-slate-400 font-bold">資料不足，無法計算距離。</div>}</div>
-      </Card>;
-      const ScenarioCard = () => <Card className="p-4 mt-4"><SectionTitle title="QQQ 情境模擬" desc="三星手機友善：不用輸入負號，用＋／－切換方向。TQQQ 以約 3 倍 QQQ 變動粗估。" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><div className="bg-slate-50 border border-slate-100 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-500 mb-2">設定 QQQ 變動</div><div className="flex items-center gap-2"><button onClick={()=>patch('scenarioSign', -1)} className={`px-4 py-3 rounded-2xl font-black active:scale-95 ${getNum(data.scenarioSign)<0?'bg-red-600 text-white':'bg-white border border-slate-200 text-slate-700'}`}>－</button><button onClick={()=>patch('scenarioSign', 1)} className={`px-4 py-3 rounded-2xl font-black active:scale-95 ${getNum(data.scenarioSign)>0?'bg-emerald-600 text-white':'bg-white border border-slate-200 text-slate-700'}`}>＋</button><input type="number" inputMode="decimal" value={data.scenarioAbsPct ?? 10} onChange={e=>patch('scenarioAbsPct', e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl text-center font-mono font-black text-lg min-h-[48px]" style={{fontSize:'16px'}} /><span className="font-black text-slate-400">%</span></div><div className="grid grid-cols-4 gap-2 mt-3">{[-5,-10,-15,-20,-30,5,10,20,30].map(v => <button key={v} onClick={()=>merge({scenarioSign:v<0?-1:1, scenarioAbsPct:Math.abs(v)})} className={`py-2 rounded-xl text-xs font-black active:scale-95 ${v<0?'bg-red-50 text-red-700':'bg-emerald-50 text-emerald-700'}`}>{v>0?'+':''}{v}%</button>)}</div></div><div className="bg-slate-950 rounded-2xl p-4 text-white"><div className="text-[10px] font-black text-slate-300">模擬結果：QQQ {signedPctText(metrics.scenario.movePct)}</div><div className="grid grid-cols-2 gap-2 mt-3"><div className="bg-white/10 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-300">預估總資產</div><div className="font-mono text-lg font-black">${money(metrics.scenario.totalUsd,0)}</div><div className="text-[10px] text-slate-400">NT${money(metrics.scenario.totalTwd,0)}</div></div><div className="bg-white/10 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-300">預估損益</div><div className={`font-mono text-lg font-black ${metrics.scenario.pnlUsd<0?'text-red-300':'text-emerald-300'}`}>{metrics.scenario.pnlUsd>=0?'+':'-'}${money(Math.abs(metrics.scenario.pnlUsd),0)}</div><div className="text-[10px] text-slate-400">{signedPctText(metrics.scenario.pnlPct*100)}</div></div></div><div className="mt-3 space-y-1">{metrics.scenario.flags.map((f,i)=><div key={i} className="text-xs font-bold text-slate-200">☑ {f}</div>)}</div></div></div>
-      </Card>;
-
-      const Home = () => <main className="max-w-5xl mx-auto px-4 pt-4 content-bottom-space">
-        <Card className="p-5 bg-slate-950 text-white border-slate-900 overflow-hidden relative">
-          <div className="absolute -right-10 -top-10 w-40 h-40 bg-brand-500/20 rounded-full blur-2xl"></div>
-          <div className="relative flex items-start justify-between gap-3"><div><div className="text-xs font-black text-brand-200 mb-2">目前訊號</div><h2 className="text-2xl font-black leading-tight">{metrics.title}</h2><p className="text-sm text-slate-300 mt-2 leading-relaxed">{metrics.instruction}</p></div><Pill tone={metrics.tone}>{metrics.alloc.label}</Pill></div>
-          <div className="relative grid grid-cols-2 md:grid-cols-4 gap-2 mt-5">
-            <div className="bg-white/10 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-300">總資產</div><div className="font-mono text-lg font-black">{metrics.totalDisplay}</div></div>
-            <div className="bg-white/10 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-300">目前回撤</div><div className={`font-mono text-lg font-black ${metrics.drawdown < -0.1 ? "text-red-300" : "text-white"}`}>{pct(metrics.drawdown,1)}</div></div>
-            <div className="bg-white/10 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-300">SPY / 200SMA</div><div className="font-mono text-lg font-black">{pct(metrics.spyDev)}</div></div>
-            <div className="bg-white/10 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-300">QQQ / 200SMA</div><div className="font-mono text-lg font-black">{pct(metrics.qqqDev)}</div></div>
-          </div>
-        </Card>
-
-        <DistanceCard />
-        <ScenarioCard />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-          <Card className="p-4"><SectionTitle title="今日交易清單" desc="依目前股價與規則產生，含目標股數；不含稅費與滑價。" right={<div className="flex gap-2 flex-wrap justify-end"><button onClick={copyTodayPlan} className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-black active:scale-95">複製</button><button onClick={addSnapshot} className="px-3 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-black active:scale-95">記錄</button><button onClick={confirmExecution} className="px-3 py-2 rounded-xl bg-brand-600 text-white text-xs font-black active:scale-95">已執行</button></div>} />
-            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 mb-3"><div className="text-[10px] font-black text-slate-500 mb-1">執行摘要</div><div className="text-sm font-black text-slate-900 leading-relaxed">{metrics.instruction}</div>{metrics.signal==="OFF" && <div className="mt-2 text-xs font-bold text-red-600">DCA 進度：已完成 {metrics.completedDca}/6，本期第 {metrics.nextDcaMonth}/6；本期買 QQQ 約 ${money(metrics.dcaBuyUsd,0)}，約 {money(metrics.dcaBuyShares,4)} 股。</div>}{data.lastExecutedAt && <div className="mt-2 text-[11px] text-slate-400 font-bold">上次確認：{data.lastExecutedAt}</div>}<div className="mt-2 text-[11px] text-brand-700 font-black">建議下次檢查：{nextCheckText()}</div></div>
-            <div className="space-y-2 mb-3">{metrics.actionLines.map((a,i)=><div key={i} className="flex gap-2 text-sm font-black leading-relaxed items-start"><span className="mt-0.5 shrink-0 w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[11px]">{i+1}</span><span className="text-slate-800">{a}</span></div>)}</div>
-            <div className="space-y-2">{metrics.targetRows.map(r => <div key={r.sym} className="flex items-center justify-between gap-3 py-2 border-b border-slate-100 last:border-0"><div><div className="font-black text-sm text-slate-800">{r.sym}</div><div className="text-[10px] font-bold text-slate-400">目前 {money(r.currentShares,4)} 股 / ${money(r.current,2)}{r.target!=null ? `｜目標 ${money(r.targetShares,4)} 股` : "｜中間區不指定目標"}</div></div><div className={`font-mono text-sm font-black text-right ${r.target==null || Math.abs(r.diff)<10 ? "text-slate-400" : r.diff>0 ? "text-red-600" : "text-emerald-600"}`}>{r.target==null || Math.abs(r.diff)<10 ? "不動" : `${r.diff>0 ? "買" : "賣"} ${money(Math.abs(r.shareDiff),4)} 股`}<div className="text-[10px] font-bold">{r.target==null ? "" : `$${money(Math.abs(r.diff),0)}`}</div></div></div>)}</div>
-          </Card>
-
-          <Card className="p-4"><SectionTitle title="關鍵價格線" desc="SPY 控制風險；QQQ 控制過熱降槓桿。" />
-            <div className="space-y-2 text-sm">
-              {[['SPY Risk-On 進場', metrics.entryPx, `200SMA +${data.entryBuffer}%`], ['SPY Risk-Off 出場', metrics.exitPx, `200SMA -${data.exitBuffer}%`], ['QQQ 過熱一階', metrics.qHot1, `200SMA +${data.hot1}%`], ['QQQ 過熱二階', metrics.qHot2, `200SMA +${data.hot2}%`], ['QQQ 過熱解除', metrics.qCool, `200SMA +${data.cooldown}%`]].map(x=><div key={x[0]} className="flex justify-between gap-3 bg-slate-50 rounded-2xl p-3"><div><div className="font-black text-slate-800">{x[0]}</div><div className="text-[10px] text-slate-400 font-bold">{x[2]}</div></div><div className="font-mono font-black text-slate-900">${Number.isFinite(x[1]) ? money(x[1],2) : '-'}</div></div>)}
-            </div>
-          </Card>
-        </div>
-
-        <Card className="p-4 mt-4"><SectionTitle title="持股與總資產" desc="輸入股數或現金，系統會用最新價格計算市值。" right={<select value={data.currency} onChange={e=>patch('currency', e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black"><option>USD</option><option>TWD</option></select>} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            <NumInput label="TQQQ 股數" value={data.sharesTqqq} onChange={v=>patch('sharesTqqq',v)} />
-            <NumInput label="QQQ 股數" value={data.sharesQqq} onChange={v=>patch('sharesQqq',v)} />
-            <NumInput label="SPY 股數" value={data.sharesSpy} onChange={v=>patch('sharesSpy',v)} />
-            <NumInput label="SGOV 股數" value={data.sharesSgov} onChange={v=>patch('sharesSgov',v)} />
-            <NumInput label="現金 USD" value={data.cashUsd} onChange={v=>patch('cashUsd',v)} />
-            <NumInput label="其他資產 USD" value={data.otherUsd} onChange={v=>patch('otherUsd',v)} />
-            <NumInput label="USD/TWD" value={data.usdtwd} onChange={v=>patch('usdtwd',v)} />
-            <NumInput label="DCA 月份" value={data.dcaMonth} onChange={v=>patch('dcaMonth',v)} suffix="/6" />
-            <NumInput label="DCA 原始資金池" value={data.dcaPoolUsd} onChange={v=>patch('dcaPoolUsd',v)} suffix="USD" hint="Risk-Off 第一次確認會自動記錄；必要時可手動修正。" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4"><div className="bg-slate-50 border border-slate-100 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-500">資產高點</div><div className="font-mono text-lg font-black text-slate-900">${money(metrics.assetHighUsd,2)}</div></div><div className="bg-slate-50 border border-slate-100 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-500">目前回撤</div><div className={`font-mono text-lg font-black ${metrics.drawdown < -0.1 ? "text-red-600" : "text-emerald-600"}`}>{pct(metrics.drawdown,1)}</div></div><button onClick={resetAssetHigh} className="rounded-2xl bg-slate-900 text-white font-black active:scale-95 py-3">以目前資產設高點</button></div><div className="overflow-x-auto rounded-2xl border border-slate-100"><table className="w-full min-w-[560px] text-xs"><thead className="bg-slate-50 text-slate-500"><tr><th className="p-2 text-left">項目</th><th className="p-2 text-right">股數/金額</th><th className="p-2 text-right">價格</th><th className="p-2 text-right">市值</th><th className="p-2 text-right">占比</th></tr></thead><tbody>{metrics.rows.map(r=><tr key={r.name} className="border-t border-slate-100"><td className="p-2 font-black">{r.name}</td><td className="p-2 text-right font-mono">{money(r.shares,4)}</td><td className="p-2 text-right font-mono">{r.name==='現金'||r.name==='其他資產' ? '-' : '$'+money(r.price,2)}</td><td className="p-2 text-right font-mono">${money(r.value,2)}</td><td className="p-2 text-right font-mono">{pct(r.weight,1)}</td></tr>)}</tbody></table></div>
-        </Card>
-      </main>;
-
-      const Inputs = () => <main className="max-w-5xl mx-auto px-4 pt-4 content-bottom-space">
-        <Card className="p-4"><SectionTitle title="市場資料" desc="主要用 Finnhub 抓報價；SPY/QQQ 的 200SMA 用 Finnhub，失敗時備援 Stooq。" right={<button onClick={fetchPrices} className="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black">自動抓股價</button>} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-            <NumInput label="SPY 收盤價" value={data.spy} onChange={v=>patch('spy',v)} />
-            <NumInput label="SPY 200SMA" value={data.spySma} onChange={v=>patch('spySma',v)} />
-            <NumInput label="QQQ 收盤價" value={data.qqq} onChange={v=>patch('qqq',v)} />
-            <NumInput label="QQQ 200SMA" value={data.qqqSma} onChange={v=>patch('qqqSma',v)} />
-            <NumInput label="TQQQ 價格" value={data.tqqq} onChange={v=>patch('tqqq',v)} />
-            <NumInput label="SGOV 價格" value={data.sgov} onChange={v=>patch('sgov',v)} />
-            <label className="block bg-slate-50 border border-slate-200 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-500 mb-1">資料日期</div><input type="date" value={data.marketDate||""} onChange={e=>patch('marketDate',e.target.value)} className="w-full bg-transparent text-center font-mono font-black min-h-[44px]" /></label>
-          </div>
-        </Card>
-        <Card className="p-4 mt-4"><SectionTitle title="策略參數" desc="預設就是你指定的方案 A 改良版。" right={<button onClick={()=>merge({entryBuffer:4, exitBuffer:3, hot1:30, hot2:40, cooldown:25})} className="px-3 py-2 rounded-xl bg-brand-50 text-brand-700 text-xs font-black">恢復預設</button>} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-            <NumInput label="Risk-On 緩衝" value={data.entryBuffer} onChange={v=>patch('entryBuffer',v)} suffix="%" />
-            <NumInput label="Risk-Off 緩衝" value={data.exitBuffer} onChange={v=>patch('exitBuffer',v)} suffix="%" />
-            <NumInput label="過熱一階" value={data.hot1} onChange={v=>patch('hot1',v)} suffix="%" />
-            <NumInput label="過熱二階" value={data.hot2} onChange={v=>patch('hot2',v)} suffix="%" />
-            <NumInput label="過熱解除" value={data.cooldown} onChange={v=>patch('cooldown',v)} suffix="%" />
-          </div>
-        </Card>
-        <Card className="p-4 mt-4"><SectionTitle title="策略文字" desc="方便你自己檢查規則是否走樣。" /><pre className="whitespace-pre-wrap text-xs leading-relaxed bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-600 font-bold">{STRATEGY_TEXT}</pre></Card>
-      </main>;
-
-      const Logs = () => <main className="max-w-5xl mx-auto px-4 pt-4 content-bottom-space">
-        <Card className="p-4"><SectionTitle title="歷史紀錄" desc="每次按首頁的記錄，就會保存當下訊號、總資產與備註。" right={<div className="flex gap-2"><button onClick={addSnapshot} className="px-3 py-2 rounded-xl bg-brand-600 text-white text-xs font-black">新增</button><button onClick={()=>{ if(confirm('確定清空歷史紀錄？')) patch('history', []); }} className="px-3 py-2 rounded-xl bg-red-50 text-red-700 text-xs font-black">清空</button></div>} />
-          <textarea value={data.notes||""} onChange={e=>patch('notes', e.target.value)} placeholder="備註：例如今天為何執行、券商下單狀況、心理狀態..." className="w-full min-h-[86px] rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold mb-4" />
-          <div className="space-y-3">{(Array.isArray(data.history)?data.history:[]).length===0 && <div className="text-sm text-slate-400 font-bold text-center py-8">尚無紀錄</div>}{(data.history||[]).map((h,i)=><div key={h.time||i} className="border border-slate-100 rounded-2xl p-3 bg-slate-50"><div className="flex justify-between gap-2"><div><div className="font-black text-slate-900">{h.signal}</div><div className="text-[11px] text-slate-400 font-bold">{h.timeText}｜行情日 {h.marketDate || '-'}</div></div><div className="font-mono font-black text-slate-900">{h.totalDisplay}</div></div><div className="mt-2 flex flex-wrap gap-2"><Pill tone="blue">{h.allocation}</Pill><Pill>SPY ${money(h.spy,2)}</Pill><Pill>QQQ ${money(h.qqq,2)}</Pill></div>{h.notes && <div className="mt-2 text-xs text-slate-500 font-bold leading-relaxed">{h.notes}</div>}</div>)}</div>
-        </Card>
-      </main>;
-
-      const Sync = () => <main className="max-w-5xl mx-auto px-4 pt-4 content-bottom-space">
-        <Card className="p-4"><SectionTitle title="同步設定" desc="Firebase 使用你提供的 qldmax 專案，資料路徑沿用目前這套策略儀表板。" />
-          <div className="bg-slate-950 text-white rounded-3xl p-4 mb-4"><div className="text-[10px] font-black text-slate-300">Firebase 狀態</div><div className="font-black mt-1">{syncText}</div><div className="text-xs text-slate-400 mt-2 break-all">projectId: qldmax｜doc: strategyDashboards / tqqq-spy200-auto-main</div></div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <button onClick={manualSave} className="py-3 rounded-2xl bg-brand-600 text-white font-black active:scale-95">手動同步</button>
-            <button onClick={loginGoogle} className="py-3 rounded-2xl bg-slate-900 text-white font-black active:scale-95">Google 登入</button>
-            <button onClick={logout} className="py-3 rounded-2xl bg-slate-100 text-slate-700 font-black active:scale-95">切回匿名</button>
-          </div>
-        </Card>
-      </main>;
-
-      const BottomNav = () => <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 safe-bottom"><div className="max-w-5xl mx-auto grid grid-cols-4 gap-1 px-3 pt-2">{[['home','首頁'],['inputs','輸入'],['logs','紀錄'],['sync','同步']].map(([id,label])=><button key={id} onClick={()=>setPage(id)} className={`py-3 rounded-2xl text-xs font-black active:scale-95 ${page===id?'bg-slate-900 text-white':'text-slate-500'}`}>{label}</button>)}</div></nav>;
-
-      return <div><Header />{page==='home' && <Home />}{page==='inputs' && <Inputs />}{page==='logs' && <Logs />}{page==='sync' && <Sync />}<BottomNav />{toast && <div className="fixed left-1/2 -translate-x-1/2 bottom-28 z-50 bg-slate-900 text-white rounded-2xl px-4 py-3 text-sm font-black shadow-2xl">{toast}</div>}</div>;
     };
+    const resetAssetHigh = () => { if (confirm('把目前總資產設為新的高點？')) {
+        patch('assetHighUsd', metrics.totalUsd);
+        showToast('已重設資產高點');
+    } };
+    const Header = () => React.createElement("div", { className: "sticky top-0 z-30 bg-slate-100/85 backdrop-blur border-b border-slate-200" },
+        React.createElement("div", { className: "max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3" },
+            React.createElement("div", null,
+                React.createElement("div", { className: "text-[10px] font-black text-brand-600 tracking-widest" }, "SPY 200SMA +4/-3"),
+                React.createElement("h1", { className: "text-lg font-black text-slate-900 leading-tight" }, "TQQQ \u7B56\u7565\u8A0A\u865F\u5100\u8868\u677F")),
+            React.createElement("div", { className: "flex items-center gap-2" },
+                React.createElement(Pill, { tone: (user === null || user === void 0 ? void 0 : user.isAnonymous) ? "amber" : "green" }, (user === null || user === void 0 ? void 0 : user.isAnonymous) ? "匿名同步" : "Google同步"),
+                React.createElement("button", { onClick: fetchPrices, disabled: loadingPrice, className: "px-3 py-2 rounded-2xl bg-slate-900 text-white text-xs font-black active:scale-95 disabled:opacity-50" }, loadingPrice ? "抓取中" : "更新股價"))));
+    const distanceTone = (v) => Math.abs(v) <= 2 ? 'red' : Math.abs(v) <= 5 ? 'amber' : 'green';
+    const distanceLabel = (v) => Math.abs(v) <= 2 ? '即將觸發' : Math.abs(v) <= 5 ? '接近' : '尚有距離';
+    const DistanceCard = () => React.createElement(Card, { className: "p-4 mt-4" },
+        React.createElement(SectionTitle, { title: "\u8DDD\u96E2\u4E0B\u4E00\u500B\u8A0A\u865F", desc: "\u8CA0\u6578\u4EE3\u8868\u5DF2\u7D93\u8D8A\u904E\u8A72\u89F8\u767C\u7DDA\uFF1B\u6B63\u6578\u4EE3\u8868\u9084\u5DEE\u591A\u5C11\u3002" }),
+        React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2" }, metrics.distanceItems.length ? metrics.distanceItems.map(item => React.createElement("div", { key: item.key, className: "bg-slate-50 border border-slate-100 rounded-2xl p-3" },
+            React.createElement("div", { className: "flex items-center justify-between gap-2 mb-1" },
+                React.createElement("div", { className: "text-[10px] font-black text-slate-500" }, item.label),
+                React.createElement(Pill, { tone: distanceTone(item.value) }, distanceLabel(item.value))),
+            React.createElement("div", { className: `font-mono text-xl font-black ${item.value < 0 ? 'text-red-600' : 'text-slate-900'}` }, signedPctText(item.value)),
+            React.createElement("div", { className: "text-[10px] text-slate-400 font-bold mt-1" }, item.hint))) : React.createElement("div", { className: "text-sm text-slate-400 font-bold" }, "\u8CC7\u6599\u4E0D\u8DB3\uFF0C\u7121\u6CD5\u8A08\u7B97\u8DDD\u96E2\u3002")));
+    const ScenarioCard = () => {
+        var _a;
+        return React.createElement(Card, { className: "p-4 mt-4" },
+            React.createElement(SectionTitle, { title: "QQQ \u60C5\u5883\u6A21\u64EC", desc: "\u4E09\u661F\u624B\u6A5F\u53CB\u5584\uFF1A\u4E0D\u7528\u8F38\u5165\u8CA0\u865F\uFF0C\u7528\uFF0B\uFF0F\uFF0D\u5207\u63DB\u65B9\u5411\u3002TQQQ \u4EE5\u7D04 3 \u500D QQQ \u8B8A\u52D5\u7C97\u4F30\u3002" }),
+            React.createElement("div", { className: "grid grid-cols-1 lg:grid-cols-2 gap-4" },
+                React.createElement("div", { className: "bg-slate-50 border border-slate-100 rounded-2xl p-3" },
+                    React.createElement("div", { className: "text-[10px] font-black text-slate-500 mb-2" }, "\u8A2D\u5B9A QQQ \u8B8A\u52D5"),
+                    React.createElement("div", { className: "flex items-center gap-2" },
+                        React.createElement("button", { onClick: () => patch('scenarioSign', -1), className: `px-4 py-3 rounded-2xl font-black active:scale-95 ${getNum(data.scenarioSign) < 0 ? 'bg-red-600 text-white' : 'bg-white border border-slate-200 text-slate-700'}` }, "\uFF0D"),
+                        React.createElement("button", { onClick: () => patch('scenarioSign', 1), className: `px-4 py-3 rounded-2xl font-black active:scale-95 ${getNum(data.scenarioSign) > 0 ? 'bg-emerald-600 text-white' : 'bg-white border border-slate-200 text-slate-700'}` }, "\uFF0B"),
+                        React.createElement("input", { type: "number", inputMode: "decimal", value: (_a = data.scenarioAbsPct) !== null && _a !== void 0 ? _a : 10, onChange: e => patch('scenarioAbsPct', e.target.value), className: "w-full bg-white border border-slate-200 rounded-2xl text-center font-mono font-black text-lg min-h-[48px]", style: { fontSize: '16px' } }),
+                        React.createElement("span", { className: "font-black text-slate-400" }, "%")),
+                    React.createElement("div", { className: "grid grid-cols-4 gap-2 mt-3" }, [-5, -10, -15, -20, -30, 5, 10, 20, 30].map(v => React.createElement("button", { key: v, onClick: () => merge({ scenarioSign: v < 0 ? -1 : 1, scenarioAbsPct: Math.abs(v) }), className: `py-2 rounded-xl text-xs font-black active:scale-95 ${v < 0 ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}` },
+                        v > 0 ? '+' : '',
+                        v,
+                        "%")))),
+                React.createElement("div", { className: "bg-slate-950 rounded-2xl p-4 text-white" },
+                    React.createElement("div", { className: "text-[10px] font-black text-slate-300" },
+                        "\u6A21\u64EC\u7D50\u679C\uFF1AQQQ ",
+                        signedPctText(metrics.scenario.movePct)),
+                    React.createElement("div", { className: "grid grid-cols-2 gap-2 mt-3" },
+                        React.createElement("div", { className: "bg-white/10 rounded-2xl p-3" },
+                            React.createElement("div", { className: "text-[10px] font-black text-slate-300" }, "\u9810\u4F30\u7E3D\u8CC7\u7522"),
+                            React.createElement("div", { className: "font-mono text-lg font-black" },
+                                "$",
+                                money(metrics.scenario.totalUsd, 0)),
+                            React.createElement("div", { className: "text-[10px] text-slate-400" },
+                                "NT$",
+                                money(metrics.scenario.totalTwd, 0))),
+                        React.createElement("div", { className: "bg-white/10 rounded-2xl p-3" },
+                            React.createElement("div", { className: "text-[10px] font-black text-slate-300" }, "\u9810\u4F30\u640D\u76CA"),
+                            React.createElement("div", { className: `font-mono text-lg font-black ${metrics.scenario.pnlUsd < 0 ? 'text-red-300' : 'text-emerald-300'}` },
+                                metrics.scenario.pnlUsd >= 0 ? '+' : '-',
+                                "$",
+                                money(Math.abs(metrics.scenario.pnlUsd), 0)),
+                            React.createElement("div", { className: "text-[10px] text-slate-400" }, signedPctText(metrics.scenario.pnlPct * 100)))),
+                    React.createElement("div", { className: "mt-3 space-y-1" }, metrics.scenario.flags.map((f, i) => React.createElement("div", { key: i, className: "text-xs font-bold text-slate-200" },
+                        "\u2611 ",
+                        f))))));
+    };
+    const Home = () => React.createElement("main", { className: "max-w-5xl mx-auto px-4 pt-4 content-bottom-space" },
+        React.createElement(Card, { className: "p-5 bg-slate-950 text-white border-slate-900 overflow-hidden relative" },
+            React.createElement("div", { className: "absolute -right-10 -top-10 w-40 h-40 bg-brand-500/20 rounded-full blur-2xl" }),
+            React.createElement("div", { className: "relative flex items-start justify-between gap-3" },
+                React.createElement("div", null,
+                    React.createElement("div", { className: "text-xs font-black text-brand-200 mb-2" }, "\u76EE\u524D\u8A0A\u865F"),
+                    React.createElement("h2", { className: "text-2xl font-black leading-tight" }, metrics.title),
+                    React.createElement("p", { className: "text-sm text-slate-300 mt-2 leading-relaxed" }, metrics.instruction)),
+                React.createElement(Pill, { tone: metrics.tone }, metrics.alloc.label)),
+            React.createElement("div", { className: "relative grid grid-cols-2 md:grid-cols-4 gap-2 mt-5" },
+                React.createElement("div", { className: "bg-white/10 rounded-2xl p-3" },
+                    React.createElement("div", { className: "text-[10px] font-black text-slate-300" }, "\u7E3D\u8CC7\u7522"),
+                    React.createElement("div", { className: "font-mono text-lg font-black" }, metrics.totalDisplay)),
+                React.createElement("div", { className: "bg-white/10 rounded-2xl p-3" },
+                    React.createElement("div", { className: "text-[10px] font-black text-slate-300" }, "\u76EE\u524D\u56DE\u64A4"),
+                    React.createElement("div", { className: `font-mono text-lg font-black ${metrics.drawdown < -0.1 ? "text-red-300" : "text-white"}` }, pct(metrics.drawdown, 1))),
+                React.createElement("div", { className: "bg-white/10 rounded-2xl p-3" },
+                    React.createElement("div", { className: "text-[10px] font-black text-slate-300" }, "SPY / 200SMA"),
+                    React.createElement("div", { className: "font-mono text-lg font-black" }, pct(metrics.spyDev))),
+                React.createElement("div", { className: "bg-white/10 rounded-2xl p-3" },
+                    React.createElement("div", { className: "text-[10px] font-black text-slate-300" }, "QQQ / 200SMA"),
+                    React.createElement("div", { className: "font-mono text-lg font-black" }, pct(metrics.qqqDev))))),
+        React.createElement(DistanceCard, null),
+        React.createElement(ScenarioCard, null),
+        React.createElement("div", { className: "grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4" },
+            React.createElement(Card, { className: "p-4" },
+                React.createElement(SectionTitle, { title: "\u4ECA\u65E5\u4EA4\u6613\u6E05\u55AE", desc: "\u4F9D\u76EE\u524D\u80A1\u50F9\u8207\u898F\u5247\u7522\u751F\uFF0C\u542B\u76EE\u6A19\u80A1\u6578\uFF1B\u4E0D\u542B\u7A05\u8CBB\u8207\u6ED1\u50F9\u3002", right: React.createElement("div", { className: "flex gap-2 flex-wrap justify-end" },
+                        React.createElement("button", { onClick: copyTodayPlan, className: "px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-black active:scale-95" }, "\u8907\u88FD"),
+                        React.createElement("button", { onClick: addSnapshot, className: "px-3 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-black active:scale-95" }, "\u8A18\u9304"),
+                        React.createElement("button", { onClick: confirmExecution, className: "px-3 py-2 rounded-xl bg-brand-600 text-white text-xs font-black active:scale-95" }, "\u5DF2\u57F7\u884C")) }),
+                React.createElement("div", { className: "bg-slate-50 border border-slate-100 rounded-2xl p-3 mb-3" },
+                    React.createElement("div", { className: "text-[10px] font-black text-slate-500 mb-1" }, "\u57F7\u884C\u6458\u8981"),
+                    React.createElement("div", { className: "text-sm font-black text-slate-900 leading-relaxed" }, metrics.instruction),
+                    metrics.signal === "OFF" && React.createElement("div", { className: "mt-2 text-xs font-bold text-red-600" },
+                        "DCA \u9032\u5EA6\uFF1A\u5DF2\u5B8C\u6210 ",
+                        metrics.completedDca,
+                        "/6\uFF0C\u672C\u671F\u7B2C ",
+                        metrics.nextDcaMonth,
+                        "/6\uFF1B\u672C\u671F\u8CB7 QQQ \u7D04 $",
+                        money(metrics.dcaBuyUsd, 0),
+                        "\uFF0C\u7D04 ",
+                        money(metrics.dcaBuyShares, 4),
+                        " \u80A1\u3002"),
+                    data.lastExecutedAt && React.createElement("div", { className: "mt-2 text-[11px] text-slate-400 font-bold" },
+                        "\u4E0A\u6B21\u78BA\u8A8D\uFF1A",
+                        data.lastExecutedAt),
+                    React.createElement("div", { className: "mt-2 text-[11px] text-brand-700 font-black" },
+                        "\u5EFA\u8B70\u4E0B\u6B21\u6AA2\u67E5\uFF1A",
+                        nextCheckText())),
+                React.createElement("div", { className: "space-y-2 mb-3" }, metrics.actionLines.map((a, i) => React.createElement("div", { key: i, className: "flex gap-2 text-sm font-black leading-relaxed items-start" },
+                    React.createElement("span", { className: "mt-0.5 shrink-0 w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[11px]" }, i + 1),
+                    React.createElement("span", { className: "text-slate-800" }, a)))),
+                React.createElement("div", { className: "space-y-2" }, metrics.targetRows.map(r => React.createElement("div", { key: r.sym, className: "flex items-center justify-between gap-3 py-2 border-b border-slate-100 last:border-0" },
+                    React.createElement("div", null,
+                        React.createElement("div", { className: "font-black text-sm text-slate-800" }, r.sym),
+                        React.createElement("div", { className: "text-[10px] font-bold text-slate-400" },
+                            "\u76EE\u524D ",
+                            money(r.currentShares, 4),
+                            " \u80A1 / $",
+                            money(r.current, 2),
+                            r.target != null ? `｜目標 ${money(r.targetShares, 4)} 股` : "｜中間區不指定目標")),
+                    React.createElement("div", { className: `font-mono text-sm font-black text-right ${r.target == null || Math.abs(r.diff) < 10 ? "text-slate-400" : r.diff > 0 ? "text-red-600" : "text-emerald-600"}` },
+                        r.target == null || Math.abs(r.diff) < 10 ? "不動" : `${r.diff > 0 ? "買" : "賣"} ${money(Math.abs(r.shareDiff), 4)} 股`,
+                        React.createElement("div", { className: "text-[10px] font-bold" }, r.target == null ? "" : `$${money(Math.abs(r.diff), 0)}`)))))),
+            React.createElement(Card, { className: "p-4" },
+                React.createElement(SectionTitle, { title: "\u95DC\u9375\u50F9\u683C\u7DDA", desc: "SPY \u63A7\u5236\u98A8\u96AA\uFF1BQQQ \u63A7\u5236\u904E\u71B1\u964D\u69D3\u687F\u3002" }),
+                React.createElement("div", { className: "space-y-2 text-sm" }, [['SPY Risk-On 進場', metrics.entryPx, `200SMA +${data.entryBuffer}%`], ['SPY Risk-Off 出場', metrics.exitPx, `200SMA -${data.exitBuffer}%`], ['QQQ 過熱一階', metrics.qHot1, `200SMA +${data.hot1}%`], ['QQQ 過熱二階', metrics.qHot2, `200SMA +${data.hot2}%`], ['QQQ 過熱解除', metrics.qCool, `200SMA +${data.cooldown}%`]].map(x => React.createElement("div", { key: x[0], className: "flex justify-between gap-3 bg-slate-50 rounded-2xl p-3" },
+                    React.createElement("div", null,
+                        React.createElement("div", { className: "font-black text-slate-800" }, x[0]),
+                        React.createElement("div", { className: "text-[10px] text-slate-400 font-bold" }, x[2])),
+                    React.createElement("div", { className: "font-mono font-black text-slate-900" },
+                        "$",
+                        Number.isFinite(x[1]) ? money(x[1], 2) : '-')))))),
+        React.createElement(Card, { className: "p-4 mt-4" },
+            React.createElement(SectionTitle, { title: "\u6301\u80A1\u8207\u7E3D\u8CC7\u7522", desc: "\u8F38\u5165\u80A1\u6578\u6216\u73FE\u91D1\uFF0C\u7CFB\u7D71\u6703\u7528\u6700\u65B0\u50F9\u683C\u8A08\u7B97\u5E02\u503C\u3002", right: React.createElement("select", { value: data.currency, onChange: e => patch('currency', e.target.value), className: "bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black" },
+                    React.createElement("option", null, "USD"),
+                    React.createElement("option", null, "TWD")) }),
+            React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4" },
+                React.createElement(NumInput, { label: "TQQQ \u80A1\u6578", value: data.sharesTqqq, onChange: v => patch('sharesTqqq', v) }),
+                React.createElement(NumInput, { label: "QQQ \u80A1\u6578", value: data.sharesQqq, onChange: v => patch('sharesQqq', v) }),
+                React.createElement(NumInput, { label: "SPY \u80A1\u6578", value: data.sharesSpy, onChange: v => patch('sharesSpy', v) }),
+                React.createElement(NumInput, { label: "SGOV \u80A1\u6578", value: data.sharesSgov, onChange: v => patch('sharesSgov', v) }),
+                React.createElement(NumInput, { label: "\u73FE\u91D1 USD", value: data.cashUsd, onChange: v => patch('cashUsd', v) }),
+                React.createElement(NumInput, { label: "\u5176\u4ED6\u8CC7\u7522 USD", value: data.otherUsd, onChange: v => patch('otherUsd', v) }),
+                React.createElement(NumInput, { label: "USD/TWD", value: data.usdtwd, onChange: v => patch('usdtwd', v) }),
+                React.createElement(NumInput, { label: "DCA \u6708\u4EFD", value: data.dcaMonth, onChange: v => patch('dcaMonth', v), suffix: "/6" }),
+                React.createElement(NumInput, { label: "DCA \u539F\u59CB\u8CC7\u91D1\u6C60", value: data.dcaPoolUsd, onChange: v => patch('dcaPoolUsd', v), suffix: "USD", hint: "Risk-Off \u7B2C\u4E00\u6B21\u78BA\u8A8D\u6703\u81EA\u52D5\u8A18\u9304\uFF1B\u5FC5\u8981\u6642\u53EF\u624B\u52D5\u4FEE\u6B63\u3002" })),
+            React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3 mb-4" },
+                React.createElement("div", { className: "bg-slate-50 border border-slate-100 rounded-2xl p-3" },
+                    React.createElement("div", { className: "text-[10px] font-black text-slate-500" }, "\u8CC7\u7522\u9AD8\u9EDE"),
+                    React.createElement("div", { className: "font-mono text-lg font-black text-slate-900" },
+                        "$",
+                        money(metrics.assetHighUsd, 2))),
+                React.createElement("div", { className: "bg-slate-50 border border-slate-100 rounded-2xl p-3" },
+                    React.createElement("div", { className: "text-[10px] font-black text-slate-500" }, "\u76EE\u524D\u56DE\u64A4"),
+                    React.createElement("div", { className: `font-mono text-lg font-black ${metrics.drawdown < -0.1 ? "text-red-600" : "text-emerald-600"}` }, pct(metrics.drawdown, 1))),
+                React.createElement("button", { onClick: resetAssetHigh, className: "rounded-2xl bg-slate-900 text-white font-black active:scale-95 py-3" }, "\u4EE5\u76EE\u524D\u8CC7\u7522\u8A2D\u9AD8\u9EDE")),
+            React.createElement("div", { className: "overflow-x-auto rounded-2xl border border-slate-100" },
+                React.createElement("table", { className: "w-full min-w-[560px] text-xs" },
+                    React.createElement("thead", { className: "bg-slate-50 text-slate-500" },
+                        React.createElement("tr", null,
+                            React.createElement("th", { className: "p-2 text-left" }, "\u9805\u76EE"),
+                            React.createElement("th", { className: "p-2 text-right" }, "\u80A1\u6578/\u91D1\u984D"),
+                            React.createElement("th", { className: "p-2 text-right" }, "\u50F9\u683C"),
+                            React.createElement("th", { className: "p-2 text-right" }, "\u5E02\u503C"),
+                            React.createElement("th", { className: "p-2 text-right" }, "\u5360\u6BD4"))),
+                    React.createElement("tbody", null, metrics.rows.map(r => React.createElement("tr", { key: r.name, className: "border-t border-slate-100" },
+                        React.createElement("td", { className: "p-2 font-black" }, r.name),
+                        React.createElement("td", { className: "p-2 text-right font-mono" }, money(r.shares, 4)),
+                        React.createElement("td", { className: "p-2 text-right font-mono" }, r.name === '現金' || r.name === '其他資產' ? '-' : '$' + money(r.price, 2)),
+                        React.createElement("td", { className: "p-2 text-right font-mono" },
+                            "$",
+                            money(r.value, 2)),
+                        React.createElement("td", { className: "p-2 text-right font-mono" }, pct(r.weight, 1)))))))));
+    const Inputs = () => React.createElement("main", { className: "max-w-5xl mx-auto px-4 pt-4 content-bottom-space" },
+        React.createElement(Card, { className: "p-4" },
+            React.createElement(SectionTitle, { title: "\u5E02\u5834\u8CC7\u6599", desc: "\u4E3B\u8981\u7528 Finnhub \u6293\u5831\u50F9\uFF1BSPY/QQQ \u7684 200SMA \u7528 Finnhub\uFF0C\u5931\u6557\u6642\u5099\u63F4 Stooq\u3002", right: React.createElement("button", { onClick: fetchPrices, className: "px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black" }, "\u81EA\u52D5\u6293\u80A1\u50F9") }),
+            React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3" },
+                React.createElement(NumInput, { label: "SPY \u6536\u76E4\u50F9", value: data.spy, onChange: v => patch('spy', v) }),
+                React.createElement(NumInput, { label: "SPY 200SMA", value: data.spySma, onChange: v => patch('spySma', v) }),
+                React.createElement(NumInput, { label: "QQQ \u6536\u76E4\u50F9", value: data.qqq, onChange: v => patch('qqq', v) }),
+                React.createElement(NumInput, { label: "QQQ 200SMA", value: data.qqqSma, onChange: v => patch('qqqSma', v) }),
+                React.createElement(NumInput, { label: "TQQQ \u50F9\u683C", value: data.tqqq, onChange: v => patch('tqqq', v) }),
+                React.createElement(NumInput, { label: "SGOV \u50F9\u683C", value: data.sgov, onChange: v => patch('sgov', v) }),
+                React.createElement("label", { className: "block bg-slate-50 border border-slate-200 rounded-2xl p-3" },
+                    React.createElement("div", { className: "text-[10px] font-black text-slate-500 mb-1" }, "\u8CC7\u6599\u65E5\u671F"),
+                    React.createElement("input", { type: "date", value: data.marketDate || "", onChange: e => patch('marketDate', e.target.value), className: "w-full bg-transparent text-center font-mono font-black min-h-[44px]" })))),
+        React.createElement(Card, { className: "p-4 mt-4" },
+            React.createElement(SectionTitle, { title: "\u7B56\u7565\u53C3\u6578", desc: "\u9810\u8A2D\u5C31\u662F\u4F60\u6307\u5B9A\u7684\u65B9\u6848 A \u6539\u826F\u7248\u3002", right: React.createElement("button", { onClick: () => merge({ entryBuffer: 4, exitBuffer: 3, hot1: 30, hot2: 40, cooldown: 25 }), className: "px-3 py-2 rounded-xl bg-brand-50 text-brand-700 text-xs font-black" }, "\u6062\u5FA9\u9810\u8A2D") }),
+            React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3" },
+                React.createElement(NumInput, { label: "Risk-On \u7DE9\u885D", value: data.entryBuffer, onChange: v => patch('entryBuffer', v), suffix: "%" }),
+                React.createElement(NumInput, { label: "Risk-Off \u7DE9\u885D", value: data.exitBuffer, onChange: v => patch('exitBuffer', v), suffix: "%" }),
+                React.createElement(NumInput, { label: "\u904E\u71B1\u4E00\u968E", value: data.hot1, onChange: v => patch('hot1', v), suffix: "%" }),
+                React.createElement(NumInput, { label: "\u904E\u71B1\u4E8C\u968E", value: data.hot2, onChange: v => patch('hot2', v), suffix: "%" }),
+                React.createElement(NumInput, { label: "\u904E\u71B1\u89E3\u9664", value: data.cooldown, onChange: v => patch('cooldown', v), suffix: "%" }))),
+        React.createElement(Card, { className: "p-4 mt-4" },
+            React.createElement(SectionTitle, { title: "\u7B56\u7565\u6587\u5B57", desc: "\u65B9\u4FBF\u4F60\u81EA\u5DF1\u6AA2\u67E5\u898F\u5247\u662F\u5426\u8D70\u6A23\u3002" }),
+            React.createElement("pre", { className: "whitespace-pre-wrap text-xs leading-relaxed bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-600 font-bold" }, STRATEGY_TEXT)));
+    const Logs = () => React.createElement("main", { className: "max-w-5xl mx-auto px-4 pt-4 content-bottom-space" },
+        React.createElement(Card, { className: "p-4" },
+            React.createElement(SectionTitle, { title: "\u6B77\u53F2\u7D00\u9304", desc: "\u6BCF\u6B21\u6309\u9996\u9801\u7684\u8A18\u9304\uFF0C\u5C31\u6703\u4FDD\u5B58\u7576\u4E0B\u8A0A\u865F\u3001\u7E3D\u8CC7\u7522\u8207\u5099\u8A3B\u3002", right: React.createElement("div", { className: "flex gap-2" },
+                    React.createElement("button", { onClick: addSnapshot, className: "px-3 py-2 rounded-xl bg-brand-600 text-white text-xs font-black" }, "\u65B0\u589E"),
+                    React.createElement("button", { onClick: () => { if (confirm('確定清空歷史紀錄？'))
+                            patch('history', []); }, className: "px-3 py-2 rounded-xl bg-red-50 text-red-700 text-xs font-black" }, "\u6E05\u7A7A")) }),
+            React.createElement("textarea", { value: data.notes || "", onChange: e => patch('notes', e.target.value), placeholder: "\u5099\u8A3B\uFF1A\u4F8B\u5982\u4ECA\u5929\u70BA\u4F55\u57F7\u884C\u3001\u5238\u5546\u4E0B\u55AE\u72C0\u6CC1\u3001\u5FC3\u7406\u72C0\u614B...", className: "w-full min-h-[86px] rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold mb-4" }),
+            React.createElement("div", { className: "space-y-3" },
+                (Array.isArray(data.history) ? data.history : []).length === 0 && React.createElement("div", { className: "text-sm text-slate-400 font-bold text-center py-8" }, "\u5C1A\u7121\u7D00\u9304"),
+                (data.history || []).map((h, i) => React.createElement("div", { key: h.time || i, className: "border border-slate-100 rounded-2xl p-3 bg-slate-50" },
+                    React.createElement("div", { className: "flex justify-between gap-2" },
+                        React.createElement("div", null,
+                            React.createElement("div", { className: "font-black text-slate-900" }, h.signal),
+                            React.createElement("div", { className: "text-[11px] text-slate-400 font-bold" },
+                                h.timeText,
+                                "\uFF5C\u884C\u60C5\u65E5 ",
+                                h.marketDate || '-')),
+                        React.createElement("div", { className: "font-mono font-black text-slate-900" }, h.totalDisplay)),
+                    React.createElement("div", { className: "mt-2 flex flex-wrap gap-2" },
+                        React.createElement(Pill, { tone: "blue" }, h.allocation),
+                        React.createElement(Pill, null,
+                            "SPY $",
+                            money(h.spy, 2)),
+                        React.createElement(Pill, null,
+                            "QQQ $",
+                            money(h.qqq, 2))),
+                    h.notes && React.createElement("div", { className: "mt-2 text-xs text-slate-500 font-bold leading-relaxed" }, h.notes))))));
+    const Sync = () => React.createElement("main", { className: "max-w-5xl mx-auto px-4 pt-4 content-bottom-space" },
+        React.createElement(Card, { className: "p-4" },
+            React.createElement(SectionTitle, { title: "\u540C\u6B65\u8A2D\u5B9A", desc: "Firebase \u4F7F\u7528\u4F60\u63D0\u4F9B\u7684 qldmax \u5C08\u6848\uFF0C\u8CC7\u6599\u8DEF\u5F91\u6CBF\u7528\u76EE\u524D\u9019\u5957\u7B56\u7565\u5100\u8868\u677F\u3002" }),
+            React.createElement("div", { className: "bg-slate-950 text-white rounded-3xl p-4 mb-4" },
+                React.createElement("div", { className: "text-[10px] font-black text-slate-300" }, "Firebase \u72C0\u614B"),
+                React.createElement("div", { className: "font-black mt-1" }, syncText),
+                React.createElement("div", { className: "text-xs text-slate-400 mt-2 break-all" }, "projectId: qldmax\uFF5Cdoc: strategyDashboards / tqqq-spy200-auto-main")),
+            React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" },
+                React.createElement("button", { onClick: manualSave, className: "py-3 rounded-2xl bg-brand-600 text-white font-black active:scale-95" }, "\u624B\u52D5\u540C\u6B65"),
+                React.createElement("button", { onClick: loginGoogle, className: "py-3 rounded-2xl bg-slate-900 text-white font-black active:scale-95" }, "Google \u767B\u5165"),
+                React.createElement("button", { onClick: logout, className: "py-3 rounded-2xl bg-slate-100 text-slate-700 font-black active:scale-95" }, "\u5207\u56DE\u533F\u540D"))));
+    const BottomNav = () => React.createElement("nav", { className: "fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 safe-bottom" },
+        React.createElement("div", { className: "max-w-5xl mx-auto grid grid-cols-4 gap-1 px-3 pt-2" }, [['home', '首頁'], ['inputs', '輸入'], ['logs', '紀錄'], ['sync', '同步']].map(([id, label]) => React.createElement("button", { key: id, onClick: () => setPage(id), className: `py-3 rounded-2xl text-xs font-black active:scale-95 ${page === id ? 'bg-slate-900 text-white' : 'text-slate-500'}` }, label))));
+    return React.createElement("div", null,
+        React.createElement(Header, null),
+        page === 'home' && React.createElement(Home, null),
+        page === 'inputs' && React.createElement(Inputs, null),
+        page === 'logs' && React.createElement(Logs, null),
+        page === 'sync' && React.createElement(Sync, null),
+        React.createElement(BottomNav, null),
+        toast && React.createElement("div", { className: "fixed left-1/2 -translate-x-1/2 bottom-28 z-50 bg-slate-900 text-white rounded-2xl px-4 py-3 text-sm font-black shadow-2xl" }, toast));
+};
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App, null));
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-  </script>
+</script>
 </body>
 </html>
