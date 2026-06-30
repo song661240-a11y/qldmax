@@ -1,1134 +1,343 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Alpha Horizon V11.6</title>
-    
-    <!-- 1. Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        if (typeof tailwind !== 'undefined') {
-            tailwind.config = { 
-                theme: { 
-                    extend: { 
-                        colors: { 
-                            slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 400: '#94a3b8', 500: '#64748b', 600: '#475569', 700: '#334155', 800: '#1e293b', 900: '#0f172a' },
-                            brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 900: '#1e3a8a' },
-                        },
-                        boxShadow: {
-                            'heavy': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                            'inner-strong': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)'
-                        }
-                    } 
-                } 
-            }
-        }
-    </script>
-
-    <!-- 2. React Libraries -->
-    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
-    <script src="https://unpkg.com/recharts@2.10.0/umd/Recharts.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- 3. Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap');
-        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #cbd5e1; color: #1e293b; }
-        .font-mono { font-family: 'JetBrains Mono', monospace; }
-        input, select, textarea { font-size: 14px !important; line-height: 1.4 !important; padding: 8px 4px !important; width: 100%; background: transparent; border: none; outline: none; text-align: center; }
-        input[type=number] { -moz-appearance: textfield; }
-        .loading-overlay { position: fixed; inset: 0; background: rgba(203, 213, 225, 0.95); backdrop-filter: blur(4px); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; gap: 1rem; }
-        .section-header { background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 1rem; border-top-left-radius: 1.5rem; border-top-right-radius: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-        .section-body { padding: 1.25rem; background: white; border-bottom-left-radius: 1.5rem; border-bottom-right-radius: 1.5rem; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="color-scheme" content="light only" />
+  <title>TQQQ SPY 200SMA Signal Dashboard</title>
+  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f172a'/><path d='M25 70 L45 48 L57 58 L76 28' stroke='%233b82f6' stroke-width='10' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='76' cy='28' r='7' fill='%233b82f6'/></svg>" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        colors: { brand:{50:'#eff6ff',100:'#dbeafe',500:'#3b82f6',600:'#2563eb',700:'#1d4ed8',900:'#1e3a8a'}, fin:{up:'#10b981',down:'#ef4444',warn:'#f59e0b',purple:'#8b5cf6',dark:'#0f172a'} },
+        boxShadow:{ soft:'0 12px 30px rgba(15,23,42,.08)' }
+      }}
+    };
+  </script>
+  <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&display=swap');
+    html { color-scheme: light; background:#f1f5f9; }
+    body { font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:#f1f5f9; color:#0f172a; -webkit-tap-highlight-color: transparent; }
+    .font-mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
+    input, textarea, select { outline:none; }
+    input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+    input[type=number] { -moz-appearance:textfield; }
+    ::-webkit-scrollbar { width:0; height:0; }
+    .safe-bottom { padding-bottom:max(1rem, env(safe-area-inset-bottom)); }
+    .content-bottom-space { padding-bottom:calc(8.5rem + env(safe-area-inset-bottom)); }
+    @media (prefers-color-scheme: dark) { html, body { background:#f1f5f9 !important; color:#0f172a !important; } }
+  </style>
 </head>
-<body class="text-left font-bold text-slate-800">
-    <div id="root"></div>
-    <script type="text/babel">
-        const { useState, useEffect, useMemo, useCallback, memo, useRef } = React;
-        const { ComposedChart, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
+<body>
+  <div id="root"></div>
 
-        const FINNHUB_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
-        const firebaseConfig = { apiKey: "AIzaSyBpax3wlTwHTe6G3niZajtTxpoUWbgvX80", authDomain: "qldmax.firebaseapp.com", projectId: "qldmax", storageBucket: "qldmax.firebasestorage.app", messagingSenderId: "752199866954", appId: "1:752199866954:web:50d17ae522095c363d64b3" };
-        const APP_ID = "qqq-strategic-production-v1";
-        
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore(); const auth = firebase.auth();
+  <script type="text/babel">
+    const { useCallback, useEffect, useMemo, useRef, useState } = React;
 
-        const sanitizeForFirestore = (data) => JSON.parse(JSON.stringify(data, (k, v) => v === undefined ? null : v));
-        const getNum = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
-        const getQty = (val, price) => (price > 0 ? Math.abs(val / price) : 0);
+    const firebaseConfig = {
+      apiKey: "AIzaSyBpax3wlTwHTe6G3niZajtTxpoUWbgvX80",
+      authDomain: "qldmax.firebaseapp.com",
+      projectId: "qldmax",
+      storageBucket: "qldmax.firebasestorage.app",
+      messagingSenderId: "752199866954",
+      appId: "1:752199866954:web:50d17ae522095c363d64b3"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const APP_ID = "tqqq-spy200-strategy";
+    const DOC_PATH = ["strategyDashboards", "tqqq-spy200-auto-main"];
+    const LOCAL_KEY = "tqqqSpy200AutoDash";
 
-        const Icon = memo(({ name, size = 20, className = "" }) => {
-            const icons = { 
-                TrendingUp: <path d="m22 7-8.5 8.5-5-5L2 17M22 7h-6M22 7v6"/>, 
-                TrendingDown: <path d="m22 17-8.5-8.5-5 5L2 7M22 17h-6M22 17v-6"/>,
-                Settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2a2 2 0 0 1-2 2a2 2 0 0 1 2-2a2 2 0 0 1 2-2a2 2 0 0 0-2-2zM9 12a3 3 0 1 1 6 0a3 3 0 0 1-6 0z"/>, 
-                RefreshCcw: <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 4a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16m-18-8h5V3m13 18h-5v5"/>, 
-                LayoutDashboard: <g><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></g>, 
-                Save: <g><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></g>, 
-                Quote: <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5zM16 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-2c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5zM16 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-2c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1 0 2.5 0 2-2 4-.5.5-.5 1 0 1.5z"/>, 
-                ShieldAlert: <g><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></g>, 
-                CheckCircle: <g><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></g>, 
-                Edit2: <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>, 
-                Trash2: <g><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></g>, 
-                X: <g><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></g>, 
-                BookOpen: <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>, 
-                PieChartIcon: <g><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></g>,
-                Lock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></g>, 
-                Unlock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" /></g>, 
-                ChevronDown: <path d="m6 9 6 6 6-6"/>, 
-                ChevronUp: <path d="m18 15-6-6-6 6"/>, 
-                Activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>, 
-                Plus: <path d="M12 5v14M5 12h14"/>, 
-                Zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>, 
-                List: <g><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></g>,
-                Sliders: <g><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="1" x2="7" y1="14" y2="14"/><line x1="9" x2="15" y1="8" y2="8"/><line x1="17" x2="23" y1="16" y2="16"/></g>,
-                Fingerprint: <g><path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10"/><path d="M12 12v3"/><path d="M16 17.5c-2.5 1.5-5.5 1.5-8 0"/></g>,
-                History: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0 0V3m0 5h5M12 7v5l4 2"/>,
-                Calculator: <g><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></g>
-            };
-            return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name] || <circle cx="12" cy="12" r="10" />}</svg>;
+    const todayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+    const getNum = v => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
+    const money = (v, digits=0) => (Number(v)||0).toLocaleString("en-US", { maximumFractionDigits:digits, minimumFractionDigits:digits });
+    const pct = (v, digits=2) => Number.isFinite(v) ? `${(v*100).toFixed(digits)}%` : "-";
+    const pctNum = (v, digits=1) => `${(Number(v)||0).toFixed(digits)}%`;
+    const round2 = v => Math.round((Number(v)||0)*100)/100;
+    const sanitize = data => JSON.parse(JSON.stringify(data, (k,v) => v === undefined ? null : v));
+
+    const DEFAULT = {
+      spy:"", spySma:"", qqq:"", qqqSma:"", tqqq:"", sgov:"", marketDate:"",
+      entryBuffer:4, exitBuffer:3, hot1:30, hot2:40, cooldown:25,
+      dcaMonth:0, dcaPoolUsd:0, currentState:"auto", notes:"",
+      sharesTqqq:0, sharesQqq:0, sharesSpy:0, sharesSgov:0, cashUsd:0, otherUsd:0, usdtwd:32, currency:"USD", assetHighUsd:0, lastExecutedAt:"", lastExecutionSummary:"",
+      history:[]
+    };
+    const STRATEGY_TEXT = `SPY 200SMA +4/-3 改良版\n\n1. Risk-On：SPY 收盤價 > SPY 200SMA × 1.04，允許 100% TQQQ。\n2. Risk-Off：SPY 收盤價 < SPY 200SMA × 0.97，賣出 TQQQ，接著分 6 個月 DCA 進 QQQ。\n3. 中間區：SPY 位於 +4% 到 -3% 之間，不做新動作，維持原部位。\n4. QQQ 過熱一階：QQQ > QQQ 200SMA +30%，降為 50% TQQQ / 50% QQQ。\n5. QQQ 過熱二階：QQQ > QQQ 200SMA +40%，降為 100% QQQ。\n6. 過熱解除：QQQ 回落到 200SMA +25% 以下，且 SPY 仍 Risk-On，才恢復 TQQQ。\n7. 紀律：訊號以收盤資料判斷，不因新聞、情緒或帳面損益改變規則。`;
+
+    const Card = ({children, className=""}) => <div className={`bg-white rounded-3xl border border-slate-200 shadow-soft ${className}`}>{children}</div>;
+    const Pill = ({children, tone="slate"}) => {
+      const cls = {slate:"bg-slate-100 text-slate-700 border-slate-200", blue:"bg-brand-50 text-brand-700 border-brand-100", green:"bg-emerald-50 text-emerald-700 border-emerald-100", red:"bg-red-50 text-red-700 border-red-100", amber:"bg-amber-50 text-amber-700 border-amber-100", purple:"bg-purple-700 text-white border-purple-700", dark:"bg-slate-900 text-white border-slate-800"}[tone];
+      return <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-[11px] font-black ${cls}`}>{children}</span>;
+    };
+    const NumInput = ({label, value, onChange, suffix="", hint=""}) => (
+      <label className="block bg-slate-50 border border-slate-200 rounded-2xl p-3 focus-within:ring-2 focus-within:ring-brand-100 focus-within:border-brand-400">
+        <div className="text-[10px] font-black text-slate-500 mb-1">{label}</div>
+        <div className="flex items-center gap-2">
+          <input type="number" inputMode="decimal" value={value ?? ""} onChange={e=>onChange(e.target.value)} className="w-full bg-transparent text-center font-mono font-black text-lg text-slate-900 min-h-[44px]" style={{fontSize:"16px"}} />
+          {suffix && <span className="text-xs font-black text-slate-400">{suffix}</span>}
+        </div>
+        {hint && <div className="text-[10px] text-slate-400 mt-1 leading-relaxed">{hint}</div>}
+      </label>
+    );
+    const SectionTitle = ({title, desc, right}) => <div className="flex items-end justify-between gap-3 mb-3"><div><h2 className="font-black text-slate-900">{title}</h2>{desc && <p className="text-xs text-slate-500 mt-1 leading-relaxed">{desc}</p>}</div>{right}</div>;
+
+    async function fetchCsv(url){ const r = await fetch(url, {cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status); return await r.text(); }
+    function parseDailyCsv(csv){ return csv.trim().split(/\r?\n/).slice(1).map(l=>{ const [Date,Open,High,Low,Close] = l.split(','); return {Date, Close:parseFloat(Close)}; }).filter(x=>x.Date && Number.isFinite(x.Close)); }
+    function sma(rows,n){ if(rows.length<n) return NaN; return rows.slice(-n).reduce((s,x)=>s+x.Close,0)/n; }
+    async function fetchSymbol(symbol){ const csv = await fetchCsv(`https://stooq.com/q/d/l/?s=${symbol.toLowerCase()}.us&i=d`); const rows = parseDailyCsv(csv); if(!rows.length) throw new Error(symbol+" 無資料"); return {symbol, date:rows.at(-1).Date, close:rows.at(-1).Close, sma200:sma(rows,200)}; }
+
+    const App = () => {
+      const [data, setData] = useState(() => { try { return {...DEFAULT, ...(JSON.parse(localStorage.getItem(LOCAL_KEY) || "{}"))}; } catch(e){ return DEFAULT; } });
+      const [user, setUser] = useState(null);
+      const [page, setPage] = useState("home");
+      const [toast, setToast] = useState("");
+      const [syncText, setSyncText] = useState("準備中");
+      const [loadingPrice, setLoadingPrice] = useState(false);
+      const saveTimer = useRef(null);
+      const ignoreCloud = useRef(false);
+      const showToast = useCallback(txt => { setToast(txt); setTimeout(()=>setToast(""),2600); }, []);
+      const patch = useCallback((key, value) => setData(prev => ({...prev, [key]:value})), []);
+      const merge = useCallback(obj => setData(prev => ({...prev, ...obj})), []);
+      const docRef = useCallback(() => db.collection(DOC_PATH[0]).doc(DOC_PATH[1]), []);
+
+      useEffect(() => {
+        const unsub = auth.onAuthStateChanged(async usr => {
+          if (usr) setUser(usr);
+          else { try { await auth.signInAnonymously(); } catch(e){ setSyncText("匿名登入失敗"); } }
         });
+        return () => unsub();
+      }, []);
 
-        const CollapsibleCard = ({ title, icon, isOpen, onToggle, children, rightElement, className = "" }) => (
-            <div className={`bg-white rounded-[1.5rem] shadow-heavy border border-slate-300 transition-all overflow-hidden ${className}`}>
-                <div className="p-4 flex justify-between items-center cursor-pointer bg-slate-50 border-b border-slate-100" onClick={onToggle}>
-                    <div className="flex gap-2 items-center text-xs font-black text-slate-600 uppercase tracking-widest">
-                        <Icon name={icon} size={16} /> {title}
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {rightElement}
-                        <Icon name={isOpen ? "ChevronUp" : "ChevronDown"} size={16} className="text-slate-400" />
-                    </div>
-                </div>
-                {isOpen && <div className="p-5 animate-in fade-in slide-in-from-top-2 duration-200">{children}</div>}
-            </div>
-        );
+      useEffect(() => {
+        if(!user) return;
+        const unsub = docRef().onSnapshot(snap => {
+          if(ignoreCloud.current) return;
+          if(snap.exists){ const cloud = snap.data(); setData(prev => ({...DEFAULT, ...prev, ...cloud, history:Array.isArray(cloud.history)?cloud.history:[]})); setSyncText("已讀取雲端資料"); }
+          else setSyncText("雲端尚無資料");
+        }, err => setSyncText("雲端讀取失敗：" + err.message));
+        return () => unsub();
+      }, [user]);
 
-        const SectionHeader = ({ title, iconName, onClick, isOpen, rightElement }) => (
-            <div className={`section-header ${onClick ? 'cursor-pointer' : ''}`} onClick={onClick}>
-                 <div className="flex gap-2 text-xs font-black text-slate-600 items-center uppercase tracking-widest"><Icon name={iconName} size={16} /> {title}</div>
-                 <div className="flex items-center gap-2">{rightElement}{onClick && <Icon name={isOpen ? "ChevronUp" : "ChevronDown"} size={16} className="text-slate-500" />}</div>
-            </div>
-        );
+      useEffect(() => {
+        localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
+        if(!user) return;
+        clearTimeout(saveTimer.current);
+        saveTimer.current = setTimeout(async()=>{
+          try { ignoreCloud.current = true; await docRef().set(sanitize({...data, updatedAtText:new Date().toLocaleString("zh-TW"), updatedAt:firebase.firestore.FieldValue.serverTimestamp()}), {merge:true}); setSyncText("已同步 " + new Date().toLocaleTimeString("zh-TW", {hour:"2-digit", minute:"2-digit"})); setTimeout(()=>ignoreCloud.current=false,500); }
+          catch(e){ ignoreCloud.current=false; setSyncText("同步失敗：" + e.message); }
+        }, 1000);
+        return () => clearTimeout(saveTimer.current);
+      }, [data, user]);
 
-        const Card = ({ children, className = "", onClick, noPadding = false }) => (
-            <div onClick={onClick} className={`rounded-[1.5rem] shadow-heavy border border-slate-300 transition-all bg-white ${noPadding ? '' : 'p-5'} ${className} ${onClick ? 'cursor-pointer hover:scale-[1.01]' : ''}`}>
-                {children}
-            </div>
-        );
+      const manualSave = async () => { try { await docRef().set(sanitize({...data, updatedAtText:new Date().toLocaleString("zh-TW"), updatedAt:firebase.firestore.FieldValue.serverTimestamp()}), {merge:true}); showToast("已手動同步"); } catch(e){ showToast("同步失敗"); } };
+      const loginGoogle = async () => { try { const provider = new firebase.auth.GoogleAuthProvider(); if(auth.currentUser?.isAnonymous){ try { await auth.currentUser.linkWithPopup(provider); } catch(e){ if(e.code === "auth/credential-already-in-use") await auth.signInWithPopup(provider); else throw e; } } else await auth.signInWithPopup(provider); showToast("Google 同步已啟用"); } catch(e){ showToast(e.message || "登入失敗"); } };
+      const logout = async () => { await auth.signOut(); await auth.signInAnonymously(); showToast("已切回匿名同步"); };
 
-        const Modal = ({ isOpen, onClose, title, icon, children, footer }) => {
-            if (!isOpen) return null;
-            return (
-                <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center animate-in fade-in duration-200">
-                    <div className="w-full max-w-sm bg-white rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl animate-in slide-in-from-bottom-full duration-300 z-[110] max-h-[90vh] overflow-y-auto">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-black flex items-center gap-2 text-slate-800"><Icon name={icon} className="text-brand-600"/> {title}</h3>
-                            <button onClick={onClose} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200"><Icon name="X" size={20}/></button>
-                        </div>
-                        <div className="space-y-4">{children}</div>
-                        {footer && <div className="mt-6 flex gap-2">{footer}</div>}
-                    </div>
-                </div>
-            );
-        };
-
-        const SectionTitle = ({ title, iconName }) => (
-            <h2 className="text-[11px] font-black mb-3 flex items-center gap-2 uppercase tracking-widest text-slate-500">
-                <Icon name={iconName} size={14} /> {title}
-            </h2>
-        );
-
-        const CustomPieTooltip = ({ active, payload }) => {
-            if (active && payload && payload.length) {
-                return (
-                    <div className="bg-white border border-slate-300 p-3 rounded-xl shadow-xl text-xs font-black z-50">
-                        <p className="mb-1 text-slate-500">{payload[0].name}</p>
-                        <p className="text-lg text-slate-800">${payload[0].value.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
-                        <p className="text-brand-600">{(payload[0].payload.percent * 100).toFixed(1)}%</p>
-                    </div>
-                );
-            }
-            return null;
-        };
-        
-        const CustomGraphTooltip = ({ active, payload, label }) => {
-            if (active && payload && payload.length) {
-                return (
-                    <div className="bg-white border border-slate-300 p-3 rounded-xl shadow-xl text-xs font-black z-50">
-                        <p className="mb-1 text-slate-500">{new Date(label).toLocaleDateString()}</p>
-                        {payload.map((p, i) => (
-                            <p key={i} style={{ color: p.color || p.fill }}>
-                                {p.name}: {p.name.includes('%') ? '' : '$'}{p.value.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}{p.name.includes('%') || p.name.includes('dd') || p.name.includes('Drawdown') ? '%' : ''}
-                                {p.dataKey === 'dd' && p.payload.ddAmt ? ` (-$${Math.abs(Math.round(p.payload.ddAmt)).toLocaleString()})` : ''}
-                            </p>
-                        ))}
-                    </div>
-                );
-            }
-            return null;
-        };
-
-        const HoldingRow = memo(({ conf, inputs, prices, onChange, onBlur, isDynamic = false }) => {
-            let rawTicker = '';
-            if (isDynamic) rawTicker = conf.ticker;
-            else if (conf.tickerKey) rawTicker = inputs[conf.tickerKey];
-            else rawTicker = conf.ticker;
-            const ticker = (rawTicker || conf.defaultTicker || '').toUpperCase();
-            
-            const price = prices[ticker] || 0;
-            const currentQty = isDynamic ? conf.qty : inputs[conf.qtyKey];
-            
-            const handleTickerChange = (v) => isDynamic ? onChange(conf.id, 'ticker', v.toUpperCase()) : onChange(conf.tickerKey, v.toUpperCase());
-            const handleQtyChange = (v) => isDynamic ? onChange(conf.id, 'qty', v) : onChange(conf.qtyKey, v);
-            const handleBlur = (field, v) => isDynamic ? onBlur() : onBlur(field, v);
-
-            return (
-                <div className="grid grid-cols-12 gap-1 items-center bg-f1f5f9 rounded-xl border border-slate-300 overflow-hidden mb-1">
-                    <div className="col-span-4 flex flex-col justify-center px-3 py-2 border-r border-slate-300 bg-white h-full relative">
-                        {isDynamic || conf.tickerKey ? 
-                            <input type="text" value={ticker} onChange={e => handleTickerChange(e.target.value)} onBlur={() => handleBlur('ticker')} className={`w-full text-xs font-black bg-transparent p-0 outline-none text-left font-mono tracking-tight uppercase ${conf.color}`} placeholder="代號" /> :
-                            <span className={`text-xs font-black font-mono tracking-tight text-slate-800`}>{ticker}</span>
-                        }
-                        <span className={`text-[9px] font-mono text-slate-400 font-bold`}>${price.toFixed(2)}</span>
-                    </div>
-                    <div className="col-span-8 flex items-center px-2">
-                         <input type="number" placeholder="0" value={currentQty || ''} onChange={e => handleQtyChange(e.target.value)} onBlur={() => handleBlur('qty')} className="w-full bg-transparent font-black text-lg h-10 font-mono text-slate-800 text-right pr-2" />
-                         <span className="text-[10px] text-slate-400 font-bold">股</span>
-                    </div>
-                </div>
-            );
+      const metrics = useMemo(() => {
+        const spy=getNum(data.spy), spySma=getNum(data.spySma), qqq=getNum(data.qqq), qqqSma=getNum(data.qqqSma), tqqq=getNum(data.tqqq), sgov=getNum(data.sgov);
+        const entry=getNum(data.entryBuffer)/100, exit=getNum(data.exitBuffer)/100, hot1=getNum(data.hot1)/100, hot2=getNum(data.hot2)/100, cooldown=getNum(data.cooldown)/100;
+        const valid = spy>0 && spySma>0 && qqq>0 && qqqSma>0;
+        const spyDev = valid ? spy/spySma - 1 : NaN;
+        const qqqDev = valid ? qqq/qqqSma - 1 : NaN;
+        const entryPx = spySma*(1+entry), exitPx = spySma*(1-exit), qHot1=qqqSma*(1+hot1), qHot2=qqqSma*(1+hot2), qCool=qqqSma*(1+cooldown);
+        let signal="DATA", tone="slate", title="資料不足", instruction="請先自動抓股價或手動輸入 SPY / QQQ 與 200SMA。", alloc={TQQQ:null, QQQ:null, SGOV:null, label:"尚未判斷"};
+        if(valid){
+          signal="NEUTRAL"; tone="amber"; title="中間區：維持原狀"; instruction="SPY 位於 +4% 到 -3% 緩衝區，不做新動作，維持原本部位。"; alloc={label:"維持原狀"};
+          if(spy < exitPx){ signal="OFF"; tone="red"; title="Risk-Off：離開 TQQQ"; instruction=`SPY 已低於 200SMA -${data.exitBuffer}%。賣出 TQQQ；接著依 6 個月 DCA 計畫分批買 QQQ。`; alloc={TQQQ:0, QQQ:null, SGOV:null, label:"6 個月 DCA QQQ"}; }
+          else if(spy > entryPx){
+            const prevState = String(data.currentState || "").toUpperCase();
+            const keepHot2 = prevState === "HOT2" && qqq > qCool;
+            const keepHot1 = prevState === "HOT1" && qqq > qCool;
+            signal="ON"; tone="green"; title="Risk-On：100% TQQQ"; instruction=`SPY 已高於 200SMA +${data.entryBuffer}%，且 QQQ 未在過熱保護區。目標可持有 TQQQ。`; alloc={TQQQ:100, QQQ:0, SGOV:0, label:"100% TQQQ"};
+            if(qqq > qHot2 || keepHot2){ signal="HOT2"; tone="purple"; title="過熱二階：100% QQQ"; instruction=`QQQ 高於 200SMA +${data.hot2}% 後，未回落到 +${data.cooldown}% 以下前，TQQQ 全數切成 QQQ，避免泡沫末端滿槓桿。`; alloc={TQQQ:0, QQQ:100, SGOV:0, label:"100% QQQ"}; }
+            else if(qqq > qHot1 || keepHot1){ signal="HOT1"; tone="purple"; title="過熱一階：降半槓桿"; instruction=`QQQ 高於 200SMA +${data.hot1}% 後，未回落到 +${data.cooldown}% 以下前，TQQQ 降為一半，目標 50% TQQQ / 50% QQQ。`; alloc={TQQQ:50, QQQ:50, SGOV:0, label:"50% TQQQ / 50% QQQ"}; }
+          }
+        }
+        const rows = [
+          {name:"TQQQ", shares:getNum(data.sharesTqqq), price:tqqq},
+          {name:"QQQ", shares:getNum(data.sharesQqq), price:qqq},
+          {name:"SPY", shares:getNum(data.sharesSpy), price:spy},
+          {name:"SGOV", shares:getNum(data.sharesSgov), price:sgov},
+          {name:"現金", shares:1, price:getNum(data.cashUsd)},
+          {name:"其他資產", shares:1, price:getNum(data.otherUsd)}
+        ].map(r => ({...r, value:(getNum(r.shares)*getNum(r.price))}));
+        const totalUsd = rows.reduce((s,r)=>s+r.value,0);
+        rows.forEach(r => r.weight = totalUsd>0 ? r.value/totalUsd : 0);
+        const rate = getNum(data.usdtwd) || 1;
+        const totalDisplay = data.currency === "TWD" ? "NT$" + money(totalUsd*rate,0) : "$" + money(totalUsd,2);
+        const highFromHistory = Math.max(0, ...(Array.isArray(data.history)?data.history:[]).map(h=>getNum(h.totalUsd)));
+        const assetHighUsd = Math.max(getNum(data.assetHighUsd), highFromHistory, totalUsd);
+        const drawdown = assetHighUsd > 0 ? (totalUsd / assetHighUsd - 1) : 0;
+        const completedDca = Math.min(6, Math.max(0, parseInt(data.dcaMonth||0)));
+        const nextDcaMonth = Math.min(6, completedDca + 1);
+        const remainingDcaMonths = Math.max(1, 6 - completedDca);
+        const tqqqValue = rows.find(r=>r.name==='TQQQ')?.value || 0;
+        const qqqValue = rows.find(r=>r.name==='QQQ')?.value || 0;
+        const cashValue = getNum(data.cashUsd);
+        const initialDcaPool = getNum(data.dcaPoolUsd);
+        const dcaPool = signal === 'OFF' ? (initialDcaPool > 0 ? initialDcaPool : Math.max(0, cashValue + tqqqValue)) : 0;
+        const dcaBuyUsd = signal === 'OFF' && completedDca < 6 ? dcaPool / 6 : 0;
+        const dcaBuyShares = qqq > 0 ? dcaBuyUsd / qqq : 0;
+        const targetRows = ["TQQQ","QQQ","SGOV"].map(sym => {
+          const targetPct = alloc[sym];
+          const row = rows.find(r=>r.name===sym) || {value:0, shares:0, price:0};
+          let target = targetPct == null ? null : totalUsd * targetPct/100;
+          if(signal === 'OFF' && sym === 'TQQQ') target = 0;
+          if(signal === 'OFF' && sym === 'QQQ') target = qqqValue + dcaBuyUsd;
+          const targetShares = target == null || row.price <= 0 ? null : target / row.price;
+          const shareDiff = targetShares == null ? 0 : targetShares - row.shares;
+          return {sym, current:row.value, currentShares:row.shares, price:row.price, target, diff:target==null?0:target-row.value, targetPct, targetShares, shareDiff};
         });
-        
-        const SatSettingsRow = ({ item, onChange, onDelete, onBlur, showAdvanced }) => (
-             <div className="bg-f1f5f9 p-3 rounded-xl border border-slate-300 mb-2 relative transition-all">
-                <div className="flex justify-between items-center mb-2">
-                    <div className="flex gap-2 items-center">
-                        <label className="text-[9px] text-slate-500 font-bold">持倉</label>
-                        <input value={item.ticker} onChange={e=>onChange(item.id, 'ticker', e.target.value.toUpperCase())} onBlur={onBlur} className="font-black text-xs w-16 bg-transparent outline-none uppercase text-teal-600" placeholder="TSLL"/>
-                    </div>
-                    <button onClick={() => onDelete(item.id)} className="w-6 h-6 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center hover:bg-rose-200 border border-rose-200"><Icon name="X" size={12}/></button>
-                </div>
-                
-                <div className="mb-2 flex items-center gap-2">
-                    <label className="text-[9px] text-slate-500 font-bold">目標 %</label>
-                    <input type="number" value={item.target_pct} onChange={e=>onChange(item.id, 'target_pct', e.target.value)} onBlur={onBlur} className="bg-white p-1.5 rounded-lg text-center w-20 text-xs font-bold text-slate-800 shadow-sm border border-slate-300"/>
-                </div>
+        const actionLines = [];
+        if(!valid) actionLines.push('資料不足，先更新或手動輸入市場資料。');
+        else if(signal === 'NEUTRAL') actionLines.push('中間區不做新動作，只檢查持倉是否與你上次狀態一致。');
+        else if(signal === 'OFF'){
+          if(tqqqValue > 10) actionLines.push(`賣出 TQQQ 約 ${money(getNum(data.sharesTqqq),4)} 股，金額約 $${money(tqqqValue,0)}。`);
+          if(dcaBuyUsd > 10) actionLines.push(`本期 DCA 買入 QQQ 約 ${money(dcaBuyShares,4)} 股，金額約 $${money(dcaBuyUsd,0)}（第 ${nextDcaMonth}/6 期）。`);
+          if(completedDca >= 6) actionLines.push('6 個月 DCA 已完成；維持 QQQ，等 SPY 重新站上 +4%。');
+        } else {
+          targetRows.forEach(r => { if(r.target != null && Math.abs(r.diff) >= 10) actionLines.push(`${r.diff>0?'買入':'賣出'} ${r.sym} 約 ${money(Math.abs(r.shareDiff),4)} 股，金額約 $${money(Math.abs(r.diff),0)}。`); });
+          if(!actionLines.length) actionLines.push('目前部位與目標接近，不需要交易。');
+        }
+        return {valid, signal, tone, title, instruction, alloc, spyDev, qqqDev, entryPx, exitPx, qHot1, qHot2, qCool, rows, totalUsd, totalDisplay, targetRows, assetHighUsd, drawdown, completedDca, nextDcaMonth, remainingDcaMonths, dcaPool, dcaBuyUsd, dcaBuyShares, actionLines};
+      }, [data]);
 
-                {showAdvanced && (
-                    <div className="animate-in fade-in slide-in-from-top-1 duration-200 mt-2 pt-2 border-t border-slate-200">
-                        <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-slate-400 mb-1">
-                            <div className="col-span-1 text-center bg-slate-200 rounded">平時監控(絕對%)</div>
-                            <div className="col-span-1 text-center bg-blue-100 text-blue-600 rounded">季度再平衡(絕對%)</div>
-                        </div>
-                        <div className="grid grid-cols-4 gap-2">
-                            <div className="col-span-1"><input type="number" value={item.tol_up_d} onChange={e=>onChange(item.id, 'tol_up_d', e.target.value)} onBlur={onBlur} className="bg-white p-1 rounded-lg text-center w-full text-[10px] font-bold text-red-600 border border-slate-300" placeholder="上限%賣"/></div>
-                            <div className="col-span-1"><input type="number" value={item.tol_down_d} onChange={e=>onChange(item.id, 'tol_down_d', e.target.value)} onBlur={onBlur} className="bg-white p-1 rounded-lg text-center w-full text-[10px] font-bold text-emerald-600 border border-slate-300" placeholder="下限%買"/></div>
-                            <div className="col-span-1"><input type="number" value={item.tol_up_q} onChange={e=>onChange(item.id, 'tol_up_q', e.target.value)} onBlur={onBlur} className="bg-blue-50 p-1 rounded-lg text-center w-full text-[10px] font-bold text-blue-600 border border-blue-200" placeholder="季上限%"/></div>
-                            <div className="col-span-1"><input type="number" value={item.tol_down_q} onChange={e=>onChange(item.id, 'tol_down_q', e.target.value)} onBlur={onBlur} className="bg-blue-50 p-1 rounded-lg text-center w-full text-[10px] font-bold text-blue-600 border border-blue-200" placeholder="季下限%"/></div>
-                        </div>
-                    </div>
-                )}
+      const fetchPrices = async () => {
+        if(loadingPrice) return;
+        setLoadingPrice(true); showToast("正在抓取股價");
+        try {
+          const [spy, qqq, tqqq, sgov] = await Promise.all([fetchSymbol("SPY"), fetchSymbol("QQQ"), fetchSymbol("TQQQ"), fetchSymbol("SGOV")]);
+          merge({ spy:round2(spy.close), spySma:round2(spy.sma200), qqq:round2(qqq.close), qqqSma:round2(qqq.sma200), tqqq:round2(tqqq.close), sgov:round2(sgov.close), marketDate:spy.date });
+          showToast("股價已更新");
+        } catch(e){ showToast("自動抓價失敗，請手動輸入"); }
+        finally { setLoadingPrice(false); }
+      };
+
+      const buildLogItem = (kind='snapshot') => ({
+        time:new Date().toISOString(), timeText:new Date().toLocaleString("zh-TW"), marketDate:data.marketDate,
+        kind, signal:metrics.title, allocation:metrics.alloc.label, totalUsd:metrics.totalUsd, totalDisplay:metrics.totalDisplay,
+        spy:getNum(data.spy), qqq:getNum(data.qqq), tqqq:getNum(data.tqqq), spySma:getNum(data.spySma), qqqSma:getNum(data.qqqSma),
+        actions:metrics.actionLines, dcaMonth:metrics.completedDca, notes:data.notes
+      });
+      const addSnapshot = () => {
+        if(!metrics.valid){ showToast("資料不足，不能紀錄"); return; }
+        patch("history", [buildLogItem('snapshot'), ...(Array.isArray(data.history)?data.history:[])].slice(0,200));
+        showToast("已加入歷史紀錄");
+      };
+      const confirmExecution = () => {
+        if(!metrics.valid){ showToast("資料不足，不能確認執行"); return; }
+        const item = buildLogItem('execution');
+        const next = { history:[item, ...(Array.isArray(data.history)?data.history:[])].slice(0,200), assetHighUsd:Math.max(getNum(data.assetHighUsd), metrics.totalUsd), lastExecutedAt:new Date().toLocaleString("zh-TW"), lastExecutionSummary:metrics.actionLines.join(" "), currentState:metrics.signal };
+        if(metrics.signal === 'OFF') { next.dcaMonth = Math.min(6, metrics.completedDca + 1); if(getNum(data.dcaPoolUsd) <= 0) next.dcaPoolUsd = metrics.dcaPool; }
+        else { next.dcaMonth = 0; next.dcaPoolUsd = 0; }
+        merge(next);
+        showToast(metrics.signal === 'OFF' ? "已確認執行，DCA 月份已往前一格" : "已確認執行並寫入紀錄");
+      };
+      const resetAssetHigh = () => { if(confirm('把目前總資產設為新的高點？')) { patch('assetHighUsd', metrics.totalUsd); showToast('已重設資產高點'); } };
+
+      const Header = () => <div className="sticky top-0 z-30 bg-slate-100/85 backdrop-blur border-b border-slate-200"><div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3"><div><div className="text-[10px] font-black text-brand-600 tracking-widest">SPY 200SMA +4/-3</div><h1 className="text-lg font-black text-slate-900 leading-tight">TQQQ 策略訊號儀表板</h1></div><div className="flex items-center gap-2"><Pill tone={user?.isAnonymous ? "amber" : "green"}>{user?.isAnonymous ? "匿名同步" : "Google同步"}</Pill><button onClick={fetchPrices} disabled={loadingPrice} className="px-3 py-2 rounded-2xl bg-slate-900 text-white text-xs font-black active:scale-95 disabled:opacity-50">{loadingPrice ? "抓取中" : "更新股價"}</button></div></div></div>;
+
+      const Home = () => <main className="max-w-5xl mx-auto px-4 pt-4 content-bottom-space">
+        <Card className="p-5 bg-slate-950 text-white border-slate-900 overflow-hidden relative">
+          <div className="absolute -right-10 -top-10 w-40 h-40 bg-brand-500/20 rounded-full blur-2xl"></div>
+          <div className="relative flex items-start justify-between gap-3"><div><div className="text-xs font-black text-brand-200 mb-2">目前訊號</div><h2 className="text-2xl font-black leading-tight">{metrics.title}</h2><p className="text-sm text-slate-300 mt-2 leading-relaxed">{metrics.instruction}</p></div><Pill tone={metrics.tone}>{metrics.alloc.label}</Pill></div>
+          <div className="relative grid grid-cols-2 md:grid-cols-4 gap-2 mt-5">
+            <div className="bg-white/10 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-300">總資產</div><div className="font-mono text-lg font-black">{metrics.totalDisplay}</div></div>
+            <div className="bg-white/10 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-300">目前回撤</div><div className={`font-mono text-lg font-black ${metrics.drawdown < -0.1 ? "text-red-300" : "text-white"}`}>{pct(metrics.drawdown,1)}</div></div>
+            <div className="bg-white/10 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-300">SPY / 200SMA</div><div className="font-mono text-lg font-black">{pct(metrics.spyDev)}</div></div>
+            <div className="bg-white/10 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-300">QQQ / 200SMA</div><div className="font-mono text-lg font-black">{pct(metrics.qqqDev)}</div></div>
+          </div>
+        </Card>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <Card className="p-4"><SectionTitle title="今日交易清單" desc="依目前股價與規則產生，含目標股數；不含稅費與滑價。" right={<div className="flex gap-2"><button onClick={addSnapshot} className="px-3 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-black active:scale-95">記錄</button><button onClick={confirmExecution} className="px-3 py-2 rounded-xl bg-brand-600 text-white text-xs font-black active:scale-95">已執行</button></div>} />
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 mb-3"><div className="text-[10px] font-black text-slate-500 mb-1">執行摘要</div><div className="text-sm font-black text-slate-900 leading-relaxed">{metrics.instruction}</div>{metrics.signal==="OFF" && <div className="mt-2 text-xs font-bold text-red-600">DCA 進度：已完成 {metrics.completedDca}/6，本期第 {metrics.nextDcaMonth}/6；本期買 QQQ 約 ${money(metrics.dcaBuyUsd,0)}，約 {money(metrics.dcaBuyShares,4)} 股。</div>}{data.lastExecutedAt && <div className="mt-2 text-[11px] text-slate-400 font-bold">上次確認：{data.lastExecutedAt}</div>}</div>
+            <div className="space-y-2 mb-3">{metrics.actionLines.map((a,i)=><div key={i} className="flex gap-2 text-sm font-black leading-relaxed items-start"><span className="mt-0.5 shrink-0 w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[11px]">{i+1}</span><span className="text-slate-800">{a}</span></div>)}</div>
+            <div className="space-y-2">{metrics.targetRows.map(r => <div key={r.sym} className="flex items-center justify-between gap-3 py-2 border-b border-slate-100 last:border-0"><div><div className="font-black text-sm text-slate-800">{r.sym}</div><div className="text-[10px] font-bold text-slate-400">目前 {money(r.currentShares,4)} 股 / ${money(r.current,2)}{r.target!=null ? `｜目標 ${money(r.targetShares,4)} 股` : "｜中間區不指定目標"}</div></div><div className={`font-mono text-sm font-black text-right ${r.target==null || Math.abs(r.diff)<10 ? "text-slate-400" : r.diff>0 ? "text-red-600" : "text-emerald-600"}`}>{r.target==null || Math.abs(r.diff)<10 ? "不動" : `${r.diff>0 ? "買" : "賣"} ${money(Math.abs(r.shareDiff),4)} 股`}<div className="text-[10px] font-bold">{r.target==null ? "" : `$${money(Math.abs(r.diff),0)}`}</div></div></div>)}</div>
+          </Card>
+
+          <Card className="p-4"><SectionTitle title="關鍵價格線" desc="SPY 控制風險；QQQ 控制過熱降槓桿。" />
+            <div className="space-y-2 text-sm">
+              {[['SPY Risk-On 進場', metrics.entryPx, `200SMA +${data.entryBuffer}%`], ['SPY Risk-Off 出場', metrics.exitPx, `200SMA -${data.exitBuffer}%`], ['QQQ 過熱一階', metrics.qHot1, `200SMA +${data.hot1}%`], ['QQQ 過熱二階', metrics.qHot2, `200SMA +${data.hot2}%`], ['QQQ 過熱解除', metrics.qCool, `200SMA +${data.cooldown}%`]].map(x=><div key={x[0]} className="flex justify-between gap-3 bg-slate-50 rounded-2xl p-3"><div><div className="font-black text-slate-800">{x[0]}</div><div className="text-[10px] text-slate-400 font-bold">{x[2]}</div></div><div className="font-mono font-black text-slate-900">${Number.isFinite(x[1]) ? money(x[1],2) : '-'}</div></div>)}
             </div>
-        );
+          </Card>
+        </div>
 
-        // --- Main App Logic ---
-        const App = () => {
-            const [user, setUser] = useState(null);
-            const [view, setView] = useState('dashboard');
-            const [prices, setPrices] = useState({});
-            const [loadingPrices, setLoadingPrices] = useState(false);
-            const [isSaving, setIsSaving] = useState(false);
-            const [isSwitching, setIsSwitching] = useState(false);
-            const [message, setMessage] = useState(null);
-            const [customSyncId, setCustomSyncId] = useState(() => localStorage.getItem('qqq_sync_id') || '');
-            const [tempSyncId, setTempSyncId] = useState(customSyncId);
-            
-            const [isMottoLocked, setIsMottoLocked] = useState(true);
-            const [showAdvancedParams, setShowAdvancedParams] = useState(false);
-            const [sections, setSections] = useState(() => {
-                const defaults = { motto: true, defense: true, asset: true, rebalance: true, holdings: true, options: true };
-                try { return { ...defaults, ...JSON.parse(localStorage.getItem('qqq_dashboard_sections')) }; } catch(e) { return defaults; }
-            });
-            const toggleSection = (key) => setSections(p => { const n = {...p, [key]: !p[key]}; localStorage.setItem('qqq_dashboard_sections', JSON.stringify(n)); return n; });
+        <Card className="p-4 mt-4"><SectionTitle title="持股與總資產" desc="輸入股數或現金，系統會用最新價格計算市值。" right={<select value={data.currency} onChange={e=>patch('currency', e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black"><option>USD</option><option>TWD</option></select>} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <NumInput label="TQQQ 股數" value={data.sharesTqqq} onChange={v=>patch('sharesTqqq',v)} />
+            <NumInput label="QQQ 股數" value={data.sharesQqq} onChange={v=>patch('sharesQqq',v)} />
+            <NumInput label="SPY 股數" value={data.sharesSpy} onChange={v=>patch('sharesSpy',v)} />
+            <NumInput label="SGOV 股數" value={data.sharesSgov} onChange={v=>patch('sharesSgov',v)} />
+            <NumInput label="現金 USD" value={data.cashUsd} onChange={v=>patch('cashUsd',v)} />
+            <NumInput label="其他資產 USD" value={data.otherUsd} onChange={v=>patch('otherUsd',v)} />
+            <NumInput label="USD/TWD" value={data.usdtwd} onChange={v=>patch('usdtwd',v)} />
+            <NumInput label="DCA 月份" value={data.dcaMonth} onChange={v=>patch('dcaMonth',v)} suffix="/6" />
+            <NumInput label="DCA 原始資金池" value={data.dcaPoolUsd} onChange={v=>patch('dcaPoolUsd',v)} suffix="USD" hint="Risk-Off 第一次確認會自動記錄；必要時可手動修正。" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4"><div className="bg-slate-50 border border-slate-100 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-500">資產高點</div><div className="font-mono text-lg font-black text-slate-900">${money(metrics.assetHighUsd,2)}</div></div><div className="bg-slate-50 border border-slate-100 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-500">目前回撤</div><div className={`font-mono text-lg font-black ${metrics.drawdown < -0.1 ? "text-red-600" : "text-emerald-600"}`}>{pct(metrics.drawdown,1)}</div></div><button onClick={resetAssetHigh} className="rounded-2xl bg-slate-900 text-white font-black active:scale-95 py-3">以目前資產設高點</button></div><div className="overflow-x-auto rounded-2xl border border-slate-100"><table className="w-full min-w-[560px] text-xs"><thead className="bg-slate-50 text-slate-500"><tr><th className="p-2 text-left">項目</th><th className="p-2 text-right">股數/金額</th><th className="p-2 text-right">價格</th><th className="p-2 text-right">市值</th><th className="p-2 text-right">占比</th></tr></thead><tbody>{metrics.rows.map(r=><tr key={r.name} className="border-t border-slate-100"><td className="p-2 font-black">{r.name}</td><td className="p-2 text-right font-mono">{money(r.shares,4)}</td><td className="p-2 text-right font-mono">{r.name==='現金'||r.name==='其他資產' ? '-' : '$'+money(r.price,2)}</td><td className="p-2 text-right font-mono">${money(r.value,2)}</td><td className="p-2 text-right font-mono">{pct(r.weight,1)}</td></tr>)}</tbody></table></div>
+        </Card>
+      </main>;
 
-            const [expandedYears, setExpandedYears] = useState({});
-            const toggleYear = (y) => setExpandedYears(prev => ({...prev, [y]: !prev[y]}));
-            const [historyTab, setHistoryTab] = useState('nav'); 
+      const Inputs = () => <main className="max-w-5xl mx-auto px-4 pt-4 content-bottom-space">
+        <Card className="p-4"><SectionTitle title="市場資料" desc="可自動抓 Stooq 日線資料；若瀏覽器擋住，就手動輸入。" right={<button onClick={fetchPrices} className="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black">自動抓股價</button>} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            <NumInput label="SPY 收盤價" value={data.spy} onChange={v=>patch('spy',v)} />
+            <NumInput label="SPY 200SMA" value={data.spySma} onChange={v=>patch('spySma',v)} />
+            <NumInput label="QQQ 收盤價" value={data.qqq} onChange={v=>patch('qqq',v)} />
+            <NumInput label="QQQ 200SMA" value={data.qqqSma} onChange={v=>patch('qqqSma',v)} />
+            <NumInput label="TQQQ 價格" value={data.tqqq} onChange={v=>patch('tqqq',v)} />
+            <NumInput label="SGOV 價格" value={data.sgov} onChange={v=>patch('sgov',v)} />
+            <label className="block bg-slate-50 border border-slate-200 rounded-2xl p-3"><div className="text-[10px] font-black text-slate-500 mb-1">資料日期</div><input type="date" value={data.marketDate||""} onChange={e=>patch('marketDate',e.target.value)} className="w-full bg-transparent text-center font-mono font-black min-h-[44px]" /></label>
+          </div>
+        </Card>
+        <Card className="p-4 mt-4"><SectionTitle title="策略參數" desc="預設就是你指定的方案 A 改良版。" right={<button onClick={()=>merge({entryBuffer:4, exitBuffer:3, hot1:30, hot2:40, cooldown:25})} className="px-3 py-2 rounded-xl bg-brand-50 text-brand-700 text-xs font-black">恢復預設</button>} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+            <NumInput label="Risk-On 緩衝" value={data.entryBuffer} onChange={v=>patch('entryBuffer',v)} suffix="%" />
+            <NumInput label="Risk-Off 緩衝" value={data.exitBuffer} onChange={v=>patch('exitBuffer',v)} suffix="%" />
+            <NumInput label="過熱一階" value={data.hot1} onChange={v=>patch('hot1',v)} suffix="%" />
+            <NumInput label="過熱二階" value={data.hot2} onChange={v=>patch('hot2',v)} suffix="%" />
+            <NumInput label="過熱解除" value={data.cooldown} onChange={v=>patch('cooldown',v)} suffix="%" />
+          </div>
+        </Card>
+        <Card className="p-4 mt-4"><SectionTitle title="策略文字" desc="方便你自己檢查規則是否走樣。" /><pre className="whitespace-pre-wrap text-xs leading-relaxed bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-600 font-bold">{STRATEGY_TEXT}</pre></Card>
+      </main>;
 
-            const [modal, setModal] = useState({ type: null, data: null }); 
-            const [records, setRecords] = useState([]);
-            const [simulatedTotal, setSimulatedTotal] = useState(''); 
-            
-            const [recordDate, setRecordDate] = useState(() => { 
-                const d = new Date(); 
-                return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0]; 
-            });
+      const Logs = () => <main className="max-w-5xl mx-auto px-4 pt-4 content-bottom-space">
+        <Card className="p-4"><SectionTitle title="歷史紀錄" desc="每次按首頁的記錄，就會保存當下訊號、總資產與備註。" right={<div className="flex gap-2"><button onClick={addSnapshot} className="px-3 py-2 rounded-xl bg-brand-600 text-white text-xs font-black">新增</button><button onClick={()=>{ if(confirm('確定清空歷史紀錄？')) patch('history', []); }} className="px-3 py-2 rounded-xl bg-red-50 text-red-700 text-xs font-black">清空</button></div>} />
+          <textarea value={data.notes||""} onChange={e=>patch('notes', e.target.value)} placeholder="備註：例如今天為何執行、券商下單狀況、心理狀態..." className="w-full min-h-[86px] rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold mb-4" />
+          <div className="space-y-3">{(Array.isArray(data.history)?data.history:[]).length===0 && <div className="text-sm text-slate-400 font-bold text-center py-8">尚無紀錄</div>}{(data.history||[]).map((h,i)=><div key={h.time||i} className="border border-slate-100 rounded-2xl p-3 bg-slate-50"><div className="flex justify-between gap-2"><div><div className="font-black text-slate-900">{h.signal}</div><div className="text-[11px] text-slate-400 font-bold">{h.timeText}｜行情日 {h.marketDate || '-'}</div></div><div className="font-mono font-black text-slate-900">{h.totalDisplay}</div></div><div className="mt-2 flex flex-wrap gap-2"><Pill tone="blue">{h.allocation}</Pill><Pill>SPY ${money(h.spy,2)}</Pill><Pill>QQQ ${money(h.qqq,2)}</Pill></div>{h.notes && <div className="mt-2 text-xs text-slate-500 font-bold leading-relaxed">{h.notes}</div>}</div>)}</div>
+        </Card>
+      </main>;
 
-            const [inputs, setInputs] = useState({
-                motto: '', current_rsi: '', qqq_ath: 0, option_history: [], qqq_sma200: 0, voo_sma200: 0,
-                ticker_core_1: 'VOO', qty_core_1: 0, target_core_1: 35,
-                ticker_core_2: 'TQQQ', qty_core_2: 0, target_core_2: 35, 
-                tol_up_core_2_d: '', tol_down_core_2_d: '',
-                tol_up_core_2_q: '', tol_down_core_2_q: '',
-                cash_balance: 0, satellites: [], options_inventory: [],
-            });
+      const Sync = () => <main className="max-w-5xl mx-auto px-4 pt-4 content-bottom-space">
+        <Card className="p-4"><SectionTitle title="同步設定" desc="Firebase 使用你提供的 qldmax 專案，資料路徑沿用目前這套策略儀表板。" />
+          <div className="bg-slate-950 text-white rounded-3xl p-4 mb-4"><div className="text-[10px] font-black text-slate-300">Firebase 狀態</div><div className="font-black mt-1">{syncText}</div><div className="text-xs text-slate-400 mt-2 break-all">projectId: qldmax｜doc: strategyDashboards / tqqq-spy200-auto-main</div></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <button onClick={manualSave} className="py-3 rounded-2xl bg-brand-600 text-white font-black active:scale-95">手動同步</button>
+            <button onClick={loginGoogle} className="py-3 rounded-2xl bg-slate-900 text-white font-black active:scale-95">Google 登入</button>
+            <button onClick={logout} className="py-3 rounded-2xl bg-slate-100 text-slate-700 font-black active:scale-95">切回匿名</button>
+          </div>
+        </Card>
+      </main>;
 
-            // 解決衛星參數 blur 時 closure state 陳舊的問題
-            const inputsRef = useRef(inputs);
-            useEffect(() => { inputsRef.current = inputs; }, [inputs]);
+      const BottomNav = () => <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 safe-bottom"><div className="max-w-5xl mx-auto grid grid-cols-4 gap-1 px-3 pt-2">{[['home','首頁'],['inputs','輸入'],['logs','紀錄'],['sync','同步']].map(([id,label])=><button key={id} onClick={()=>setPage(id)} className={`py-3 rounded-2xl text-xs font-black active:scale-95 ${page===id?'bg-slate-900 text-white':'text-slate-500'}`}>{label}</button>)}</div></nav>;
 
-            const effectiveUserId = customSyncId || (user ? user.uid : null);
-            
-            useEffect(() => { 
-                const init = async () => { await auth.signInAnonymously(); }; 
-                init().catch(console.error); 
-                return auth.onAuthStateChanged(setUser); 
-            }, []);
-            
-            useEffect(() => { 
-                if (!user) return;
-                setRecords([]); 
-                setInputs(prev => ({ ...prev, satellites: [], option_history: [], options_inventory: [] })); 
-                setIsSwitching(true);
-                
-                const uid = customSyncId || user.uid;
-                const uRecs = db.collection('artifacts').doc(APP_ID).collection('users').doc(uid).collection('trading_records').onSnapshot(s => setRecords(s.docs.map(d => ({id:d.id,...d.data()})))); 
-                const uConf = db.collection('artifacts').doc(APP_ID).collection('users').doc(uid).collection('config').doc('current').onSnapshot(s => { 
-                    if (s.exists) { 
-                        const d = s.data(); 
-                        if(!d.satellites) d.satellites = [];
-                        if(!d.options_inventory) d.options_inventory = [];
-                        if(!d.ticker_core_1) d.ticker_core_1 = 'VOO';
-                        if(!d.ticker_core_2) d.ticker_core_2 = 'TQQQ';
-                        if (d.qty_qqq !== undefined && d.qty_core_2 === undefined) d.qty_core_2 = d.qty_qqq; 
-                        if (d.qty_voo !== undefined && d.qty_core_1 === undefined) d.qty_core_1 = d.qty_voo; 
-                        setInputs(p => ({...p, ...d})); 
-                    }
-                    setIsSwitching(false); 
-                }); 
-                fetchPrices(true);
-                return () => { uRecs(); uConf(); };
-            }, [user, customSyncId]);
+      return <div><Header />{page==='home' && <Home />}{page==='inputs' && <Inputs />}{page==='logs' && <Logs />}{page==='sync' && <Sync />}<BottomNav />{toast && <div className="fixed left-1/2 -translate-x-1/2 bottom-28 z-50 bg-slate-900 text-white rounded-2xl px-4 py-3 text-sm font-black shadow-2xl">{toast}</div>}</div>;
+    };
 
-            useEffect(() => {
-                if (inputs.ticker_core_1 && inputs.ticker_core_2) fetchPrices();
-            }, [inputs.ticker_core_1, inputs.ticker_core_2, inputs.satellites]);
-
-            const fetchPrices = useCallback(async (force = false) => { 
-                if (loadingPrices && !force) return; 
-                const syms = [...new Set([inputs.ticker_core_1, inputs.ticker_core_2, 'QQQ', 'VOO', 'SGOV', ...inputs.satellites.map(s=>s.ticker), ...inputs.satellites.map(s=>s.trackingTicker)].filter(Boolean).map(s=>s.trim().toUpperCase()))]; 
-                setLoadingPrices(true); 
-                try { 
-                    const res = await Promise.allSettled(syms.map(s => fetch(`https://finnhub.io/api/v1/quote?symbol=${s}&token=${FINNHUB_KEY}`).then(r => r.json()).then(d => ({s, p: d.c})))); 
-                    setPrices(p => ({...p, ...res.reduce((acc, curr) => (curr.status === 'fulfilled' && curr.value.p > 0 ? {...acc, [curr.value.s]: curr.value.p} : acc), {})})); 
-                } catch(e) { console.error(e); } finally { setLoadingPrices(false); } 
-            }, [inputs.ticker_core_1, inputs.ticker_core_2, inputs.satellites, loadingPrices]);
-
-            const showToast = (txt) => { setMessage(txt); setTimeout(() => setMessage(null), 3000); };
-            const handleInputChange = (f, v) => setInputs(p => ({ ...p, [f]: v }));
-            const syncToCloud = async (f, v) => { if (user) { const safeV = sanitizeForFirestore(v); await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set({ [f]: safeV }, { merge: true }); } };
-            
-            const addSatellite = () => { const newSat = { id: Date.now().toString(), ticker: '', qty: 0, target_pct: 5, tol_up_d: '', tol_down_d: '', tol_up_q: '', tol_down_q: '' }; const newSats = [...(inputs.satellites || []), newSat]; setInputs(p => ({ ...p, satellites: newSats })); syncToCloud('satellites', newSats); };
-            const updateSatellite = (id, field, value) => { 
-                setInputs(p => {
-                    const newSats = p.satellites.map(s => s.id === id ? { ...s, [field]: value } : s);
-                    return { ...p, satellites: newSats };
-                });
-            };
-            // 透過 useRef 抓最新的 inputs 來存檔，解決舊版 closure bug
-            const saveSatellites = () => syncToCloud('satellites', inputsRef.current.satellites);
-            
-            const deleteSatellite = (id) => { const newSats = inputs.satellites.filter(s => s.id !== id); setInputs(p => ({ ...p, satellites: newSats })); syncToCloud('satellites', newSats); };
-
-            const toggleCashSign = () => { setInputs(prev => { const currentVal = prev.cash_balance; const numVal = parseFloat(currentVal); if (!isNaN(numVal)) { const newVal = numVal * -1; syncToCloud('cash_balance', newVal); return { ...prev, cash_balance: newVal }; } return prev; }); };
-
-            const save = async () => { 
-                if (!user || isSaving) return; 
-                setIsSaving(true); 
-                try { 
-                    const cleanInputs = sanitizeForFirestore(inputs); 
-                    const payload = { 
-                        date: new Date(recordDate).toISOString(), 
-                        total_equity: metrics.totalCapital || 0, 
-                        prices: sanitizeForFirestore(prices), 
-                        inputs: cleanInputs, 
-                        memo: cleanInputs.record_memo || '' 
-                    }; 
-                    await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').add(payload); 
-                    await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('config').doc('current').set(cleanInputs, { merge: true }); 
-                    showToast("儲存成功"); 
-                } catch(e) { showToast(`失敗: ${e.message}`); } 
-                setIsSaving(false); 
-            };
-            
-            const updateRecord = async () => { 
-                if(!modal.data?.id) return; 
-                const updatedInputs = { ...modal.data.inputs, ...modal.temp?.inputs };
-                await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').doc(modal.data.id).update({ 
-                    total_equity: parseFloat(modal.temp?.equity) || modal.data.total_equity, 
-                    date: modal.temp?.date || modal.data.date,
-                    inputs: updatedInputs 
-                }); 
-                setModal({type:null}); showToast("更新成功"); 
-            };
-
-            const confirmDelete = async () => {
-                if (modal.data.type === 'RECORD') {
-                    await db.collection('artifacts').doc(APP_ID).collection('users').doc(effectiveUserId).collection('trading_records').doc(modal.data.id).delete();
-                    showToast("紀錄已刪除");
-                } else if (modal.data.type === 'OPTION_HISTORY') {
-                     const newHist = inputs.option_history.filter(h => h.id !== modal.data.id);
-                     setInputs(p => ({...p, option_history: newHist}));
-                     await syncToCloud('option_history', newHist);
-                     showToast("交易紀錄已刪除");
-                }
-                setModal({ type: null });
-            };
-
-            const handleOptionTrade = (type, data) => {
-                let newInv = [...(inputs.options_inventory||[])];
-                let newHist = [...(inputs.option_history||[])]; 
-                const now = new Date().toISOString(); 
-                
-                if (type === 'OPEN') {
-                    const p = parseFloat(data.newPremium)||0;
-                    const c = parseFloat(data.contracts)||1;
-                    const tickerName = data.ticker || 'TQQQ';
-                    const tradeType = data.type || 'SC';
-                    
-                    const pnlVal = parseFloat((p * c * 100).toFixed(2));
-                    newInv.push({ id: Date.now(), ticker: tickerName, type: tradeType, strike: data.newStrike, expiry: data.newExpiry, contracts: c, premium: p, delta: data.newDelta });
-                    newHist.unshift({ id: Date.now(), date: now, ticker: tickerName, type: 'OPEN', pnl: pnlVal });
-                } else if (type === 'CLOSE') {
-                    const opt = modal.data;
-                    const closePrice = parseFloat(data.closePrice)||0;
-                    const closeQty = parseFloat(data.closeContracts) ?? opt.contracts;
-                    
-                    const rawPnl = -closePrice * closeQty * 100;
-                    const pnlVal = parseFloat(rawPnl.toFixed(2));
-
-                    newHist.unshift({ id: Date.now(), date: now, ticker: opt.ticker, type: 'CLOSE', pnl: pnlVal, closePrice: closePrice, closeQty: closeQty });
-                    
-                    if (closeQty >= opt.contracts) {
-                        newInv = newInv.filter(o => o.id !== opt.id);
-                    } else {
-                        newInv = newInv.map(o => o.id === opt.id ? { ...o, contracts: o.contracts - closeQty } : o);
-                    }
-                } else if (type === 'ROLL') {
-                    const opt = modal.data;
-                    const ep = parseFloat(data.exitPrice)||0;
-                    const p = parseFloat(data.newPremium)||0;
-                    const c = parseFloat(data.contracts)||opt.contracts;
-
-                    const closePnlVal = parseFloat((-ep * opt.contracts * 100).toFixed(2));
-                    const openPnlVal = parseFloat((p * c * 100).toFixed(2));
-
-                    newHist.unshift({ id: Date.now(), date: now, ticker: opt.ticker, type: 'ROLL_CLOSE', pnl: closePnlVal });
-                    newHist.unshift({ id: Date.now()+1, date: now, ticker: opt.ticker, type: 'ROLL_OPEN', pnl: openPnlVal }); 
-                    newInv = newInv.map(o => o.id === opt.id ? { ...o, strike: data.newStrike, expiry: data.newExpiry, premium: p, contracts: c, delta: data.newDelta } : o);
-                } else if (type === 'EDIT_INVENTORY') {
-                    newInv = newInv.map(o => o.id === modal.data.id ? { ...o, ...data } : o);
-                } else if (type === 'EDIT_HISTORY') {
-                    const editedData = { ...data };
-                    if (editedData.pnl !== undefined) {
-                        editedData.pnl = parseFloat(parseFloat(editedData.pnl).toFixed(2));
-                    }
-                    newHist = newHist.map(h => h.id === modal.data.id ? { ...h, ...editedData } : h);
-                } else if (type === 'DELETE_HISTORY') {
-                    newHist = newHist.filter(h => h.id !== modal.data.id);
-                }
-                
-                setInputs(p => ({...p, options_inventory: newInv, option_history: newHist}));
-                syncToCloud('options_inventory', newInv);
-                syncToCloud('option_history', newHist);
-                setModal({type:null});
-                showToast(type === 'DELETE_HISTORY' ? "紀錄已刪除" : "交易已儲存");
-            };
-
-            const processHistoryData = (records, optionHistory) => {
-                if (!records || records.length === 0) return [];
-                const sorted = [...records].sort((a, b) => new Date(a.date) - new Date(b.date));
-                const groups = {};
-                sorted.forEach(rec => {
-                    const d = new Date(rec.date); const y = d.getFullYear(); const m = d.getMonth() + 1;
-                    if (!groups[y]) groups[y] = { records: [], months: {} };
-                    groups[y].records.push(rec); if (!groups[y].months[m]) groups[y].months[m] = []; groups[y].months[m].push(rec);
-                });
-                return Object.keys(groups).sort((a,b) => b-a).map(year => { 
-                    const yData = groups[year];
-                    const months = Object.keys(yData.months).sort((a,b) => b-a).map(month => { 
-                        const mRecs = yData.months[month]; 
-                        const mPnl = mRecs[mRecs.length - 1].total_equity - mRecs[0].total_equity;
-                        const mOptPnl = optionHistory.filter(t => { const d=new Date(t.date); return d.getFullYear()===parseInt(year) && d.getMonth()+1===parseInt(month); }).reduce((s, t) => s + (parseFloat(t.pnl)||0), 0);
-                        return { month, optPnl: mOptPnl }; 
-                    });
-                    const yOptPnl = optionHistory.filter(t => new Date(t.date).getFullYear() === parseInt(year)).reduce((s, t) => s + (parseFloat(t.pnl)||0), 0);
-                    return { year, optPnl: yOptPnl, months };
-                });
-            };
-
-            const historyGroups = useMemo(() => processHistoryData(records, inputs.option_history || []), [records, inputs.option_history]);
-
-            const metrics = useMemo(() => {
-                const getP = (t) => prices[(t || "").toUpperCase()] || 0;
-                const getV = (k) => getNum(inputs[k]);
-                
-                const tickerCore1 = (inputs.ticker_core_1 || 'VOO').toUpperCase();
-                const tickerCore2 = (inputs.ticker_core_2 || 'TQQQ').toUpperCase();
-                
-                let total = getV('cash_balance');
-                const valCore1 = getP(tickerCore1) * getV('qty_core_1'); 
-                const valCore2 = getP(tickerCore2) * getV('qty_core_2'); 
-                const satellites = inputs.satellites || [];
-                satellites.forEach(s => total += getP(s.ticker) * getNum(s.qty));
-                total += valCore1 + valCore2;
-                
-                const safeTotal = total > 0 ? total : 1;
-                const rebalanceList = [];
-                const today = new Date();
-                const isQuarterEnd = (today.getMonth() + 1) % 3 === 0 && today.getDate() >= 20;
-
-                // 新增輔助函式確保如果沒輸入絕對值，有一個安全退路(Target + 15 / Target - 15)
-                const getLim = (key, defaultLim) => {
-                    const val = inputs[key];
-                    if (val !== undefined && val !== null && val !== '') {
-                        const num = parseFloat(val);
-                        if (!isNaN(num)) return num;
-                    }
-                    return defaultLim;
-                };
-
-                const getSatLim = (val, defaultLim) => {
-                    if (val !== undefined && val !== null && val !== '') {
-                        const num = parseFloat(val);
-                        if (!isNaN(num)) return num;
-                    }
-                    return defaultLim;
-                };
-
-                // 核心的絕對加減法檢查邏輯
-                const checkItem = (ticker, currentVal, targetPct, upLimitD, downLimitD, upLimitQ, downLimitQ, color) => {
-                    const diff = (total * (targetPct / 100)) - currentVal;
-                    const pct = (currentVal / safeTotal) * 100;
-                    
-                    let actionD = '平時無須變動'; let actionDColor = 'text-slate-400 font-medium';
-                    let actionQ = isQuarterEnd ? '季末無須變動' : '季末無須變動(預)'; let actionQColor = 'text-slate-400 font-medium';
-                    
-                    // Daily (絕對佔比)
-                    if (pct > upLimitD) { actionD = '平時賣'; actionDColor = 'text-red-500 font-black'; } 
-                    else if (pct < downLimitD) { actionD = '平時買'; actionDColor = 'text-emerald-500 font-black'; }
-                    
-                    // Quarterly (絕對佔比)
-                    if (pct > upLimitQ) { actionQ = isQuarterEnd ? '季末賣' : '季末賣(預)'; actionQColor = isQuarterEnd ? 'text-amber-500 font-black' : 'text-slate-500 font-bold'; }
-                    else if (pct < downLimitQ) { actionQ = isQuarterEnd ? '季末買' : '季末買(預)'; actionQColor = isQuarterEnd ? 'text-blue-500 font-black' : 'text-slate-500 font-bold'; }
-
-                    rebalanceList.push({ ticker, pct, targetPct, diff, actionD, actionDColor, actionQ, actionQColor, color, currentVal, shareCount: getQty(Math.abs(diff), getP(ticker)).toFixed(0) });
-                };
-
-                const pct1 = (valCore1 / safeTotal) * 100;
-                rebalanceList.push({ ticker: tickerCore1, pct: pct1, targetPct: getV('target_core_1'), diff: 0, actionD: '資金調節池', actionDColor: 'text-blue-500 font-bold', actionQ: '', actionQColor: '', color: '#3b82f6', isPool: true, currentVal: valCore1 });
-
-                const tC2 = getV('target_core_2');
-                checkItem(
-                    tickerCore2, 
-                    valCore2, 
-                    tC2, 
-                    getLim('tol_up_core_2_d', tC2 + 15), 
-                    getLim('tol_down_core_2_d', Math.max(0, tC2 - 15)), 
-                    getLim('tol_up_core_2_q', tC2 + 10), 
-                    getLim('tol_down_core_2_q', Math.max(0, tC2 - 5)), 
-                    '#8b5cf6'
-                );
-
-                satellites.forEach((s, i) => {
-                    const sT = getNum(s.target_pct);
-                    checkItem(
-                        s.ticker, 
-                        getP(s.ticker)*getNum(s.qty), 
-                        sT, 
-                        getSatLim(s.tol_up_d, sT + 15), 
-                        getSatLim(s.tol_down_d, Math.max(0, sT - 10)), 
-                        getSatLim(s.tol_up_q, sT + 10), 
-                        getSatLim(s.tol_down_q, Math.max(0, sT - 5)), 
-                        ['#f97316', '#10b981', '#ef4444', '#eab308'][i % 4]
-                    )
-                });
-
-                rebalanceList.sort((a,b) => b.priority - a.priority);
-
-                const defPrice = getP(tickerCore1); 
-                const defSma = getV('voo_sma200'); 
-                const buyBuff = getV('def_buy_pct'); 
-                const sellBuff = getV('def_sell_pct');
-                const buyPrice = defSma * (1 + buyBuff/100);
-                const sellPrice = defSma * (1 - sellBuff/100);
-
-                let defenseStatus = { type: 'warning', msg: `震盪觀察：價格位於區間內 (${sellPrice.toFixed(0)} - ${buyPrice.toFixed(0)})` };
-                
-                if (defSma > 0 && defPrice > 0) {
-                    if (defPrice > buyPrice) {
-                        defenseStatus = { type: 'opportunity', msg: `多頭確認：${tickerCore1} 站上年線 +${buyBuff}% ($${buyPrice.toFixed(0)})。保持持有，賣掉核心部位分6個月買入。` };
-                    } else if (defPrice < sellPrice) {
-                        defenseStatus = { type: 'danger', msg: `空頭確認：${tickerCore1} 跌破年線 -${sellBuff}% ($${sellPrice.toFixed(0)})。建議防禦，賣掉核心部位分6個月買入。` };
-                    }
-                }
-
-                const pieData = [
-                    { name: tickerCore1, value: valCore1, fill: '#3b82f6', percent: valCore1/safeTotal }, 
-                    { name: tickerCore2, value: valCore2, fill: '#8b5cf6', percent: valCore2/safeTotal },
-                    ...satellites.map((s, i) => ({ name: s.ticker, value: getP(s.ticker) * getNum(s.qty), fill: ['#f97316', '#10b981', '#ef4444', '#eab308'][i % 4], percent: (getP(s.ticker)*getNum(s.qty))/safeTotal })),
-                    { name: 'Cash', value: Math.max(0, getV('cash_balance')), fill: '#94a3b8', percent: Math.max(0, getV('cash_balance'))/safeTotal }
-                ].filter(x => x.value > 1);
-                
-                let mtd = 0; let ytdAmount = 0; let ytdPct = 0; let hasYtd = false; let gData = [];
-                
-                if (records.length) {
-                     const sorted = [...records].sort((a,b) => new Date(a.date) - new Date(b.date));
-                     let peakEq = 0;
-                     gData = sorted.map(r => { 
-                        if(r.total_equity > peakEq) peakEq = r.total_equity;
-                        const ddAmt = r.total_equity - peakEq;
-                        const dd = peakEq > 0 ? (r.total_equity - peakEq) / peakEq * 100 : 0;
-                        return { date: r.date, equity: r.total_equity, dd, ddAmt }; 
-                    });
-                    
-                    const startM = sorted.find(r => new Date(r.date).getMonth() === new Date().getMonth() && new Date(r.date).getFullYear() === new Date().getFullYear()) || sorted[sorted.length-1];
-                    mtd = startM.total_equity > 0 ? ((total - startM.total_equity) / startM.total_equity) * 100 : 0;
-                    
-                    const currentYear = new Date().getFullYear();
-                    const ytdStartRecord = sorted.find(r => new Date(r.date).getFullYear() === currentYear);
-                    if (ytdStartRecord && ytdStartRecord.total_equity > 0) {
-                        ytdAmount = total - ytdStartRecord.total_equity;
-                        ytdPct = (ytdAmount / ytdStartRecord.total_equity) * 100;
-                        hasYtd = true;
-                    }
-                }
-
-                return { totalCapital: total, pieData, rebalanceList, defenseStatus, performanceStats: { mtd, ytdAmount, ytdPct, hasYtd }, graphData: gData, tickerCore1 };
-            }, [prices, inputs, records]);
-            
-            const calcResults = useMemo(() => {
-                if (!simulatedTotal) return [];
-                const nTot = metrics.totalCapital + parseFloat(simulatedTotal);
-                const res = [];
-                const getP = (t) => prices[(t || "").toUpperCase()] || 0;
-                const getV = (k) => getNum(inputs[k]);
-                const c1Target = nTot * (getV('target_core_1')/100); const c1Curr = getP(inputs.ticker_core_1) * getV('qty_core_1'); res.push({ ticker: inputs.ticker_core_1, amount: c1Target - c1Curr });
-                const c2Target = nTot * (getV('target_core_2')/100); const c2Curr = getP(inputs.ticker_core_2) * getV('qty_core_2'); res.push({ ticker: inputs.ticker_core_2, amount: c2Target - c2Curr });
-                inputs.satellites.forEach(s => { const sTarget = nTot * (getNum(s.target_pct)/100); const sCurr = getP(s.ticker) * getNum(s.qty); res.push({ ticker: s.ticker, amount: sTarget - sCurr }); });
-                return res;
-            }, [simulatedTotal, metrics.totalCapital, inputs, prices]);
-
-            return (
-                <div className="pb-40 min-h-screen transition-colors duration-300 font-black text-left select-none overflow-x-hidden">
-                    {message && <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-top-4"><div className="bg-brand-600 text-white px-6 py-3 rounded-full shadow-2xl text-sm flex items-center gap-2"><Icon name="CheckCircle" size={16} /> {message}</div></div>}
-                    {isSwitching && <div className="loading-overlay"><div className="w-12 h-12 border-4 border-brand-100 border-t-brand-600 rounded-full animate-spin"></div><div className="text-brand-600 font-black">載入數據中...</div></div>}
-
-                    {modal.type === 'DELETE_CONFIRM' && (
-                        <Modal title="確認刪除" icon="Trash2" isOpen={true} onClose={()=>setModal({type:null})}>
-                            <div className="text-center py-4">
-                                <p className="text-slate-600 font-bold mb-4">確定要刪除此筆資料嗎？此動作無法復原。</p>
-                                <div className="flex gap-2">
-                                    <button onClick={()=>setModal({type:null})} className="flex-1 bg-slate-200 text-slate-600 py-3 rounded-xl font-bold">取消</button>
-                                    <button onClick={confirmDelete} className="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600">確認刪除</button>
-                                </div>
-                            </div>
-                        </Modal>
-                    )}
-                    
-                    {modal.type === 'TRADE' && (
-                        <Modal title={modal.subType === 'OPEN' ? "建立選擇權部位" : (modal.subType === 'ROLL' ? "選擇權轉倉" : "選擇權平倉")} icon="Zap" isOpen={true} onClose={()=>setModal({type:null})}>
-                            <div className="space-y-3">
-                                {modal.subType === 'OPEN' && (
-                                    <>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <label className="text-xs text-slate-500">標的代號</label>
-                                                <input className="w-full bg-f1f5f9 p-2 rounded-lg font-bold uppercase" value={modal.temp?.ticker || 'TQQQ'} onChange={e=>setModal({...modal, temp: {...modal.temp, ticker: e.target.value.toUpperCase()}})} />
-                                            </div>
-                                            <div>
-                                                <label className="text-xs text-slate-500">交易類型</label>
-                                                <select className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" value={modal.temp?.type || 'SC'} onChange={e=>setModal({...modal, temp: {...modal.temp, type: e.target.value}})}>
-                                                    <option value="SC">Sell Call</option>
-                                                    <option value="SP">Sell Put</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <label className="text-xs text-slate-500">到期日</label>
-                                                <input type="date" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold text-xs" onChange={e=>setModal({...modal, temp: {...modal.temp, newExpiry: e.target.value}})} />
-                                            </div>
-                                            <div>
-                                                <label className="text-xs text-slate-500">履約價</label>
-                                                <input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" placeholder="Strike" onChange={e=>setModal({...modal, temp: {...modal.temp, newStrike: e.target.value}})} />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <label className="text-xs text-slate-500">權利金(單股)</label>
-                                                <input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" placeholder="0.00" onChange={e=>setModal({...modal, temp: {...modal.temp, newPremium: e.target.value}})} />
-                                            </div>
-                                            <div>
-                                                <label className="text-xs text-slate-500">張數</label>
-                                                <input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" value={modal.temp?.contracts || ''} onChange={e=>setModal({...modal, temp: {...modal.temp, contracts: e.target.value}})} />
-                                            </div>
-                                        </div>
-                                        <div className="bg-emerald-50 p-2 rounded-lg text-center text-emerald-600 font-bold text-sm">
-                                            預估收入: ${((parseFloat(modal.temp?.newPremium)||0) * (parseFloat(modal.temp?.contracts)||1) * 100).toFixed(2)}
-                                        </div>
-                                        <button onClick={()=>handleOptionTrade('OPEN', modal.temp)} className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold mt-2">確認建立</button>
-                                    </>
-                                )}
-                                {modal.subType === 'CLOSE' && (
-                                    <>
-                                        <div>
-                                            <label className="text-xs text-slate-500 font-bold">買回價格 (Debit)</label>
-                                            <input className="bg-f1f5f9 p-3 w-full rounded-xl font-black text-center text-xl mt-1" type="number" placeholder="0.00" autoFocus value={modal.temp?.closePrice || ''} onChange={e=>setModal({...modal, temp: {...modal.temp, closePrice: e.target.value}})} />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <label className="text-xs text-slate-500 font-bold">平倉口數</label>
-                                                <input className="bg-f1f5f9 p-2 w-full rounded-lg font-bold text-center mt-1" type="number" value={modal.temp?.closeContracts ?? modal.data.contracts} onChange={e=>setModal({...modal, temp: {...modal.temp, closeContracts: e.target.value}})} />
-                                            </div>
-                                            <div className="flex flex-col justify-center items-center bg-slate-50 rounded-lg border border-slate-200 mt-1">
-                                                <span className="text-[10px] text-slate-400">目前持倉: {modal.data.contracts} 口</span>
-                                            </div>
-                                        </div>
-                                        
-                                        {(modal.temp?.closePrice && modal.temp?.closeContracts) && (
-                                            <div className={`p-3 rounded-xl text-center font-black mt-2 ${((modal.data.premium - parseFloat(modal.temp.closePrice)) * parseFloat(modal.temp.closeContracts) * 100) >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                                                平倉總淨利: ${((modal.data.premium - parseFloat(modal.temp.closePrice)) * parseFloat(modal.temp.closeContracts) * 100).toFixed(2)}
-                                            </div>
-                                        )}
-                                        <button onClick={()=>handleOptionTrade('CLOSE', modal.temp)} className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold mt-2">確認平倉</button>
-                                    </>
-                                )}
-                                {modal.subType === 'ROLL' && (
-                                    <>
-                                        <div className="bg-slate-50 p-2 rounded-lg mb-2 text-xs">
-                                            <span className="font-bold">Step 1: 平倉舊合約</span>
-                                            <input className="mt-1 bg-white border border-slate-300 p-2 w-full rounded-lg font-bold text-center" type="number" placeholder="買回價格" autoFocus onChange={e=>setModal({...modal, temp: {...modal.temp, exitPrice: e.target.value}})} />
-                                        </div>
-                                        <div className="bg-slate-50 p-2 rounded-lg text-xs">
-                                            <span className="font-bold block mb-1">Step 2: 建立新合約</span>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <input className="bg-white p-2 rounded border border-slate-300" type="date" onChange={e=>setModal({...modal, temp: {...modal.temp, newExpiry: e.target.value}})} />
-                                                <input className="bg-white p-2 rounded border border-slate-300" type="number" placeholder="新 Strike" onChange={e=>setModal({...modal, temp: {...modal.temp, newStrike: e.target.value}})} />
-                                                <input className="bg-white p-2 rounded border border-slate-300" type="number" placeholder="新權利金" onChange={e=>setModal({...modal, temp: {...modal.temp, newPremium: e.target.value}})} />
-                                                <input className="bg-white p-2 rounded border border-slate-300" type="number" placeholder="口數" defaultValue={modal.data.contracts} onChange={e=>setModal({...modal, temp: {...modal.temp, contracts: e.target.value}})} />
-                                            </div>
-                                        </div>
-                                        <button onClick={()=>handleOptionTrade('ROLL', modal.temp)} className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold mt-2">確認轉倉</button>
-                                    </>
-                                )}
-                            </div>
-                        </Modal>
-                    )}
-
-                    {modal.type === 'EDIT_INVENTORY' && (
-                        <Modal title="編輯部位" icon="Edit2" isOpen={true} onClose={()=>setModal({type:null})}>
-                            <div className="space-y-3">
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input className="bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={modal.data.ticker} onChange={e=>setModal({...modal, temp: {...modal.temp, ticker: e.target.value.toUpperCase()}})} />
-                                    <select className="bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={modal.data.type} onChange={e=>setModal({...modal, temp: {...modal.temp, type: e.target.value}})}>
-                                        <option value="SC">Sell Call</option>
-                                        <option value="SP">Sell Put</option>
-                                    </select>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input className="bg-f1f5f9 p-2 rounded-lg font-bold" type="number" defaultValue={modal.data.strike} onChange={e=>setModal({...modal, temp: {...modal.temp, strike: e.target.value}})} />
-                                    <input className="bg-f1f5f9 p-2 rounded-lg font-bold" type="date" defaultValue={modal.data.expiry} onChange={e=>setModal({...modal, temp: {...modal.temp, expiry: e.target.value}})} />
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input className="bg-f1f5f9 p-2 rounded-lg font-bold" type="number" placeholder="Premium" defaultValue={modal.data.premium} onChange={e=>setModal({...modal, temp: {...modal.temp, premium: parseFloat(e.target.value)}})} />
-                                    <input className="bg-f1f5f9 p-2 rounded-lg font-bold" type="number" placeholder="Contracts" defaultValue={modal.data.contracts} onChange={e=>setModal({...modal, temp: {...modal.temp, contracts: parseFloat(e.target.value)}})} />
-                                </div>
-                                <button onClick={()=>handleOptionTrade('EDIT_INVENTORY', modal.temp)} className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold">儲存修改</button>
-                            </div>
-                        </Modal>
-                    )}
-
-                    {modal.type === 'EDIT_HISTORY' && (
-                        <Modal title="編輯交易" icon="Edit2" isOpen={true} onClose={()=>setModal({type:null})}>
-                            <div className="space-y-3">
-                                <div>
-                                    <label className="text-xs text-slate-500">損益 ($)</label>
-                                    <input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={parseFloat(modal.data?.pnl || 0).toFixed(2)} onChange={e=>setModal({...modal, temp: {...modal.temp, pnl: parseFloat(e.target.value)}})} />
-                                </div>
-                                <div className="flex gap-2">
-                                    <button onClick={()=>setModal({type:'DELETE_CONFIRM', data:{id:modal.data.id, type:'OPTION_HISTORY'}})} className="p-3 bg-red-100 text-red-500 rounded-xl"><Icon name="Trash2"/></button>
-                                    <button onClick={()=>handleOptionTrade('EDIT_HISTORY', modal.temp)} className="flex-1 bg-brand-600 text-white rounded-xl font-bold">儲存</button>
-                                </div>
-                            </div>
-                        </Modal>
-                    )}
-
-                    {modal.type === 'EDIT_RECORD' && (
-                        <Modal title="修正歷史紀錄" icon="Edit2" isOpen={true} onClose={()=>setModal({type:null})}>
-                            <div className="space-y-3">
-                                <div>
-                                    <label className="text-xs text-slate-500">日期</label>
-                                    <input type="date" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={modal.data.date?.split('T')[0]} onChange={e=>setModal({...modal, temp: {...modal.temp, date: e.target.value}})} />
-                                </div>
-                                <div>
-                                    <label className="text-xs text-slate-500">總資產 ($)</label>
-                                    <input type="number" className="w-full bg-f1f5f9 p-2 rounded-lg font-bold" defaultValue={modal.data.total_equity} onChange={e=>setModal({...modal, temp: {...modal.temp, equity: e.target.value}})} />
-                                </div>
-                                <div className="p-3 bg-f1f5f9 rounded-xl border border-slate-200">
-                                    <div className="text-xs font-black text-slate-500 mb-2">持倉修正 (快照)</div>
-                                    <div className="grid grid-cols-2 gap-2 mb-2">
-                                        <div>
-                                            <label className="text-[10px] text-slate-400">Core 1</label>
-                                            <input type="number" className="w-full bg-white p-1 rounded font-bold text-sm" defaultValue={modal.data.inputs?.qty_core_1} onChange={e=>setModal({...modal, temp: {...modal.temp, inputs: {...(modal.temp?.inputs || modal.data.inputs), qty_core_1: e.target.value}}})} />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] text-slate-400">Core 2</label>
-                                            <input type="number" className="w-full bg-white p-1 rounded font-bold text-sm" defaultValue={modal.data.inputs?.qty_core_2} onChange={e=>setModal({...modal, temp: {...modal.temp, inputs: {...(modal.temp?.inputs || modal.data.inputs), qty_core_2: e.target.value}}})} />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        {(modal.data.inputs?.satellites||[]).map((s,idx)=>(
-                                            <div key={idx} className="flex justify-between items-center">
-                                                <label className="text-[10px] text-slate-400">{s.ticker}</label>
-                                                <input type="number" className="w-16 bg-white p-1 rounded font-bold text-sm text-right" defaultValue={s.qty} onChange={e=>{const ns=[...(modal.temp?.inputs?.satellites||modal.data.inputs.satellites)]; ns[idx]={...ns[idx],qty:e.target.value}; setModal({...modal,temp:{...modal.temp,inputs:{...(modal.temp?.inputs||modal.data.inputs),satellites:ns}}})}}/>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="mt-2">
-                                        <label className="text-[10px] text-slate-400">Cash ($)</label>
-                                        <input type="number" className="w-full bg-white p-1 rounded font-bold text-sm" defaultValue={modal.data.inputs?.cash_balance} onChange={e=>setModal({...modal, temp: {...modal.temp, inputs: {...(modal.temp?.inputs || modal.data.inputs), cash_balance: e.target.value}}})} />
-                                    </div>
-                                </div>
-                                <button onClick={updateRecord} className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold">儲存修正</button>
-                            </div>
-                        </Modal>
-                    )}
-
-                    <header className="fixed top-0 inset-x-0 bg-f8fafc z-50 px-5 py-4 pt-6 flex justify-between items-center shadow-sm border-b border-e2e8f0">
-                        <div className="flex items-center gap-2 font-black"><div className="bg-brand-50 p-2 rounded-2xl"><Icon name="ShieldAlert" className="text-brand-600" size={18} /></div><h1 className="text-lg text-slate-800">Alpha Horizon V11.6</h1></div>
-                        <div className="flex gap-2"><button onClick={() => setView('sync_settings')} className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 shadow-sm hover:bg-slate-50"><Icon name="Settings" size={20} /></button><button onClick={() => fetchPrices(true)} className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 shadow-sm hover:bg-slate-50"><Icon name="RefreshCcw" size={20} className={loadingPrices?"animate-spin":""} /></button></div>
-                    </header>
-
-                    <main className="max-w-md mx-auto p-4 pt-28 space-y-6">
-                        {view === 'dashboard' && (
-                            <div className="space-y-6 animate-in fade-in">
-                                <CollapsibleCard title="投資座右銘" icon="Quote" isOpen={sections.motto} onToggle={()=>toggleSection('motto')} className="relative group" rightElement={<button onClick={(e) => {e.stopPropagation(); setIsMottoLocked(!isMottoLocked);}} className="p-1.5 bg-slate-200 rounded-full text-slate-500 hover:text-brand-600 shadow-sm transition-colors"><Icon name={isMottoLocked?"Lock":"Unlock"} size={12}/></button>}>
-                                    <textarea value={inputs.motto} readOnly={isMottoLocked} onChange={e=>handleInputChange('motto',e.target.value)} onBlur={e=>syncToCloud('motto',e.target.value)} className={`w-full bg-transparent text-sm font-bold text-slate-700 outline-none resize-none leading-relaxed text-center ${isMottoLocked?'':'bg-f8fafc rounded-xl border border-dashed border-slate-300 p-2'}`} rows="3" placeholder="輸入您的投資心法..." onClick={e=>e.stopPropagation()} />
-                                    <div className="absolute right-0 bottom-0 opacity-5 pointer-events-none transform translate-x-4 translate-y-4"><Icon name="Quote" size={80} /></div>
-                                </CollapsibleCard>
-
-                                <CollapsibleCard title="趨勢防禦" icon="ShieldAlert" isOpen={sections.defense} onToggle={()=>toggleSection('defense')} className={`border-l-4 ${metrics.defenseStatus.type === 'danger' ? 'border-l-red-500' : (metrics.defenseStatus.type === 'opportunity' ? 'border-l-emerald-500' : 'border-l-brand-500')}`}>
-                                    <div className="flex justify-between items-center mb-2">
-                                        <div className="flex items-center gap-2"><span className={`text-xs font-black uppercase tracking-widest ${metrics.defenseStatus.type==='danger'?'text-red-500':(metrics.defenseStatus.type==='opportunity'?'text-emerald-500':'text-brand-500')}`}>狀態監測</span></div>
-                                        <div className="text-[10px] bg-white px-2 py-0.5 rounded border border-slate-200 font-mono text-slate-400">SMA: ${inputs.voo_sma200}</div>
-                                    </div>
-                                    <div className="text-sm font-bold text-slate-700 leading-relaxed">{metrics.defenseStatus.msg}</div>
-                                </CollapsibleCard>
-
-                                <CollapsibleCard title="總資產概況" icon="Activity" isOpen={sections.asset} onToggle={()=>toggleSection('asset')}>
-                                    <div className="flex justify-between relative z-10"><label className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Total (USD)</label></div>
-                                    <div className="mt-2 relative z-10">
-                                        <div className="text-4xl font-black font-mono text-slate-800 tracking-tight">${metrics.totalCapital.toLocaleString(undefined,{maximumFractionDigits:0})}</div>
-                                        {metrics.performanceStats.hasYtd && (
-                                            <div className={`mt-3 flex items-center gap-1.5 text-xs font-black ${metrics.performanceStats.ytdAmount >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                <div className={`p-1 rounded-md ${metrics.performanceStats.ytdAmount >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
-                                                    <Icon name={metrics.performanceStats.ytdAmount >= 0 ? "TrendingUp" : "TrendingDown"} size={14} />
-                                                </div>
-                                                <span>{metrics.performanceStats.ytdAmount >= 0 ? '+' : ''}${Math.abs(metrics.performanceStats.ytdAmount).toLocaleString(undefined,{maximumFractionDigits:0})}</span>
-                                                <span>({metrics.performanceStats.ytdAmount >= 0 ? '+' : ''}{metrics.performanceStats.ytdPct.toFixed(2)}%)</span>
-                                                <span className="text-slate-400 ml-1 font-bold text-[10px] uppercase tracking-wider">今年迄今 (YTD)</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </CollapsibleCard>
-
-                                <CollapsibleCard title="資金再平衡" icon="PieChartIcon" isOpen={sections.rebalance} onToggle={()=>toggleSection('rebalance')}>
-                                    <div className="h-64 relative mb-4">
-                                        <ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={metrics.pieData} innerRadius={60} outerRadius={80} paddingAngle={2} dataKey="value">{metrics.pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}</Pie><Tooltip content={<CustomPieTooltip />} /></PieChart></ResponsiveContainer>
-                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none"><div className="text-[10px] text-slate-400 font-bold uppercase">TOTAL</div><div className="text-sm font-black text-slate-700">${(metrics.totalCapital/1000).toFixed(1)}k</div></div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2 mb-4">
-                                        {metrics.pieData.map(d => (
-                                            <div key={d.name} className="flex justify-between items-center text-[10px] bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full" style={{backgroundColor:d.fill}}></div><span className="font-bold text-slate-600">{d.name}</span></div>
-                                                <div className="text-right"><div className="font-mono font-bold">${d.value.toLocaleString(undefined,{maximumFractionDigits:0})}</div><div className="text-slate-400">{(d.percent*100).toFixed(1)}%</div></div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="bg-f8fafc rounded-xl border border-slate-200 overflow-hidden">
-                                        <div className="px-3 py-2 bg-slate-100 border-b border-slate-200 flex justify-between items-center"><span className="text-xs font-black text-slate-500 uppercase">持倉狀態列表</span></div>
-                                        <div className="divide-y divide-slate-100">
-                                            {metrics.rebalanceList.map(item => (
-                                                <div key={item.ticker} className="p-3">
-                                                    <div className="flex justify-between items-center mb-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-2 h-2 rounded-full" style={{backgroundColor: item.color}}></div>
-                                                            <div className="flex flex-col"><span className="text-xs font-black text-slate-700">{item.ticker}</span><span className="text-[9px] text-slate-400">現:{item.pct.toFixed(1)}% 目:{item.targetPct}%</span></div>
-                                                        </div>
-                                                        {item.isPool ? <span className="text-xs font-bold text-blue-500">資金調節池</span> : <div className="text-right"><div className={`text-xs ${item.actionDColor}`}>{item.actionD}</div><div className={`text-xs ${item.actionQColor}`}>{item.actionQ}</div></div>}
-                                                    </div>
-                                                    {!item.isPool && item.diff !== 0 && (
-                                                        <div className="flex justify-end gap-2 text-[9px] font-mono text-slate-400 font-bold border-t border-slate-100 pt-1 mt-1">
-                                                            <span>建議金額: ${Math.abs(item.diff).toLocaleString(undefined,{maximumFractionDigits:0})}</span>
-                                                            <span>({item.shareCount}股)</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </CollapsibleCard>
-
-                                <CollapsibleCard title="持倉數量" icon="Edit2" isOpen={sections.holdings} onToggle={()=>toggleSection('holdings')}>
-                                    <div className="space-y-2">
-                                        <div className="mb-3 bg-f8fafc p-2 rounded-xl border border-slate-200 flex justify-between items-center shadow-sm">
-                                            <div className="flex items-center gap-2">
-                                                <div className="bg-white p-1 rounded-lg shadow-sm border border-slate-100">
-                                                    <Icon name="History" size={16} className="text-brand-500" />
-                                                </div>
-                                                <label className="text-xs font-bold text-slate-600">紀錄日期</label>
-                                            </div>
-                                            <input type="date" value={recordDate} onChange={e=>setRecordDate(e.target.value)} className="bg-transparent font-black text-slate-700 text-sm outline-none text-right cursor-pointer" />
-                                        </div>
-
-                                        <HoldingRow conf={{id:'core1', tickerKey:'ticker_core_1', defaultTicker:'VOO', qtyKey:'qty_core_1', targetKey:'target_core_1', color: 'text-blue-500'}} inputs={inputs} prices={prices} onChange={handleInputChange} onBlur={syncToCloud} />
-                                        <HoldingRow conf={{id:'core2', tickerKey:'ticker_core_2', defaultTicker:'TQQQ', qtyKey:'qty_core_2', targetKey:'target_core_2', color: 'text-purple-600'}} inputs={inputs} prices={prices} onChange={handleInputChange} onBlur={syncToCloud} />
-                                        {(inputs.satellites || []).map(s => <HoldingRow key={s.id} conf={s} inputs={inputs} prices={prices} onChange={(id, f, v) => { const newSats = inputs.satellites.map(si => si.id === id ? { ...si, [f]: v } : si); setInputs(p => ({ ...p, satellites: newSats })); }} onBlur={saveSatellites} isDynamic={true} />)}
-                                        <button onClick={addSatellite} className="w-full py-3 bg-f1f5f9 text-slate-500 text-xs font-bold rounded-xl mt-2 flex justify-center items-center gap-1 hover:bg-slate-200 transition-colors border border-slate-300 shadow-sm"><Icon name="Plus" size={14}/> 新增衛星</button>
-                                        <div className="pt-2 mt-2 border-t border-slate-100 relative">
-                                            <label className="text-[10px] font-black text-slate-400 block text-center mb-1">現金 (USD)</label>
-                                            <div className="relative"><input type="text" inputMode="decimal" placeholder="0" value={inputs.cash_balance} onChange={e=>handleInputChange('cash_balance',e.target.value)} onBlur={e=>syncToCloud('cash_balance',e.target.value)} className={`w-full bg-f1f5f9 border border-slate-300 rounded-2xl p-4 text-xl font-mono text-brand-600 font-black shadow-inner-strong ${inputs.cash_balance < 0 ? 'text-red-500' : 'text-brand-600'}`} /><button onClick={toggleCashSign} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white shadow-sm border border-slate-200 rounded-lg text-xs font-bold text-slate-500 active:scale-95">+/-</button></div>
-                                        </div>
-                                    </div>
-                                    <button onClick={save} disabled={isSaving} className={`w-full py-4 mt-4 rounded-2xl text-white shadow-lg shadow-brand-500/20 flex justify-center gap-2 font-black transition-all active:scale-[0.98] ${isSaving?'bg-slate-400':'bg-brand-600 hover:bg-brand-700'}`}><Icon name={isSaving?"RefreshCcw":"Save"} className={isSaving?"animate-spin":""} /> {isSaving?"同步中...":"儲存今日績效"}</button>
-                                </CollapsibleCard>
-
-                                <CollapsibleCard title="選擇權帳本" icon="Zap" isOpen={sections.options} onToggle={()=>toggleSection('options')} rightElement={<button onClick={(e)=>{e.stopPropagation(); setModal({type:'TRADE', subType:'OPEN', temp:{ticker: 'TQQQ', type: 'SC', contracts: 1}});}} className="text-[10px] bg-brand-600 text-white px-3 py-1 rounded-lg font-bold shadow-sm">+ 新建</button>}>
-                                    <div className="space-y-2">
-                                        {(inputs.options_inventory || []).map(opt => (
-                                            <div key={opt.id} className="bg-f8fafc p-3 rounded-lg border border-slate-100 flex justify-between items-center group">
-                                                <div>
-                                                    <div className="font-black text-xs text-slate-700">{opt.ticker} ${opt.strike} {opt.type}</div>
-                                                    <div className="text-[10px] text-slate-400">{opt.expiry} · {opt.contracts}張 · ${opt.premium}</div>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <button onClick={()=>setModal({type:'EDIT_INVENTORY', data: opt, temp: {}})} className="text-slate-400 hover:text-brand-600"><Icon name="Edit2" size={16}/></button>
-                                                    <button onClick={()=>setModal({type:'TRADE', subType:'ROLL', data: opt, temp: {}})} className="bg-white border border-slate-200 text-xs px-3 py-1 rounded-lg font-bold text-amber-600 shadow-sm">轉倉</button>
-                                                    <button onClick={()=>setModal({type:'TRADE', subType:'CLOSE', data: opt, temp: {closeContracts: opt.contracts}})} className="bg-white border border-slate-200 text-xs px-3 py-1 rounded-lg font-bold text-slate-600 shadow-sm">平倉</button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {(!inputs.options_inventory || inputs.options_inventory.length === 0) && <div className="text-center text-xs text-slate-400 py-2">無選擇權部位</div>}
-                                    </div>
-                                </CollapsibleCard>
-                            </div>
-                        )}
-
-                        {view === 'parameters' && (
-                            <div className="space-y-6 animate-in fade-in">
-                                <Card className="border-none shadow-heavy" noPadding={true}>
-                                    <SectionHeader title="核心配置設定" iconName="Sliders" isOpen={true} rightElement={<button onClick={()=>setShowAdvancedParams(!showAdvancedParams)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${showAdvancedParams ? 'bg-brand-100 text-brand-600' : 'bg-slate-100 text-slate-500'}`}>{showAdvancedParams ? '隱藏進階' : '⚙️ 顯示進階設定'}</button>} />
-                                    <div className="section-body bg-white space-y-3">
-                                        <div className="bg-blue-50 p-3 rounded-xl border border-blue-100">
-                                            <div className="text-xs font-black text-blue-600 mb-2 text-center uppercase">核心一：資金池 (Core 1)</div>
-                                            <div className="flex gap-2 mb-2"><input value={inputs.ticker_core_1} onChange={e=>handleInputChange('ticker_core_1',e.target.value.toUpperCase())} onBlur={e=>syncToCloud('ticker_core_1',e.target.value)} className="bg-white p-2 rounded-lg text-center w-full font-bold shadow-sm border border-blue-200 placeholder-blue-200" placeholder="Ticker (e.g. VOO)"/></div>
-                                            <div><label className="text-[9px] text-blue-400 font-bold block mb-1 text-center">目標佔比 %</label><input type="number" value={inputs.target_core_1} onChange={e=>handleInputChange('target_core_1',e.target.value)} onBlur={e=>syncToCloud('target_core_1',e.target.value)} className="bg-white p-2 rounded-lg text-center w-full font-bold shadow-sm border border-blue-200"/></div>
-                                            <div className="text-[9px] text-center text-blue-400 mt-2 font-bold opacity-70">* 作為調節資金池，不設自動平衡門檻</div>
-                                        </div>
-                                        
-                                        <div className="bg-purple-50 p-3 rounded-xl border border-purple-100">
-                                            <div className="text-xs font-black text-purple-600 mb-2 text-center uppercase">核心二：攻擊部位 (Core 2)</div>
-                                            <div className="flex gap-2 mb-2"><input value={inputs.ticker_core_2} onChange={e=>handleInputChange('ticker_core_2',e.target.value.toUpperCase())} onBlur={e=>syncToCloud('ticker_core_2',e.target.value)} className="bg-white p-2 rounded-lg text-center w-full font-bold shadow-sm border border-purple-200 placeholder-purple-200" placeholder="Ticker (e.g. TQQQ)"/></div>
-                                            <div className="mb-2"><label className="text-[9px] text-purple-400 font-bold block mb-1 text-center">目標%</label><input type="number" value={inputs.target_core_2} onChange={e=>handleInputChange('target_core_2',e.target.value)} onBlur={e=>syncToCloud('target_core_2',e.target.value)} className="bg-white p-2 rounded-lg text-center w-full font-bold shadow-sm border border-purple-200"/></div>
-
-                                            {showAdvancedParams && (
-                                                <div className="animate-in fade-in slide-in-from-top-1 duration-200 mt-2 pt-2 border-t border-purple-200">
-                                                    <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-slate-400 mb-1"><div className="col-span-1 text-center bg-slate-200 rounded">平時監控(絕對%)</div><div className="col-span-1 text-center bg-blue-100 text-blue-600 rounded">季度再平衡(絕對%)</div></div>
-                                                    <div className="grid grid-cols-4 gap-2">
-                                                        <div className="col-span-1"><input type="number" value={inputs.tol_up_core_2_d} onChange={e=>handleInputChange('tol_up_core_2_d',e.target.value)} onBlur={e=>syncToCloud('tol_up_core_2_d',e.target.value)} className="bg-white p-1 rounded-lg text-center w-full text-[10px] font-bold text-red-600 border border-slate-300" placeholder="上限%賣"/></div>
-                                                        <div className="col-span-1"><input type="number" value={inputs.tol_down_core_2_d} onChange={e=>handleInputChange('tol_down_core_2_d',e.target.value)} onBlur={e=>syncToCloud('tol_down_core_2_d',e.target.value)} className="bg-white p-1 rounded-lg text-center w-full text-[10px] font-bold text-emerald-600 border border-slate-300" placeholder="下限%買"/></div>
-                                                        <div className="col-span-1"><input type="number" value={inputs.tol_up_core_2_q} onChange={e=>handleInputChange('tol_up_core_2_q',e.target.value)} onBlur={e=>syncToCloud('tol_up_core_2_q',e.target.value)} className="bg-blue-50 p-1 rounded-lg text-center w-full text-[10px] font-bold text-blue-600 border border-blue-200" placeholder="季上限%"/></div>
-                                                        <div className="col-span-1"><input type="number" value={inputs.tol_down_core_2_q} onChange={e=>handleInputChange('tol_down_core_2_q',e.target.value)} onBlur={e=>syncToCloud('tol_down_core_2_q',e.target.value)} className="bg-blue-50 p-1 rounded-lg text-center w-full text-[10px] font-bold text-blue-600 border border-blue-200" placeholder="季下限%"/></div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                                            <div className="text-xs font-black text-slate-400 mb-2 text-center uppercase">防禦指標</div>
-                                            <div className="grid grid-cols-3 gap-2">
-                                                <div><label className="text-[9px] text-slate-500 block mb-1 text-center">200 SMA</label><input type="number" value={inputs.voo_sma200} onChange={e=>handleInputChange('voo_sma200',e.target.value)} onBlur={e=>syncToCloud('voo_sma200',e.target.value)} className="bg-white p-2 rounded-lg text-center w-full font-bold shadow-inner border border-slate-300"/></div>
-                                                <div><label className="text-[9px] text-emerald-500 block mb-1 text-center">站上 +% 買進</label><input type="number" value={inputs.def_buy_pct} onChange={e=>handleInputChange('def_buy_pct',e.target.value)} onBlur={e=>syncToCloud('def_buy_pct',e.target.value)} className="bg-white p-2 rounded-lg text-center w-full font-bold shadow-inner border border-slate-300 text-emerald-600"/></div>
-                                                <div><label className="text-[9px] text-red-500 block mb-1 text-center">跌破 -% 賣出</label><input type="number" value={inputs.def_sell_pct} onChange={e=>handleInputChange('def_sell_pct',e.target.value)} onBlur={e=>syncToCloud('def_sell_pct',e.target.value)} className="bg-white p-2 rounded-lg text-center w-full font-bold shadow-inner border border-slate-300 text-red-600"/></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </Card>
-                                <Card className="border-none shadow-heavy" noPadding={true}>
-                                    <SectionHeader title="衛星策略參數" iconName="Activity" isOpen={true} rightElement={<button onClick={()=>setShowAdvancedParams(!showAdvancedParams)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${showAdvancedParams ? 'bg-brand-100 text-brand-600' : 'bg-slate-100 text-slate-500'}`}>{showAdvancedParams ? '隱藏進階' : '⚙️ 顯示進階設定'}</button>} />
-                                    <div className="section-body bg-white space-y-3">
-                                        {(inputs.satellites || []).map(s => <SatSettingsRow key={s.id} item={s} onChange={updateSatellite} onDelete={deleteSatellite} onBlur={saveSatellites} showAdvanced={showAdvancedParams} />)}
-                                        {inputs.satellites.length === 0 && <div className="text-center text-xs text-slate-400 py-4">無衛星配置</div>}
-                                    </div>
-                                </Card>
-                            </div>
-                        )}
-
-                        {view === 'history' && (
-                            <div className="space-y-6 animate-in fade-in">
-                                <div className="flex bg-slate-200 rounded-2xl p-1">
-                                    <button onClick={()=>setHistoryTab('nav')} className={`flex-1 py-2.5 rounded-xl text-xs font-black ${historyTab==='nav'?'bg-white shadow text-brand-600':'text-slate-500'}`}>資產走勢</button>
-                                    <button onClick={()=>setHistoryTab('income')} className={`flex-1 py-2.5 rounded-xl text-xs font-black ${historyTab==='income'?'bg-white shadow text-amber-500':'text-slate-500'}`}>選擇權收益</button>
-                                </div>
-                                
-                                {historyTab === 'nav' && (
-                                    <>
-                                        <Card className="h-72 p-2 border-none shadow-heavy">
-                                            <div className="flex justify-between items-center px-4 pt-2 mb-1">
-                                                <div className="text-xs font-black text-slate-500">總資產趨勢</div>
-                                            </div>
-                                            <ResponsiveContainer>
-                                                <ComposedChart data={metrics.graphData} margin={{top:10,right:0,left:0,bottom:0}}>
-                                                    <defs>
-                                                        <linearGradient id="colorEq" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
-                                                        <linearGradient id="colorDD" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.1}/><stop offset="95%" stopColor="#ef4444" stopOpacity={0.3}/></linearGradient>
-                                                    </defs>
-                                                    <XAxis dataKey="date" tickFormatter={v=>new Date(v).toLocaleDateString(undefined,{month:'numeric',day:'numeric'})} tick={{fontSize:10, fill:'#94a3b8'}}/>
-                                                    <YAxis yAxisId="left" tickFormatter={v=>`${(v/1000).toFixed(0)}k`} tick={{fontSize:10, fill:'#94a3b8'}}/>
-                                                    <YAxis yAxisId="right" orientation="right" tickFormatter={v=>`${v.toFixed(0)}%`} tick={{fontSize:10, fill:'#ef4444'}} hide/>
-                                                    <Tooltip content={<CustomGraphTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1 }} />
-                                                    <Area yAxisId="left" type="monotone" dataKey="equity" stroke="#3b82f6" strokeWidth={2} fill="url(#colorEq)" name="總資產"/>
-                                                    <Area yAxisId="right" type="monotone" dataKey="dd" stroke="none" fill="url(#colorDD)" name="最大跌幅"/>
-                                                </ComposedChart>
-                                            </ResponsiveContainer>
-                                        </Card>
-                                        <div className="pt-4 border-t border-slate-200">
-                                            <div className="flex justify-between items-center px-2 mb-2"><SectionTitle title="詳細績效紀錄" iconName="List" /></div>
-                                            <div className="space-y-2">
-                                                {records.sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0, 10).map(r => (
-                                                    <div key={r.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                                                        <div className="flex justify-between items-center mb-2">
-                                                            <div>
-                                                                <div className="text-xs font-black text-slate-700">{new Date(r.date).toLocaleDateString()}</div>
-                                                                <div className="text-[10px] text-slate-400 font-mono">${r.total_equity.toLocaleString()}</div>
-                                                            </div>
-                                                            <div className="flex gap-2">
-                                                                <button onClick={()=>setModal({type:'EDIT_RECORD', data: r, temp: {}})} className="p-2 text-brand-400 hover:bg-brand-50 rounded-lg"><Icon name="Edit2" size={14}/></button>
-                                                                <button onClick={()=>setModal({type:'DELETE_CONFIRM', data:{id:r.id, type:'RECORD'}})} className="p-2 text-red-400 hover:bg-red-50 rounded-lg"><Icon name="Trash2" size={14}/></button>
-                                                            </div>
-                                                        </div>
-                                                        {r.inputs && (
-                                                            <div className="flex flex-wrap gap-2 text-[9px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                                                <span className="font-bold text-blue-600">{inputs.ticker_core_1}: {r.inputs.qty_core_1||r.inputs.qty_voo||0}</span>
-                                                                <span className="font-bold text-purple-600">{inputs.ticker_core_2}: {r.inputs.qty_core_2||r.inputs.qty_qqq||0}</span>
-                                                                <span className="font-bold text-slate-600">Cash: ${parseInt(r.inputs.cash_balance||0).toLocaleString()}</span>
-                                                                {(r.inputs.satellites||[]).map(s => <span key={s.id} className="text-slate-400">{s.ticker}: {s.qty}</span>)}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-
-                                {historyTab === 'income' && (
-                                    <>
-                                        <Card className="bg-amber-50 border border-amber-100 shadow-sm p-5 text-center">
-                                            <div className="text-xs font-black text-amber-600 uppercase mb-1">歷史已實現總淨利</div>
-                                            <div className="text-3xl font-black font-mono text-slate-800">${(inputs.option_history||[]).reduce((a,b)=>a+(parseFloat(b.pnl)||0),0).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}</div>
-                                        </Card>
-                                        <div className="space-y-3">
-                                            {historyGroups.map(g => (
-                                                <div key={g.year} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-heavy">
-                                                    <div onClick={() => toggleYear(g.year)} className="p-4 flex justify-between items-center cursor-pointer bg-white hover:bg-slate-50 transition-colors">
-                                                        <div className="font-bold text-slate-700 flex items-center gap-2"><span className="bg-brand-100 text-brand-700 px-2 py-0.5 rounded text-xs">{g.year}</span></div>
-                                                        <div className="text-emerald-500 font-mono font-black">+${g.optPnl.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})} <Icon name={expandedYears[g.year] ? "ChevronUp" : "ChevronDown"} size={16} className="text-slate-400"/></div>
-                                                    </div>
-                                                    {expandedYears[g.year] && <div className="border-t border-slate-100">
-                                                        {g.months.map(m => (
-                                                            <div key={m.month} className="p-3 px-5 border-b border-slate-50 last:border-0 hover:bg-f1f5f9">
-                                                                <div className="flex justify-between items-center mb-2">
-                                                                    <span className="text-xs font-bold text-slate-500">{m.month} 月</span>
-                                                                    <span className="text-xs font-black text-emerald-500">+${m.optPnl.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}</span>
-                                                                </div>
-                                                                <div className="space-y-1 pl-2 border-l-2 border-slate-200">
-                                                                    {(inputs.option_history||[]).filter(t => { const d=new Date(t.date); return d.getFullYear()===parseInt(g.year) && d.getMonth()+1===parseInt(m.month); }).map(t => (
-                                                                        <div key={t.id} className="flex justify-between items-center text-[10px]">
-                                                                            <span className="text-slate-600">{new Date(t.date).getDate()}日 {t.ticker} {t.type} <span className="text-slate-400 ml-1">@{t.strike}</span></span>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className={t.pnl>=0?'text-emerald-500 font-bold':'text-red-500 font-bold'}>{t.pnl>0?'+':''}{parseFloat(t.pnl).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}</span>
-                                                                                <button onClick={()=>setModal({type:'EDIT_HISTORY', data: t, temp: {}})} className="text-slate-300 hover:text-brand-500"><Icon name="Edit2" size={10}/></button>
-                                                                            </div>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        )}
-
-                        {view === 'sync_settings' && (
-                            <div className="space-y-6 animate-in fade-in">
-                                {/* Calculator Card */}
-                                <Card className="border-none shadow-heavy" noPadding={true}>
-                                    <SectionHeader title="資金分配計算機" iconName="Calculator" isOpen={true} />
-                                    <div className="section-body bg-white space-y-4">
-                                        <div className="flex items-center gap-2 border-b border-slate-100 pb-4">
-                                            <span className="text-lg font-black text-slate-300">$</span>
-                                            <input type="number" placeholder="輸入新投入金額..." value={simulatedTotal} onChange={e=>setSimulatedTotal(e.target.value)} className="w-full text-xl font-black text-slate-800 outline-none placeholder-slate-200" />
-                                        </div>
-                                        {calcResults.length > 0 && (
-                                            <div className="space-y-2">
-                                                {calcResults.map(r => (
-                                                    <div key={r.ticker} className="flex justify-between items-center p-3 bg-f8fafc rounded-xl border border-slate-100">
-                                                        <span className="font-bold text-xs text-slate-600">{r.ticker}</span>
-                                                        <div className="text-right">
-                                                            <div className={`font-mono font-black text-sm ${r.amount > 0 ? 'text-emerald-500' : 'text-slate-400'}`}>
-                                                                {r.amount > 0 ? '+' : ''}{Math.round(r.amount).toLocaleString()}
-                                                            </div>
-                                                            <div className="text-[9px] text-slate-400">
-                                                                (目標: {inputs.satellites.find(s=>s.ticker===r.ticker)?.target_pct || (r.ticker===inputs.ticker_core_1?inputs.target_core_1:inputs.target_core_2)}%)
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                </Card>
-
-                                <div className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-heavy"><div className="p-6 pt-6 space-y-4 bg-white"><div className="text-center font-mono text-lg text-slate-800">{effectiveUserId}</div><div className="flex gap-2"><input value={tempSyncId} onChange={e=>setTempSyncId(e.target.value)} className="flex-1 bg-f1f5f9 p-3 rounded-xl shadow-inner border border-slate-300" placeholder="ID" /><button onClick={()=>{setCustomSyncId(tempSyncId);localStorage.setItem('qqq_sync_id',tempSyncId);showToast("已切換")}} className="bg-brand-600 text-white px-4 rounded-xl hover:bg-brand-700 transition-colors shadow-lg shadow-brand-500/30">OK</button></div></div></div>
-                            </div>
-                        )}
-                    </main>
-
-                    <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 z-50 py-4 pb-10 flex justify-around shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-                        {[{id:'dashboard',icon:'LayoutDashboard',l:'儀表板'},{id:'parameters',icon:'Sliders',l:'參數'},{id:'history',icon:'TrendingUp',l:'績效'},{id:'sync_settings',icon:'Fingerprint',l:'帳號'}].map(t => <button key={t.id} onClick={()=>{setView(t.id);}} className={`flex flex-col items-center gap-1 flex-1 transition-all active:scale-90 ${view===t.id?'text-brand-600 border-t-2 border-brand-600 -mt-4 pt-2':'text-slate-400'}`}><Icon name={t.icon} size={24}/><span className="text-[10px] uppercase font-black">{t.l}</span></button>)}
-                    </nav>
-                </div>
-            );
-        };
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-    </script>
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
 </body>
 </html>
