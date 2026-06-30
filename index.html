@@ -85,7 +85,7 @@ const Pill = ({ children, tone = "slate" }) => {
 const NumInput = ({ label, value, onChange, suffix = "", hint = "" }) => (React.createElement("label", { className: "block bg-slate-50 border border-slate-200 rounded-2xl p-3 focus-within:ring-2 focus-within:ring-brand-100 focus-within:border-brand-400" },
     React.createElement("div", { className: "text-[10px] font-black text-slate-500 mb-1" }, label),
     React.createElement("div", { className: "flex items-center gap-2" },
-        React.createElement("input", { type: "number", inputMode: "decimal", value: value !== null && value !== void 0 ? value : "", onChange: e => onChange(e.target.value), className: "w-full bg-transparent text-center font-mono font-black text-lg text-slate-900 min-h-[44px]", style: { fontSize: "16px" } }),
+        React.createElement("input", { type: "text", inputMode: "decimal", autoComplete: "off", value: value !== null && value !== void 0 ? value : "", onChange: e => onChange(String(e.target.value).replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')), className: "w-full bg-transparent text-center font-mono font-black text-lg text-slate-900 min-h-[44px]", style: { fontSize: "16px" } }),
         suffix && React.createElement("span", { className: "text-xs font-black text-slate-400" }, suffix)),
     hint && React.createElement("div", { className: "text-[10px] text-slate-400 mt-1 leading-relaxed" }, hint)));
 const SectionTitle = ({ title, desc, right }) => React.createElement("div", { className: "flex items-end justify-between gap-3 mb-3" },
@@ -149,12 +149,22 @@ const App = () => {
     const [toast, setToast] = useState("");
     const [syncText, setSyncText] = useState("準備中");
     const [loadingPrice, setLoadingPrice] = useState(false);
+    const [collapsed, setCollapsed] = useState({ holdings: true, scenario: false });
     const saveTimer = useRef(null);
     const ignoreCloud = useRef(false);
+    const editingRef = useRef(false);
+    const toggleCollapse = useCallback(id => setCollapsed(prev => ({ ...prev, [id]: !prev[id] })), []);
     const showToast = useCallback(txt => { setToast(txt); setTimeout(() => setToast(""), 2600); }, []);
     const patch = useCallback((key, value) => setData(prev => ({ ...prev, [key]: value })), []);
     const merge = useCallback(obj => setData(prev => ({ ...prev, ...obj })), []);
     const docRef = useCallback(() => db ? db.collection(DOC_PATH[0]).doc(DOC_PATH[1]) : null, []);
+    useEffect(() => {
+        const onFocusIn = e => { if (e.target && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) editingRef.current = true; };
+        const onFocusOut = e => { if (e.target && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) setTimeout(() => { editingRef.current = false; }, 250); };
+        document.addEventListener('focusin', onFocusIn);
+        document.addEventListener('focusout', onFocusOut);
+        return () => { document.removeEventListener('focusin', onFocusIn); document.removeEventListener('focusout', onFocusOut); };
+    }, []);
     useEffect(() => {
         if (!auth) {
             setSyncText("Firebase 未載入，僅本機模式");
@@ -178,7 +188,7 @@ const App = () => {
         if (!user || !docRef())
             return;
         const unsub = docRef().onSnapshot(snap => {
-            if (ignoreCloud.current)
+            if (ignoreCloud.current || editingRef.current)
                 return;
             if (snap.exists) {
                 const cloud = snap.data();
@@ -200,13 +210,13 @@ const App = () => {
                 ignoreCloud.current = true;
                 await docRef().set(sanitize({ ...data, updatedAtText: new Date().toLocaleString("zh-TW"), updatedAt: firebase.firestore.FieldValue.serverTimestamp() }), { merge: true });
                 setSyncText("已同步 " + new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" }));
-                setTimeout(() => ignoreCloud.current = false, 500);
+                setTimeout(() => ignoreCloud.current = false, 1500);
             }
             catch (e) {
                 ignoreCloud.current = false;
                 setSyncText("同步失敗：" + e.message);
             }
-        }, 1000);
+        }, editingRef.current ? 3500 : 1600);
         return () => clearTimeout(saveTimer.current);
     }, [data, user]);
     const manualSave = async () => { if (!docRef()) {
@@ -514,6 +524,26 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
             React.createElement("div", { className: "flex items-center gap-2" },
                 React.createElement(Pill, { tone: (user === null || user === void 0 ? void 0 : user.isAnonymous) ? "amber" : "green" }, (user === null || user === void 0 ? void 0 : user.isAnonymous) ? "匿名同步" : "Google同步"),
                 React.createElement("button", { onClick: fetchPrices, disabled: loadingPrice, className: "px-3 py-2 rounded-2xl bg-slate-900 text-white text-xs font-black active:scale-95 disabled:opacity-50" }, loadingPrice ? "抓取中" : "更新股價"))));
+    const SignalSkin = () => {
+        const m = { red: "bg-red-700 text-white border-red-800", green: "bg-emerald-700 text-white border-emerald-800", purple: "bg-purple-700 text-white border-purple-800", amber: "bg-amber-100 text-slate-950 border-amber-200", blue: "bg-brand-700 text-white border-brand-800", slate: "bg-slate-900 text-white border-slate-800" };
+        return m[metrics.tone] || m.slate;
+    };
+    const Collapsible = ({ id, title, desc, children }) => React.createElement(Card, { className: "p-4 mt-4" },
+        React.createElement("button", { type: "button", onClick: () => toggleCollapse(id), className: "w-full flex items-center justify-between gap-3 text-left active:scale-[0.99]" },
+            React.createElement("div", null,
+                React.createElement("h2", { className: "font-black text-slate-900" }, title),
+                desc && React.createElement("p", { className: "text-xs text-slate-500 mt-1 leading-relaxed" }, desc)),
+            React.createElement("span", { className: "shrink-0 px-3 py-1 rounded-xl bg-slate-100 text-slate-600 text-xs font-black" }, collapsed[id] ? "展開" : "收合")),
+        !collapsed[id] && React.createElement("div", { className: "mt-3" }, children));
+    const TotalTopCard = () => React.createElement(Card, { className: "p-4 bg-white border-slate-200" },
+        React.createElement("div", { className: "flex items-start justify-between gap-3" },
+            React.createElement("div", null,
+                React.createElement("div", { className: "text-[11px] font-black text-slate-500" }, "總資產"),
+                React.createElement("div", { className: "font-mono text-3xl font-black text-slate-950 mt-1" }, metrics.totalDisplay),
+                React.createElement("div", { className: "text-xs font-bold text-slate-400 mt-1" }, "USD $", money(metrics.totalUsd, 2), "｜TWD NT$", money(metrics.totalUsd * (getNum(data.usdtwd) || 1), 0))),
+            React.createElement("div", { className: "text-right" },
+                React.createElement(Pill, { tone: metrics.drawdown < -0.3 ? "red" : metrics.drawdown < -0.2 ? "amber" : "green" }, "回撤 ", pct(metrics.drawdown, 1)),
+                React.createElement("div", { className: "text-[10px] font-bold text-slate-400 mt-2" }, "高點 $", money(metrics.assetHighUsd, 0)))));
     const distanceTone = (v) => Math.abs(v) <= 2 ? 'red' : Math.abs(v) <= 5 ? 'amber' : 'green';
     const distanceLabel = (v) => Math.abs(v) <= 2 ? '即將觸發' : Math.abs(v) <= 5 ? '接近' : '尚有距離';
     const DistanceCard = () => React.createElement(Card, { className: "p-4 mt-4" },
@@ -564,120 +594,83 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                         "\u2611 ",
                         f))))));
     };
+    const KeySignalsCard = () => React.createElement(Collapsible, { id: "keys", title: "關鍵訊號與價格線", desc: "距離下一個訊號與觸發價整合在同一張卡。" },
+        React.createElement("div", { className: "space-y-2" },
+            metrics.distanceItems.length ? metrics.distanceItems.map(item => React.createElement("div", { key: item.key, className: "flex items-center justify-between gap-3 bg-slate-50 border border-slate-100 rounded-2xl p-3" },
+                React.createElement("div", { className: "min-w-0" },
+                    React.createElement("div", { className: "font-black text-sm text-slate-800" }, item.label),
+                    React.createElement("div", { className: "text-[10px] font-bold text-slate-400 mt-0.5" }, item.hint)),
+                React.createElement("div", { className: "text-right shrink-0" },
+                    React.createElement("div", { className: `font-mono text-base font-black ${item.value < 0 ? 'text-red-600' : 'text-slate-900'}` }, signedPctText(item.value)),
+                    React.createElement("div", { className: "text-[10px] font-bold text-slate-400" }, "$", money(item.price, 2)),
+                    React.createElement("div", null, React.createElement(Pill, { tone: distanceTone(item.value) }, distanceLabel(item.value))))))
+            : React.createElement("div", { className: "text-sm text-slate-400 font-bold" }, "資料不足，無法計算距離。")));
+    const TradeCard = () => React.createElement(Card, { className: "p-4 mt-4" },
+        React.createElement(SectionTitle, { title: "今日交易清單", desc: "依目前股價與規則產生，含目標股數；不含稅費與滑價。", right: React.createElement("div", { className: "flex gap-2 flex-wrap justify-end" },
+            React.createElement("button", { onClick: copyTodayPlan, className: "px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-black active:scale-95" }, "複製"),
+            React.createElement("button", { onClick: addSnapshot, className: "px-3 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-black active:scale-95" }, "記錄")) }),
+        React.createElement("div", { className: "bg-slate-50 border border-slate-100 rounded-2xl p-3 mb-3" },
+            React.createElement("div", { className: "text-[10px] font-black text-slate-500 mb-1" }, "執行摘要"),
+            React.createElement("div", { className: "text-sm font-black text-slate-900 leading-relaxed" }, metrics.instruction),
+            metrics.signal === "OFF" && React.createElement("div", { className: "mt-2 text-xs font-bold text-red-600" }, "DCA 進度：已完成 ", metrics.completedDca, "/6，本期第 ", metrics.nextDcaMonth, "/6；本期買 QQQ 約 $", money(metrics.dcaBuyUsd, 0), "，約 ", money(metrics.dcaBuyShares, 4), " 股。"),
+            data.lastExecutedAt && React.createElement("div", { className: "mt-2 text-[11px] text-slate-400 font-bold" }, "上次確認：", data.lastExecutedAt),
+            React.createElement("div", { className: "mt-2 text-[11px] text-brand-700 font-black" }, "建議下次檢查：", nextCheckText())),
+        React.createElement("div", { className: "space-y-2 mb-3" }, metrics.actionLines.map((a, i) => React.createElement("div", { key: i, className: "flex gap-2 text-sm font-black leading-relaxed items-start" },
+            React.createElement("span", { className: "mt-0.5 shrink-0 w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[11px]" }, i + 1),
+            React.createElement("span", { className: "text-slate-800" }, a)))),
+        React.createElement("div", { className: "space-y-2" }, metrics.targetRows.map(r => React.createElement("div", { key: r.sym, className: "flex items-center justify-between gap-3 py-2 border-b border-slate-100 last:border-0" },
+            React.createElement("div", null,
+                React.createElement("div", { className: "font-black text-sm text-slate-800" }, r.sym),
+                React.createElement("div", { className: "text-[10px] font-bold text-slate-400" }, "目前 ", money(r.currentShares, 4), " 股 / $", money(r.current, 2), r.target != null ? `｜目標 ${money(r.targetShares, 4)} 股` : "｜中間區不指定目標")),
+            React.createElement("div", { className: `font-mono text-sm font-black text-right ${r.target == null || Math.abs(r.diff) < 10 ? "text-slate-400" : r.diff > 0 ? "text-red-600" : "text-emerald-600"}` }, r.target == null || Math.abs(r.diff) < 10 ? "不動" : `${r.diff > 0 ? "買" : "賣"} ${money(Math.abs(r.shareDiff), 4)} 股`,
+                React.createElement("div", { className: "text-[10px] font-bold" }, r.target == null ? "" : `$${money(Math.abs(r.diff), 0)}`))))));
     const Home = () => React.createElement("main", { className: "max-w-5xl mx-auto px-4 pt-4 content-bottom-space" },
-        React.createElement(Card, { className: "p-5 bg-slate-950 text-white border-slate-900 overflow-hidden relative" },
-            React.createElement("div", { className: "absolute -right-10 -top-10 w-40 h-40 bg-brand-500/20 rounded-full blur-2xl" }),
+        React.createElement(TotalTopCard, null),
+        React.createElement(Card, { className: `p-5 mt-4 overflow-hidden relative ${SignalSkin()}` },
+            React.createElement("div", { className: "absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" }),
             React.createElement("div", { className: "relative flex items-start justify-between gap-3" },
                 React.createElement("div", null,
-                    React.createElement("div", { className: "text-xs font-black text-brand-200 mb-2" }, "\u76EE\u524D\u8A0A\u865F"),
+                    React.createElement("div", { className: `text-xs font-black mb-2 ${metrics.tone === 'amber' ? 'text-amber-700' : 'text-white/80'}` }, "目前訊號"),
                     React.createElement("h2", { className: "text-2xl font-black leading-tight" }, metrics.title),
-                    React.createElement("p", { className: "text-sm text-slate-300 mt-2 leading-relaxed" }, metrics.instruction)),
-                React.createElement(Pill, { tone: metrics.tone }, metrics.alloc.label)),
+                    React.createElement("p", { className: `text-sm mt-2 leading-relaxed ${metrics.tone === 'amber' ? 'text-slate-700' : 'text-white/90'}` }, metrics.instruction)),
+                React.createElement(Pill, { tone: metrics.tone === 'amber' ? 'amber' : 'dark' }, metrics.alloc.label)),
             React.createElement("div", { className: "relative grid grid-cols-2 md:grid-cols-4 gap-2 mt-5" },
-                React.createElement("div", { className: "bg-white/10 rounded-2xl p-3" },
-                    React.createElement("div", { className: "text-[10px] font-black text-slate-300" }, "\u7E3D\u8CC7\u7522"),
-                    React.createElement("div", { className: "font-mono text-lg font-black" }, metrics.totalDisplay)),
-                React.createElement("div", { className: "bg-white/10 rounded-2xl p-3" },
-                    React.createElement("div", { className: "text-[10px] font-black text-slate-300" }, "\u76EE\u524D\u56DE\u64A4"),
-                    React.createElement("div", { className: `font-mono text-lg font-black ${metrics.drawdown < -0.1 ? "text-red-300" : "text-white"}` }, pct(metrics.drawdown, 1))),
-                React.createElement("div", { className: "bg-white/10 rounded-2xl p-3" },
-                    React.createElement("div", { className: "text-[10px] font-black text-slate-300" }, "SPY / 200SMA"),
+                React.createElement("div", { className: `${metrics.tone === 'amber' ? 'bg-white/70' : 'bg-white/10'} rounded-2xl p-3` },
+                    React.createElement("div", { className: `text-[10px] font-black ${metrics.tone === 'amber' ? 'text-slate-500' : 'text-white/70'}` }, "SPY / 200SMA"),
                     React.createElement("div", { className: "font-mono text-lg font-black" }, pct(metrics.spyDev))),
-                React.createElement("div", { className: "bg-white/10 rounded-2xl p-3" },
-                    React.createElement("div", { className: "text-[10px] font-black text-slate-300" }, "QQQ / 200SMA"),
-                    React.createElement("div", { className: "font-mono text-lg font-black" }, pct(metrics.qqqDev))))),
-        React.createElement(DistanceCard, null),
-        React.createElement(ScenarioCard, null),
-        React.createElement("div", { className: "grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4" },
-            React.createElement(Card, { className: "p-4" },
-                React.createElement(SectionTitle, { title: "\u4ECA\u65E5\u4EA4\u6613\u6E05\u55AE", desc: "\u4F9D\u76EE\u524D\u80A1\u50F9\u8207\u898F\u5247\u7522\u751F\uFF0C\u542B\u76EE\u6A19\u80A1\u6578\uFF1B\u4E0D\u542B\u7A05\u8CBB\u8207\u6ED1\u50F9\u3002", right: React.createElement("div", { className: "flex gap-2 flex-wrap justify-end" },
-                        React.createElement("button", { onClick: copyTodayPlan, className: "px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-black active:scale-95" }, "\u8907\u88FD"),
-                        React.createElement("button", { onClick: addSnapshot, className: "px-3 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-black active:scale-95" }, "\u8A18\u9304"),
-                        React.createElement("button", { onClick: confirmExecution, className: "px-3 py-2 rounded-xl bg-brand-600 text-white text-xs font-black active:scale-95" }, "\u5DF2\u57F7\u884C")) }),
-                React.createElement("div", { className: "bg-slate-50 border border-slate-100 rounded-2xl p-3 mb-3" },
-                    React.createElement("div", { className: "text-[10px] font-black text-slate-500 mb-1" }, "\u57F7\u884C\u6458\u8981"),
-                    React.createElement("div", { className: "text-sm font-black text-slate-900 leading-relaxed" }, metrics.instruction),
-                    metrics.signal === "OFF" && React.createElement("div", { className: "mt-2 text-xs font-bold text-red-600" },
-                        "DCA \u9032\u5EA6\uFF1A\u5DF2\u5B8C\u6210 ",
-                        metrics.completedDca,
-                        "/6\uFF0C\u672C\u671F\u7B2C ",
-                        metrics.nextDcaMonth,
-                        "/6\uFF1B\u672C\u671F\u8CB7 QQQ \u7D04 $",
-                        money(metrics.dcaBuyUsd, 0),
-                        "\uFF0C\u7D04 ",
-                        money(metrics.dcaBuyShares, 4),
-                        " \u80A1\u3002"),
-                    data.lastExecutedAt && React.createElement("div", { className: "mt-2 text-[11px] text-slate-400 font-bold" },
-                        "\u4E0A\u6B21\u78BA\u8A8D\uFF1A",
-                        data.lastExecutedAt),
-                    React.createElement("div", { className: "mt-2 text-[11px] text-brand-700 font-black" },
-                        "\u5EFA\u8B70\u4E0B\u6B21\u6AA2\u67E5\uFF1A",
-                        nextCheckText())),
-                React.createElement("div", { className: "space-y-2 mb-3" }, metrics.actionLines.map((a, i) => React.createElement("div", { key: i, className: "flex gap-2 text-sm font-black leading-relaxed items-start" },
-                    React.createElement("span", { className: "mt-0.5 shrink-0 w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[11px]" }, i + 1),
-                    React.createElement("span", { className: "text-slate-800" }, a)))),
-                React.createElement("div", { className: "space-y-2" }, metrics.targetRows.map(r => React.createElement("div", { key: r.sym, className: "flex items-center justify-between gap-3 py-2 border-b border-slate-100 last:border-0" },
-                    React.createElement("div", null,
-                        React.createElement("div", { className: "font-black text-sm text-slate-800" }, r.sym),
-                        React.createElement("div", { className: "text-[10px] font-bold text-slate-400" },
-                            "\u76EE\u524D ",
-                            money(r.currentShares, 4),
-                            " \u80A1 / $",
-                            money(r.current, 2),
-                            r.target != null ? `｜目標 ${money(r.targetShares, 4)} 股` : "｜中間區不指定目標")),
-                    React.createElement("div", { className: `font-mono text-sm font-black text-right ${r.target == null || Math.abs(r.diff) < 10 ? "text-slate-400" : r.diff > 0 ? "text-red-600" : "text-emerald-600"}` },
-                        r.target == null || Math.abs(r.diff) < 10 ? "不動" : `${r.diff > 0 ? "買" : "賣"} ${money(Math.abs(r.shareDiff), 4)} 股`,
-                        React.createElement("div", { className: "text-[10px] font-bold" }, r.target == null ? "" : `$${money(Math.abs(r.diff), 0)}`)))))),
-            React.createElement(Card, { className: "p-4" },
-                React.createElement(SectionTitle, { title: "\u95DC\u9375\u50F9\u683C\u7DDA", desc: "SPY \u63A7\u5236\u98A8\u96AA\uFF1BQQQ \u63A7\u5236\u904E\u71B1\u964D\u69D3\u687F\u3002" }),
-                React.createElement("div", { className: "space-y-2 text-sm" }, [['SPY Risk-On 進場', metrics.entryPx, `200SMA +${data.entryBuffer}%`], ['SPY Risk-Off 出場', metrics.exitPx, `200SMA -${data.exitBuffer}%`], ['QQQ 過熱一階', metrics.qHot1, `200SMA +${data.hot1}%`], ['QQQ 過熱二階', metrics.qHot2, `200SMA +${data.hot2}%`], ['QQQ 過熱解除', metrics.qCool, `200SMA +${data.cooldown}%`]].map(x => React.createElement("div", { key: x[0], className: "flex justify-between gap-3 bg-slate-50 rounded-2xl p-3" },
-                    React.createElement("div", null,
-                        React.createElement("div", { className: "font-black text-slate-800" }, x[0]),
-                        React.createElement("div", { className: "text-[10px] text-slate-400 font-bold" }, x[2])),
-                    React.createElement("div", { className: "font-mono font-black text-slate-900" },
-                        "$",
-                        Number.isFinite(x[1]) ? money(x[1], 2) : '-')))))),
-        React.createElement(Card, { className: "p-4 mt-4" },
-            React.createElement(SectionTitle, { title: "\u6301\u80A1\u8207\u7E3D\u8CC7\u7522", desc: "\u8F38\u5165\u80A1\u6578\u6216\u73FE\u91D1\uFF0C\u7CFB\u7D71\u6703\u7528\u6700\u65B0\u50F9\u683C\u8A08\u7B97\u5E02\u503C\u3002", right: React.createElement("select", { value: data.currency, onChange: e => patch('currency', e.target.value), className: "bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black" },
-                    React.createElement("option", null, "USD"),
-                    React.createElement("option", null, "TWD")) }),
-            React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4" },
-                React.createElement(NumInput, { label: "TQQQ \u80A1\u6578", value: data.sharesTqqq, onChange: v => patch('sharesTqqq', v) }),
-                React.createElement(NumInput, { label: "QQQ \u80A1\u6578", value: data.sharesQqq, onChange: v => patch('sharesQqq', v) }),
-                React.createElement(NumInput, { label: "SPY \u80A1\u6578", value: data.sharesSpy, onChange: v => patch('sharesSpy', v) }),
-                React.createElement(NumInput, { label: "SGOV \u80A1\u6578", value: data.sharesSgov, onChange: v => patch('sharesSgov', v) }),
-                React.createElement(NumInput, { label: "\u73FE\u91D1 USD", value: data.cashUsd, onChange: v => patch('cashUsd', v) }),
-                React.createElement(NumInput, { label: "\u5176\u4ED6\u8CC7\u7522 USD", value: data.otherUsd, onChange: v => patch('otherUsd', v) }),
-                React.createElement(NumInput, { label: "USD/TWD", value: data.usdtwd, onChange: v => patch('usdtwd', v) }),
-                React.createElement(NumInput, { label: "DCA \u6708\u4EFD", value: data.dcaMonth, onChange: v => patch('dcaMonth', v), suffix: "/6" }),
-                React.createElement(NumInput, { label: "DCA \u539F\u59CB\u8CC7\u91D1\u6C60", value: data.dcaPoolUsd, onChange: v => patch('dcaPoolUsd', v), suffix: "USD", hint: "Risk-Off \u7B2C\u4E00\u6B21\u78BA\u8A8D\u6703\u81EA\u52D5\u8A18\u9304\uFF1B\u5FC5\u8981\u6642\u53EF\u624B\u52D5\u4FEE\u6B63\u3002" })),
-            React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3 mb-4" },
-                React.createElement("div", { className: "bg-slate-50 border border-slate-100 rounded-2xl p-3" },
-                    React.createElement("div", { className: "text-[10px] font-black text-slate-500" }, "\u8CC7\u7522\u9AD8\u9EDE"),
-                    React.createElement("div", { className: "font-mono text-lg font-black text-slate-900" },
-                        "$",
-                        money(metrics.assetHighUsd, 2))),
-                React.createElement("div", { className: "bg-slate-50 border border-slate-100 rounded-2xl p-3" },
-                    React.createElement("div", { className: "text-[10px] font-black text-slate-500" }, "\u76EE\u524D\u56DE\u64A4"),
-                    React.createElement("div", { className: `font-mono text-lg font-black ${metrics.drawdown < -0.1 ? "text-red-600" : "text-emerald-600"}` }, pct(metrics.drawdown, 1))),
-                React.createElement("button", { onClick: resetAssetHigh, className: "rounded-2xl bg-slate-900 text-white font-black active:scale-95 py-3" }, "\u4EE5\u76EE\u524D\u8CC7\u7522\u8A2D\u9AD8\u9EDE")),
-            React.createElement("div", { className: "overflow-x-auto rounded-2xl border border-slate-100" },
-                React.createElement("table", { className: "w-full min-w-[560px] text-xs" },
-                    React.createElement("thead", { className: "bg-slate-50 text-slate-500" },
-                        React.createElement("tr", null,
-                            React.createElement("th", { className: "p-2 text-left" }, "\u9805\u76EE"),
-                            React.createElement("th", { className: "p-2 text-right" }, "\u80A1\u6578/\u91D1\u984D"),
-                            React.createElement("th", { className: "p-2 text-right" }, "\u50F9\u683C"),
-                            React.createElement("th", { className: "p-2 text-right" }, "\u5E02\u503C"),
-                            React.createElement("th", { className: "p-2 text-right" }, "\u5360\u6BD4"))),
-                    React.createElement("tbody", null, metrics.rows.map(r => React.createElement("tr", { key: r.name, className: "border-t border-slate-100" },
-                        React.createElement("td", { className: "p-2 font-black" }, r.name),
-                        React.createElement("td", { className: "p-2 text-right font-mono" }, money(r.shares, 4)),
-                        React.createElement("td", { className: "p-2 text-right font-mono" }, r.name === '現金' || r.name === '其他資產' ? '-' : '$' + money(r.price, 2)),
-                        React.createElement("td", { className: "p-2 text-right font-mono" },
-                            "$",
-                            money(r.value, 2)),
-                        React.createElement("td", { className: "p-2 text-right font-mono" }, pct(r.weight, 1)))))))));
+                React.createElement("div", { className: `${metrics.tone === 'amber' ? 'bg-white/70' : 'bg-white/10'} rounded-2xl p-3` },
+                    React.createElement("div", { className: `text-[10px] font-black ${metrics.tone === 'amber' ? 'text-slate-500' : 'text-white/70'}` }, "QQQ / 200SMA"),
+                    React.createElement("div", { className: "font-mono text-lg font-black" }, pct(metrics.qqqDev))),
+                React.createElement("div", { className: `${metrics.tone === 'amber' ? 'bg-white/70' : 'bg-white/10'} rounded-2xl p-3` },
+                    React.createElement("div", { className: `text-[10px] font-black ${metrics.tone === 'amber' ? 'text-slate-500' : 'text-white/70'}` }, "下次檢查"),
+                    React.createElement("div", { className: "font-mono text-xs font-black" }, nextCheckText().replace('美股收盤後',''))),
+                React.createElement("div", { className: `${metrics.tone === 'amber' ? 'bg-white/70' : 'bg-white/10'} rounded-2xl p-3` },
+                    React.createElement("div", { className: `text-[10px] font-black ${metrics.tone === 'amber' ? 'text-slate-500' : 'text-white/70'}` }, "資料日期"),
+                    React.createElement("div", { className: "font-mono text-xs font-black" }, data.marketDate || '-')))),
+        React.createElement(TradeCard, null),
+        React.createElement(KeySignalsCard, null),
+        React.createElement(Collapsible, { id: "scenario", title: "QQQ 情境模擬", desc: "輸入 QQQ 漲跌百分比，估算總資產變化。" }, React.createElement(ScenarioCard, null)),
+        React.createElement(Collapsible, { id: "holdings", title: "持股與總資產", desc: "輸入股數或現金，系統會用最新價格計算市值。" },
+            React.createElement("div", null,
+                React.createElement("div", { className: "flex justify-end mb-3" }, React.createElement("select", { value: data.currency, onChange: e => patch('currency', e.target.value), className: "bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black" }, React.createElement("option", null, "USD"), React.createElement("option", null, "TWD"))),
+                React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4" },
+                    React.createElement(NumInput, { label: "TQQQ 股數", value: data.sharesTqqq, onChange: v => patch('sharesTqqq', v) }),
+                    React.createElement(NumInput, { label: "QQQ 股數", value: data.sharesQqq, onChange: v => patch('sharesQqq', v) }),
+                    React.createElement(NumInput, { label: "SPY 股數", value: data.sharesSpy, onChange: v => patch('sharesSpy', v) }),
+                    React.createElement(NumInput, { label: "SGOV 股數", value: data.sharesSgov, onChange: v => patch('sharesSgov', v) }),
+                    React.createElement(NumInput, { label: "現金 USD", value: data.cashUsd, onChange: v => patch('cashUsd', v) }),
+                    React.createElement(NumInput, { label: "其他資產 USD", value: data.otherUsd, onChange: v => patch('otherUsd', v) }),
+                    React.createElement(NumInput, { label: "USD/TWD", value: data.usdtwd, onChange: v => patch('usdtwd', v) }),
+                    React.createElement(NumInput, { label: "DCA 月份", value: data.dcaMonth, onChange: v => patch('dcaMonth', v), suffix: "/6" }),
+                    React.createElement(NumInput, { label: "DCA 原始資金池", value: data.dcaPoolUsd, onChange: v => patch('dcaPoolUsd', v), suffix: "USD", hint: "Risk-Off 第一次確認會自動記錄；必要時可手動修正。" })),
+                React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3 mb-4" },
+                    React.createElement("div", { className: "bg-slate-50 border border-slate-100 rounded-2xl p-3" }, React.createElement("div", { className: "text-[10px] font-black text-slate-500" }, "資產高點"), React.createElement("div", { className: "font-mono text-lg font-black text-slate-900" }, "$", money(metrics.assetHighUsd, 2))),
+                    React.createElement("div", { className: "bg-slate-50 border border-slate-100 rounded-2xl p-3" }, React.createElement("div", { className: "text-[10px] font-black text-slate-500" }, "目前回撤"), React.createElement("div", { className: `font-mono text-lg font-black ${metrics.drawdown < -0.1 ? "text-red-600" : "text-emerald-600"}` }, pct(metrics.drawdown, 1))),
+                    React.createElement("button", { onClick: resetAssetHigh, className: "rounded-2xl bg-slate-900 text-white font-black active:scale-95 py-3" }, "以目前資產設高點")),
+                React.createElement("div", { className: "overflow-x-auto rounded-2xl border border-slate-100" },
+                    React.createElement("table", { className: "w-full min-w-[560px] text-xs" },
+                        React.createElement("thead", { className: "bg-slate-50 text-slate-500" }, React.createElement("tr", null, React.createElement("th", { className: "p-2 text-left" }, "項目"), React.createElement("th", { className: "p-2 text-right" }, "股數/金額"), React.createElement("th", { className: "p-2 text-right" }, "價格"), React.createElement("th", { className: "p-2 text-right" }, "市值"), React.createElement("th", { className: "p-2 text-right" }, "占比"))),
+                        React.createElement("tbody", null, metrics.rows.map(r => React.createElement("tr", { key: r.name, className: "border-t border-slate-100" }, React.createElement("td", { className: "p-2 font-black" }, r.name), React.createElement("td", { className: "p-2 text-right font-mono" }, money(r.shares, 4)), React.createElement("td", { className: "p-2 text-right font-mono" }, r.name === '現金' || r.name === '其他資產' ? '-' : '$' + money(r.price, 2)), React.createElement("td", { className: "p-2 text-right font-mono" }, "$", money(r.value, 2)), React.createElement("td", { className: "p-2 text-right font-mono" }, pct(r.weight, 1))))))))));
     const Inputs = () => React.createElement("main", { className: "max-w-5xl mx-auto px-4 pt-4 content-bottom-space" },
         React.createElement(Card, { className: "p-4" },
             React.createElement(SectionTitle, { title: "\u5E02\u5834\u8CC7\u6599", desc: "\u4E3B\u8981\u7528 Finnhub \u6293\u5831\u50F9\uFF1BSPY/QQQ \u7684 200SMA \u7528 Finnhub\uFF0C\u5931\u6557\u6642\u5099\u63F4 Stooq\u3002", right: React.createElement("button", { onClick: fetchPrices, className: "px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black" }, "\u81EA\u52D5\u6293\u80A1\u50F9") }),
@@ -741,7 +734,12 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                 React.createElement("button", { onClick: loginGoogle, className: "py-3 rounded-2xl bg-slate-900 text-white font-black active:scale-95" }, "Google \u767B\u5165"),
                 React.createElement("button", { onClick: logout, className: "py-3 rounded-2xl bg-slate-100 text-slate-700 font-black active:scale-95" }, "\u5207\u56DE\u533F\u540D"))));
     const BottomNav = () => React.createElement("nav", { className: "fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 safe-bottom" },
-        React.createElement("div", { className: "max-w-5xl mx-auto grid grid-cols-4 gap-1 px-3 pt-2" }, [['home', '首頁'], ['inputs', '輸入'], ['logs', '紀錄'], ['sync', '同步']].map(([id, label]) => React.createElement("button", { key: id, onClick: () => setPage(id), className: `py-3 rounded-2xl text-xs font-black active:scale-95 ${page === id ? 'bg-slate-900 text-white' : 'text-slate-500'}` }, label))));
+        React.createElement("div", { className: "max-w-5xl mx-auto grid grid-cols-5 gap-1 px-2 pt-2" },
+            React.createElement("button", { onClick: () => setPage('home'), className: `py-3 rounded-2xl text-[11px] font-black active:scale-95 ${page === 'home' ? 'bg-slate-900 text-white' : 'text-slate-500'}` }, "首頁"),
+            React.createElement("button", { onClick: () => setPage('inputs'), className: `py-3 rounded-2xl text-[11px] font-black active:scale-95 ${page === 'inputs' ? 'bg-slate-900 text-white' : 'text-slate-500'}` }, "輸入"),
+            React.createElement("button", { onClick: confirmExecution, className: "py-3 rounded-2xl text-[11px] font-black active:scale-95 bg-brand-600 text-white shadow-soft" }, "已執行"),
+            React.createElement("button", { onClick: () => setPage('logs'), className: `py-3 rounded-2xl text-[11px] font-black active:scale-95 ${page === 'logs' ? 'bg-slate-900 text-white' : 'text-slate-500'}` }, "紀錄"),
+            React.createElement("button", { onClick: () => setPage('sync'), className: `py-3 rounded-2xl text-[11px] font-black active:scale-95 ${page === 'sync' ? 'bg-slate-900 text-white' : 'text-slate-500'}` }, "同步")));
     return React.createElement("div", null,
         React.createElement(Header, null),
         page === 'home' && React.createElement(Home, null),
