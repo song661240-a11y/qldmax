@@ -149,6 +149,8 @@ const App = () => {
     const [toast, setToast] = useState("");
     const [syncText, setSyncText] = useState("準備中");
     const [loadingPrice, setLoadingPrice] = useState(false);
+    const [priceError, setPriceError] = useState("");
+    const [pendingExecution, setPendingExecution] = useState(false);
     const [collapsed, setCollapsed] = useState({ holdings: true, scenario: false });
     const saveTimer = useRef(null);
     const ignoreCloud = useRef(false);
@@ -359,12 +361,22 @@ const App = () => {
             if (!actionLines.length)
                 actionLines.push('目前部位與目標接近，不需要交易。');
         }
+        const makeAboveLine = (key, label, current, target, hint) => {
+            const achieved = current >= target;
+            const raw = achieved ? ((current / target) - 1) * 100 : ((target / current) - 1) * 100;
+            return { key, label, value: raw, displayText: achieved ? `已達成 +${raw.toFixed(1)}%` : `還差 +${raw.toFixed(1)}%`, price: target, hint, achieved, statusText: achieved ? '已達成' : (raw <= 2 ? '即將觸發' : raw <= 5 ? '接近' : '尚有距離'), statusTone: achieved ? 'green' : (raw <= 2 ? 'red' : raw <= 5 ? 'amber' : 'green'), valueTone: achieved ? 'text-emerald-600' : 'text-slate-900' };
+        };
+        const makeBelowLine = (key, label, current, target, hint, achievedTone = 'red', achievedText = '已觸發') => {
+            const achieved = current <= target;
+            const raw = ((target / current) - 1) * 100;
+            return { key, label, value: raw, displayText: achieved ? `已低於 +${Math.abs(raw).toFixed(1)}%` : `還差 ${raw.toFixed(1)}%`, price: target, hint, achieved, statusText: achieved ? achievedText : (Math.abs(raw) <= 2 ? '即將觸發' : Math.abs(raw) <= 5 ? '接近' : '尚有距離'), statusTone: achieved ? achievedTone : (Math.abs(raw) <= 2 ? 'red' : Math.abs(raw) <= 5 ? 'amber' : 'green'), valueTone: achieved ? (achievedTone === 'green' ? 'text-emerald-600' : 'text-red-600') : (Math.abs(raw) <= 5 ? 'text-red-600' : 'text-slate-900') };
+        };
         const distanceItems = valid ? [
-            { key: 'riskOn', label: '距離 Risk-On', value: ((entryPx / spy) - 1) * 100, price: entryPx, hint: `SPY 需高於 $${money(entryPx, 2)}` },
-            { key: 'riskOff', label: '距離 Risk-Off', value: ((exitPx / spy) - 1) * 100, price: exitPx, hint: `SPY 低於 $${money(exitPx, 2)} 觸發` },
-            { key: 'hot30', label: `距離 QQQ +${data.hot1}%`, value: ((qHot1 / qqq) - 1) * 100, price: qHot1, hint: `QQQ 高於 $${money(qHot1, 2)} 降半槓桿` },
-            { key: 'hot40', label: `距離 QQQ +${data.hot2}%`, value: ((qHot2 / qqq) - 1) * 100, price: qHot2, hint: `QQQ 高於 $${money(qHot2, 2)} 全切 QQQ` },
-            { key: 'cooldown', label: `距離過熱解除 +${data.cooldown}%`, value: ((qCool / qqq) - 1) * 100, price: qCool, hint: `QQQ 回到 $${money(qCool, 2)} 以下才解除` }
+            makeAboveLine('riskOn', 'Risk-On', spy, entryPx, `SPY 高於 $${money(entryPx, 2)} 進入 Risk-On`),
+            makeBelowLine('riskOff', 'Risk-Off', spy, exitPx, `SPY 低於 $${money(exitPx, 2)} 觸發 Risk-Off`),
+            makeAboveLine('hot30', `QQQ +${data.hot1}%`, qqq, qHot1, `QQQ 高於 $${money(qHot1, 2)} 降半槓桿`),
+            makeAboveLine('hot40', `QQQ +${data.hot2}%`, qqq, qHot2, `QQQ 高於 $${money(qHot2, 2)} 全切 QQQ`),
+            makeBelowLine('cooldown', `過熱解除 +${data.cooldown}%`, qqq, qCool, `QQQ 回到 $${money(qCool, 2)} 以下才解除`, 'green', '已達解除線')
         ] : [];
         const scenarioMove = (getNum(data.scenarioSign) || -1) * Math.abs(getNum(data.scenarioAbsPct));
         const scenarioFactor = 1 + scenarioMove / 100;
@@ -406,6 +418,7 @@ const App = () => {
         if (loadingPrice)
             return;
         setLoadingPrice(true);
+        setPriceError("");
         showToast("正在抓取股價");
         try {
             const results = await Promise.allSettled(["SPY", "QQQ", "TQQQ", "SGOV"].map(fetchSymbol));
@@ -439,12 +452,19 @@ const App = () => {
             });
             if (Object.keys(ok).length) {
                 merge(ok);
-                showToast(failed.length ? `部分更新成功，失敗：${failed.join('、')}` : "股價已用 Finnhub 更新");
+                if (failed.length) {
+                    setPriceError(`部分股價抓取失敗：${failed.join('、')}。已保留上次資料，請必要時手動確認。`);
+                    showToast(`部分更新成功，失敗：${failed.join('、')}`);
+                }
+                else showToast("股價已用 Finnhub 更新");
             }
-            else
+            else {
+                setPriceError("自動抓價失敗，請到輸入頁手動確認 SPY / QQQ / 200SMA。");
                 showToast("自動抓價失敗，請手動輸入");
+            }
         }
         catch (e) {
+            setPriceError("自動抓價失敗：" + (e.message || "請手動輸入"));
             showToast("自動抓價失敗，請手動輸入");
         }
         finally {
@@ -454,7 +474,15 @@ const App = () => {
     const buildLogItem = (kind = 'snapshot') => ({
         time: new Date().toISOString(), timeText: new Date().toLocaleString("zh-TW"), marketDate: data.marketDate,
         kind, signal: metrics.title, allocation: metrics.alloc.label, totalUsd: metrics.totalUsd, totalDisplay: metrics.totalDisplay,
-        spy: getNum(data.spy), qqq: getNum(data.qqq), tqqq: getNum(data.tqqq), spySma: getNum(data.spySma), qqqSma: getNum(data.qqqSma),
+        spy: getNum(data.spy), qqq: getNum(data.qqq), tqqq: getNum(data.tqqq), sgov: getNum(data.sgov), spySma: getNum(data.spySma), qqqSma: getNum(data.qqqSma),
+        shares: {
+            TQQQ: getNum(data.sharesTqqq),
+            QQQ: getNum(data.sharesQqq),
+            SPY: getNum(data.sharesSpy),
+            SGOV: getNum(data.sharesSgov),
+            cashUsd: getNum(data.cashUsd),
+            otherUsd: getNum(data.otherUsd)
+        },
         actions: metrics.actionLines, dcaMonth: metrics.completedDca, notes: data.notes
     });
     const addSnapshot = () => {
@@ -464,6 +492,13 @@ const App = () => {
         }
         patch("history", [buildLogItem('snapshot'), ...(Array.isArray(data.history) ? data.history : [])].slice(0, 200));
         showToast("已加入歷史紀錄");
+    };
+    const deleteLog = (idx) => {
+        const logs = Array.isArray(data.history) ? data.history : [];
+        if (!logs[idx]) return;
+        if (!confirm('確定刪除這一筆歷史紀錄？')) return;
+        patch('history', logs.filter((_, i) => i !== idx));
+        showToast('已刪除單筆紀錄');
     };
     const copyTodayPlan = async () => {
         const text = `日期：${todayStr()}
@@ -496,8 +531,14 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
             showToast("資料不足，不能確認執行");
             return;
         }
-        if ((metrics.signal === 'OFF' || metrics.signal === 'HOT2') && !confirm('目前是高風險狀態，請確認價格、股數、DCA 期數都正確。確定要寫入已執行紀錄？'))
+        setPendingExecution(true);
+    };
+    const performExecution = () => {
+        if (!metrics.valid) {
+            showToast("資料不足，不能確認執行");
+            setPendingExecution(false);
             return;
+        }
         const item = buildLogItem('execution');
         const next = { history: [item, ...(Array.isArray(data.history) ? data.history : [])].slice(0, 200), assetHighUsd: Math.max(getNum(data.assetHighUsd), metrics.totalUsd), lastExecutedAt: new Date().toLocaleString("zh-TW"), lastExecutionSummary: metrics.actionLines.join(" "), currentState: metrics.signal };
         if (metrics.signal === 'OFF') {
@@ -510,6 +551,7 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
             next.dcaPoolUsd = 0;
         }
         merge(next);
+        setPendingExecution(false);
         showToast(metrics.signal === 'OFF' ? "已確認執行，DCA 月份已往前一格" : "已確認執行並寫入紀錄");
     };
     const resetAssetHigh = () => { if (confirm('把目前總資產設為新的高點？')) {
@@ -525,7 +567,7 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                 React.createElement(Pill, { tone: (user === null || user === void 0 ? void 0 : user.isAnonymous) ? "amber" : "green" }, (user === null || user === void 0 ? void 0 : user.isAnonymous) ? "匿名同步" : "Google同步"),
                 React.createElement("button", { onClick: fetchPrices, disabled: loadingPrice, className: "px-3 py-2 rounded-2xl bg-slate-900 text-white text-xs font-black active:scale-95 disabled:opacity-50" }, loadingPrice ? "抓取中" : "更新股價"))));
     const SignalSkin = () => {
-        const m = { red: "bg-red-700 text-white border-red-800", green: "bg-emerald-700 text-white border-emerald-800", purple: "bg-purple-700 text-white border-purple-800", amber: "bg-amber-100 text-slate-950 border-amber-200", blue: "bg-brand-700 text-white border-brand-800", slate: "bg-slate-900 text-white border-slate-800" };
+        const m = { red: "bg-red-50 text-slate-950 border-red-200", green: "bg-emerald-50 text-slate-950 border-emerald-200", purple: "bg-purple-50 text-slate-950 border-purple-200", amber: "bg-amber-50 text-slate-950 border-amber-200", blue: "bg-brand-50 text-slate-950 border-brand-200", slate: "bg-white text-slate-950 border-slate-200" };
         return m[metrics.tone] || m.slate;
     };
     const Collapsible = ({ id, title, desc, children }) => React.createElement(Card, { className: "p-4 mt-4" },
@@ -544,15 +586,41 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
             React.createElement("div", { className: "text-right" },
                 React.createElement(Pill, { tone: metrics.drawdown < -0.3 ? "red" : metrics.drawdown < -0.2 ? "amber" : "green" }, "回撤 ", pct(metrics.drawdown, 1)),
                 React.createElement("div", { className: "text-[10px] font-bold text-slate-400 mt-2" }, "高點 $", money(metrics.assetHighUsd, 0)))));
-    const distanceTone = (v) => Math.abs(v) <= 2 ? 'red' : Math.abs(v) <= 5 ? 'amber' : 'green';
-    const distanceLabel = (v) => Math.abs(v) <= 2 ? '即將觸發' : Math.abs(v) <= 5 ? '接近' : '尚有距離';
+    const StatusWarnings = () => {
+        const warnings = [];
+        if (!metrics.valid) warnings.push("市場資料不足，請先更新股價或手動確認 SPY / QQQ / 200SMA。");
+        if (priceError) warnings.push(priceError);
+        if (String(syncText || "").includes("失敗")) warnings.push(syncText);
+        if (!warnings.length) return null;
+        return React.createElement(Card, { className: "p-4 mt-4 border-red-200 bg-red-50" },
+            React.createElement("div", { className: "text-sm font-black text-red-700 mb-2" }, "⚠️ 需要確認"),
+            warnings.map((w, i) => React.createElement("div", { key: i, className: "text-xs font-bold text-red-700 leading-relaxed" }, "・", w)));
+    };
+    const AlertPriceCard = () => React.createElement(Card, { className: "p-4 mt-4 border-brand-100" },
+        React.createElement(SectionTitle, { title: "警報價位", desc: "下一個可能需要行動的關鍵價格，先看價格再看百分比。" }),
+        !metrics.valid ? React.createElement("div", { className: "text-sm text-slate-400 font-bold" }, "資料不足，暫時無法顯示警報價位。") :
+        React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-2" },
+            React.createElement("div", { className: "bg-slate-50 border border-slate-100 rounded-2xl p-3" },
+                React.createElement("div", { className: "text-[10px] font-black text-slate-500" }, "下跌警報"),
+                React.createElement("div", { className: "font-mono text-xl font-black text-red-600" }, "SPY $", money(metrics.exitPx, 2)),
+                React.createElement("div", { className: "text-[11px] font-bold text-slate-400" }, "低於此價觸發 Risk-Off")),
+            React.createElement("div", { className: "bg-slate-50 border border-slate-100 rounded-2xl p-3" },
+                React.createElement("div", { className: "text-[10px] font-black text-slate-500" }, "上漲過熱"),
+                React.createElement("div", { className: "font-mono text-xl font-black text-purple-700" }, "QQQ $", money(metrics.qHot1, 2)),
+                React.createElement("div", { className: "text-[11px] font-bold text-slate-400" }, "高於此價降為 50/50")),
+            React.createElement("div", { className: "bg-slate-50 border border-slate-100 rounded-2xl p-3" },
+                React.createElement("div", { className: "text-[10px] font-black text-slate-500" }, "回到進攻"),
+                React.createElement("div", { className: "font-mono text-xl font-black text-emerald-600" }, "SPY $", money(metrics.entryPx, 2)),
+                React.createElement("div", { className: "text-[11px] font-bold text-slate-400" }, "高於此價允許 Risk-On"))));
+    const distanceTone = (itemOrValue) => (itemOrValue && typeof itemOrValue === 'object') ? itemOrValue.statusTone : (Math.abs(itemOrValue) <= 2 ? 'red' : Math.abs(itemOrValue) <= 5 ? 'amber' : 'green');
+    const distanceLabel = (itemOrValue) => (itemOrValue && typeof itemOrValue === 'object') ? itemOrValue.statusText : (Math.abs(itemOrValue) <= 2 ? '即將觸發' : Math.abs(itemOrValue) <= 5 ? '接近' : '尚有距離');
     const DistanceCard = () => React.createElement(Card, { className: "p-4 mt-4" },
         React.createElement(SectionTitle, { title: "\u8DDD\u96E2\u4E0B\u4E00\u500B\u8A0A\u865F", desc: "\u8CA0\u6578\u4EE3\u8868\u5DF2\u7D93\u8D8A\u904E\u8A72\u89F8\u767C\u7DDA\uFF1B\u6B63\u6578\u4EE3\u8868\u9084\u5DEE\u591A\u5C11\u3002" }),
         React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2" }, metrics.distanceItems.length ? metrics.distanceItems.map(item => React.createElement("div", { key: item.key, className: "bg-slate-50 border border-slate-100 rounded-2xl p-3" },
             React.createElement("div", { className: "flex items-center justify-between gap-2 mb-1" },
                 React.createElement("div", { className: "text-[10px] font-black text-slate-500" }, item.label),
-                React.createElement(Pill, { tone: distanceTone(item.value) }, distanceLabel(item.value))),
-            React.createElement("div", { className: `font-mono text-xl font-black ${item.value < 0 ? 'text-red-600' : 'text-slate-900'}` }, signedPctText(item.value)),
+                React.createElement(Pill, { tone: distanceTone(item) }, distanceLabel(item))),
+            React.createElement("div", { className: `font-mono text-xl font-black ${item.valueTone || 'text-slate-900'}` }, item.displayText || signedPctText(item.value)),
             React.createElement("div", { className: "text-[10px] text-slate-400 font-bold mt-1" }, item.hint))) : React.createElement("div", { className: "text-sm text-slate-400 font-bold" }, "\u8CC7\u6599\u4E0D\u8DB3\uFF0C\u7121\u6CD5\u8A08\u7B97\u8DDD\u96E2\u3002")));
     const ScenarioCard = () => {
         var _a;
@@ -601,20 +669,22 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                     React.createElement("div", { className: "font-black text-sm text-slate-800" }, item.label),
                     React.createElement("div", { className: "text-[10px] font-bold text-slate-400 mt-0.5" }, item.hint)),
                 React.createElement("div", { className: "text-right shrink-0" },
-                    React.createElement("div", { className: `font-mono text-base font-black ${item.value < 0 ? 'text-red-600' : 'text-slate-900'}` }, signedPctText(item.value)),
+                    React.createElement("div", { className: `font-mono text-base font-black ${item.valueTone || 'text-slate-900'}` }, item.displayText || signedPctText(item.value)),
                     React.createElement("div", { className: "text-[10px] font-bold text-slate-400" }, "$", money(item.price, 2)),
-                    React.createElement("div", null, React.createElement(Pill, { tone: distanceTone(item.value) }, distanceLabel(item.value))))))
+                    React.createElement("div", null, React.createElement(Pill, { tone: distanceTone(item) }, distanceLabel(item))))))
             : React.createElement("div", { className: "text-sm text-slate-400 font-bold" }, "資料不足，無法計算距離。")));
     const TradeCard = () => React.createElement(Card, { className: "p-4 mt-4" },
         React.createElement(SectionTitle, { title: "今日交易清單", desc: "依目前股價與規則產生，含目標股數；不含稅費與滑價。", right: React.createElement("div", { className: "flex gap-2 flex-wrap justify-end" },
-            React.createElement("button", { onClick: copyTodayPlan, className: "px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-black active:scale-95" }, "複製"),
-            React.createElement("button", { onClick: addSnapshot, className: "px-3 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-black active:scale-95" }, "記錄")) }),
+            React.createElement("button", { onClick: copyTodayPlan, className: "px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-black active:scale-95" }, "複製")) }),
         React.createElement("div", { className: "bg-slate-50 border border-slate-100 rounded-2xl p-3 mb-3" },
             React.createElement("div", { className: "text-[10px] font-black text-slate-500 mb-1" }, "執行摘要"),
             React.createElement("div", { className: "text-sm font-black text-slate-900 leading-relaxed" }, metrics.instruction),
             metrics.signal === "OFF" && React.createElement("div", { className: "mt-2 text-xs font-bold text-red-600" }, "DCA 進度：已完成 ", metrics.completedDca, "/6，本期第 ", metrics.nextDcaMonth, "/6；本期買 QQQ 約 $", money(metrics.dcaBuyUsd, 0), "，約 ", money(metrics.dcaBuyShares, 4), " 股。"),
             data.lastExecutedAt && React.createElement("div", { className: "mt-2 text-[11px] text-slate-400 font-bold" }, "上次確認：", data.lastExecutedAt),
             React.createElement("div", { className: "mt-2 text-[11px] text-brand-700 font-black" }, "建議下次檢查：", nextCheckText())),
+        React.createElement("label", { className: "block mb-3" },
+            React.createElement("div", { className: "text-[10px] font-black text-slate-500 mb-1" }, "執行備註"),
+            React.createElement("textarea", { value: data.notes || "", onChange: e => patch('notes', e.target.value), placeholder: "例如：券商已下單、今天為何執行、心理狀態...", className: "w-full min-h-[76px] rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold" })),
         React.createElement("div", { className: "space-y-2 mb-3" }, metrics.actionLines.map((a, i) => React.createElement("div", { key: i, className: "flex gap-2 text-sm font-black leading-relaxed items-start" },
             React.createElement("span", { className: "mt-0.5 shrink-0 w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[11px]" }, i + 1),
             React.createElement("span", { className: "text-slate-800" }, a)))),
@@ -626,26 +696,28 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                 React.createElement("div", { className: "text-[10px] font-bold" }, r.target == null ? "" : `$${money(Math.abs(r.diff), 0)}`))))));
     const Home = () => React.createElement("main", { className: "max-w-5xl mx-auto px-4 pt-4 content-bottom-space" },
         React.createElement(TotalTopCard, null),
+        React.createElement(StatusWarnings, null),
+        React.createElement(AlertPriceCard, null),
         React.createElement(Card, { className: `p-5 mt-4 overflow-hidden relative ${SignalSkin()}` },
             React.createElement("div", { className: "absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" }),
             React.createElement("div", { className: "relative flex items-start justify-between gap-3" },
                 React.createElement("div", null,
-                    React.createElement("div", { className: `text-xs font-black mb-2 ${metrics.tone === 'amber' ? 'text-amber-700' : 'text-white/80'}` }, "目前訊號"),
+                    React.createElement("div", { className: `text-xs font-black mb-2 text-slate-500` }, "目前訊號"),
                     React.createElement("h2", { className: "text-2xl font-black leading-tight" }, metrics.title),
-                    React.createElement("p", { className: `text-sm mt-2 leading-relaxed ${metrics.tone === 'amber' ? 'text-slate-700' : 'text-white/90'}` }, metrics.instruction)),
+                    React.createElement("p", { className: `text-sm mt-2 leading-relaxed text-slate-700` }, metrics.instruction)),
                 React.createElement(Pill, { tone: metrics.tone === 'amber' ? 'amber' : 'dark' }, metrics.alloc.label)),
             React.createElement("div", { className: "relative grid grid-cols-2 md:grid-cols-4 gap-2 mt-5" },
-                React.createElement("div", { className: `${metrics.tone === 'amber' ? 'bg-white/70' : 'bg-white/10'} rounded-2xl p-3` },
-                    React.createElement("div", { className: `text-[10px] font-black ${metrics.tone === 'amber' ? 'text-slate-500' : 'text-white/70'}` }, "SPY / 200SMA"),
+                React.createElement("div", { className: `bg-white/70 rounded-2xl p-3` },
+                    React.createElement("div", { className: `text-[10px] font-black text-slate-500` }, "SPY / 200SMA"),
                     React.createElement("div", { className: "font-mono text-lg font-black" }, pct(metrics.spyDev))),
-                React.createElement("div", { className: `${metrics.tone === 'amber' ? 'bg-white/70' : 'bg-white/10'} rounded-2xl p-3` },
-                    React.createElement("div", { className: `text-[10px] font-black ${metrics.tone === 'amber' ? 'text-slate-500' : 'text-white/70'}` }, "QQQ / 200SMA"),
+                React.createElement("div", { className: `bg-white/70 rounded-2xl p-3` },
+                    React.createElement("div", { className: `text-[10px] font-black text-slate-500` }, "QQQ / 200SMA"),
                     React.createElement("div", { className: "font-mono text-lg font-black" }, pct(metrics.qqqDev))),
-                React.createElement("div", { className: `${metrics.tone === 'amber' ? 'bg-white/70' : 'bg-white/10'} rounded-2xl p-3` },
-                    React.createElement("div", { className: `text-[10px] font-black ${metrics.tone === 'amber' ? 'text-slate-500' : 'text-white/70'}` }, "下次檢查"),
+                React.createElement("div", { className: `bg-white/70 rounded-2xl p-3` },
+                    React.createElement("div", { className: `text-[10px] font-black text-slate-500` }, "下次檢查"),
                     React.createElement("div", { className: "font-mono text-xs font-black" }, nextCheckText().replace('美股收盤後',''))),
-                React.createElement("div", { className: `${metrics.tone === 'amber' ? 'bg-white/70' : 'bg-white/10'} rounded-2xl p-3` },
-                    React.createElement("div", { className: `text-[10px] font-black ${metrics.tone === 'amber' ? 'text-slate-500' : 'text-white/70'}` }, "資料日期"),
+                React.createElement("div", { className: `bg-white/70 rounded-2xl p-3` },
+                    React.createElement("div", { className: `text-[10px] font-black text-slate-500` }, "資料日期"),
                     React.createElement("div", { className: "font-mono text-xs font-black" }, data.marketDate || '-')))),
         React.createElement(TradeCard, null),
         React.createElement(KeySignalsCard, null),
@@ -695,33 +767,70 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
         React.createElement(Card, { className: "p-4 mt-4" },
             React.createElement(SectionTitle, { title: "\u7B56\u7565\u6587\u5B57", desc: "\u65B9\u4FBF\u4F60\u81EA\u5DF1\u6AA2\u67E5\u898F\u5247\u662F\u5426\u8D70\u6A23\u3002" }),
             React.createElement("pre", { className: "whitespace-pre-wrap text-xs leading-relaxed bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-600 font-bold" }, STRATEGY_TEXT)));
+    const ProfitChart = ({ logs }) => {
+        const chartLogs = (Array.isArray(logs) ? logs : []).filter(h => getNum(h.totalUsd) > 0).slice().reverse();
+        if (chartLogs.length < 2) {
+            return React.createElement("div", { className: "bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm font-bold text-slate-400 text-center" }, "至少需要 2 筆歷史紀錄才會顯示損益圖。");
+        }
+        const values = chartLogs.map(h => getNum(h.totalUsd));
+        const min = Math.min(...values), max = Math.max(...values);
+        const range = Math.max(1, max - min);
+        const w = 320, h = 140, pad = 16;
+        const points = values.map((v, i) => {
+            const x = pad + (i * (w - pad * 2)) / Math.max(1, values.length - 1);
+            const y = h - pad - ((v - min) * (h - pad * 2)) / range;
+            return `${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join(' ');
+        const first = values[0], last = values[values.length - 1];
+        const pnl = last - first;
+        const pnlPct = first > 0 ? pnl / first : 0;
+        let peak = values[0];
+        let maxDrawdown = 0;
+        values.forEach(v => { peak = Math.max(peak, v); if (peak > 0) maxDrawdown = Math.min(maxDrawdown, v / peak - 1); });
+        return React.createElement("div", { className: "bg-slate-950 text-white rounded-3xl p-4 mb-4 overflow-hidden" },
+            React.createElement("div", { className: "flex items-start justify-between gap-3 mb-3" },
+                React.createElement("div", null,
+                    React.createElement("div", { className: "text-[10px] font-black text-slate-300" }, "歷史損益圖"),
+                    React.createElement("div", { className: `font-mono text-2xl font-black ${pnl >= 0 ? 'text-emerald-300' : 'text-red-300'}` }, `${pnl >= 0 ? '+' : '-'}$${money(Math.abs(pnl), 0)}`),
+                    React.createElement("div", { className: "text-xs font-bold text-slate-400" }, `${signedPctText(pnlPct * 100)}｜${values.length} 筆紀錄`)),
+                React.createElement("div", { className: "text-right text-[10px] font-bold text-slate-400" },
+                    React.createElement("div", null, "高點 $", money(max, 0)),
+                    React.createElement("div", null, "低點 $", money(min, 0)),
+                    React.createElement("div", { className: maxDrawdown <= -0.2 ? "text-red-300" : "" }, "最大回撤 ", pct(maxDrawdown, 1)))),
+            React.createElement("svg", { viewBox: `0 0 ${w} ${h}`, className: "w-full h-36 bg-white/5 rounded-2xl" },
+                React.createElement("polyline", { points, fill: "none", stroke: "currentColor", strokeWidth: "4", strokeLinecap: "round", strokeLinejoin: "round", className: pnl >= 0 ? "text-emerald-300" : "text-red-300" }),
+                values.map((v, i) => {
+                    const x = pad + (i * (w - pad * 2)) / Math.max(1, values.length - 1);
+                    const y = h - pad - ((v - min) * (h - pad * 2)) / range;
+                    return React.createElement("circle", { key: i, cx: x, cy: y, r: i === values.length - 1 ? 4 : 2.5, className: "fill-current text-white" });
+                })));
+    };
     const Logs = () => React.createElement("main", { className: "max-w-5xl mx-auto px-4 pt-4 content-bottom-space" },
         React.createElement(Card, { className: "p-4" },
-            React.createElement(SectionTitle, { title: "\u6B77\u53F2\u7D00\u9304", desc: "\u6BCF\u6B21\u6309\u9996\u9801\u7684\u8A18\u9304\uFF0C\u5C31\u6703\u4FDD\u5B58\u7576\u4E0B\u8A0A\u865F\u3001\u7E3D\u8CC7\u7522\u8207\u5099\u8A3B\u3002", right: React.createElement("div", { className: "flex gap-2" },
-                    React.createElement("button", { onClick: addSnapshot, className: "px-3 py-2 rounded-xl bg-brand-600 text-white text-xs font-black" }, "\u65B0\u589E"),
-                    React.createElement("button", { onClick: () => { if (confirm('確定清空歷史紀錄？'))
-                            patch('history', []); }, className: "px-3 py-2 rounded-xl bg-red-50 text-red-700 text-xs font-black" }, "\u6E05\u7A7A")) }),
-            React.createElement("textarea", { value: data.notes || "", onChange: e => patch('notes', e.target.value), placeholder: "\u5099\u8A3B\uFF1A\u4F8B\u5982\u4ECA\u5929\u70BA\u4F55\u57F7\u884C\u3001\u5238\u5546\u4E0B\u55AE\u72C0\u6CC1\u3001\u5FC3\u7406\u72C0\u614B...", className: "w-full min-h-[86px] rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold mb-4" }),
+            React.createElement(SectionTitle, { title: "歷史紀錄", desc: "按底部『已執行』會保存訊號、總資產、股數與備註。", right: React.createElement("button", { onClick: () => { if (confirm('確定清空全部歷史紀錄？')) patch('history', []); }, className: "px-3 py-2 rounded-xl bg-red-50 text-red-700 text-xs font-black" }, "清空") }),
+            React.createElement(ProfitChart, { logs: data.history || [] }),
             React.createElement("div", { className: "space-y-3" },
-                (Array.isArray(data.history) ? data.history : []).length === 0 && React.createElement("div", { className: "text-sm text-slate-400 font-bold text-center py-8" }, "\u5C1A\u7121\u7D00\u9304"),
+                (Array.isArray(data.history) ? data.history : []).length === 0 && React.createElement("div", { className: "text-sm text-slate-400 font-bold text-center py-8" }, "尚無紀錄"),
                 (data.history || []).map((h, i) => React.createElement("div", { key: h.time || i, className: "border border-slate-100 rounded-2xl p-3 bg-slate-50" },
-                    React.createElement("div", { className: "flex justify-between gap-2" },
+                    React.createElement("div", { className: "flex justify-between gap-2 items-start" },
                         React.createElement("div", null,
                             React.createElement("div", { className: "font-black text-slate-900" }, h.signal),
-                            React.createElement("div", { className: "text-[11px] text-slate-400 font-bold" },
-                                h.timeText,
-                                "\uFF5C\u884C\u60C5\u65E5 ",
-                                h.marketDate || '-')),
-                        React.createElement("div", { className: "font-mono font-black text-slate-900" }, h.totalDisplay)),
+                            React.createElement("div", { className: "text-[11px] text-slate-400 font-bold" }, h.timeText, "｜行情日 ", h.marketDate || '-')),
+                        React.createElement("div", { className: "text-right" },
+                            React.createElement("div", { className: "font-mono font-black text-slate-900" }, h.totalDisplay || ('$' + money(h.totalUsd, 2))),
+                            React.createElement("button", { onClick: () => deleteLog(i), className: "mt-1 px-2 py-1 rounded-lg bg-red-50 text-red-700 text-[10px] font-black active:scale-95" }, "刪除"))),
                     React.createElement("div", { className: "mt-2 flex flex-wrap gap-2" },
-                        React.createElement(Pill, { tone: "blue" }, h.allocation),
-                        React.createElement(Pill, null,
-                            "SPY $",
-                            money(h.spy, 2)),
-                        React.createElement(Pill, null,
-                            "QQQ $",
-                            money(h.qqq, 2))),
-                    h.notes && React.createElement("div", { className: "mt-2 text-xs text-slate-500 font-bold leading-relaxed" }, h.notes))))));
+                        React.createElement(Pill, { tone: "blue" }, h.allocation || '-'),
+                        React.createElement(Pill, null, "SPY $", money(h.spy, 2)),
+                        React.createElement(Pill, null, "QQQ $", money(h.qqq, 2)),
+                        React.createElement(Pill, null, "TQQQ $", money(h.tqqq, 2))),
+                    React.createElement("div", { className: "mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2" },
+                        React.createElement("div", { className: "bg-white rounded-xl p-2" }, React.createElement("div", { className: "text-[10px] font-black text-slate-400" }, "TQQQ 股數"), React.createElement("div", { className: "font-mono text-xs font-black" }, money(h.shares?.TQQQ, 4))),
+                        React.createElement("div", { className: "bg-white rounded-xl p-2" }, React.createElement("div", { className: "text-[10px] font-black text-slate-400" }, "QQQ 股數"), React.createElement("div", { className: "font-mono text-xs font-black" }, money(h.shares?.QQQ, 4))),
+                        React.createElement("div", { className: "bg-white rounded-xl p-2" }, React.createElement("div", { className: "text-[10px] font-black text-slate-400" }, "SGOV 股數"), React.createElement("div", { className: "font-mono text-xs font-black" }, money(h.shares?.SGOV, 4))),
+                        React.createElement("div", { className: "bg-white rounded-xl p-2" }, React.createElement("div", { className: "text-[10px] font-black text-slate-400" }, "現金 USD"), React.createElement("div", { className: "font-mono text-xs font-black" }, "$", money(h.shares?.cashUsd, 0)))),
+                    h.actions && h.actions.length ? React.createElement("div", { className: "mt-2 text-xs text-slate-500 font-bold leading-relaxed" }, h.actions.map((a, ai) => React.createElement("div", { key: ai }, "・", a))) : null,
+                    h.notes && React.createElement("div", { className: "mt-2 text-xs text-slate-500 font-bold leading-relaxed bg-white rounded-xl p-2" }, "備註：", h.notes))))));
     const Sync = () => React.createElement("main", { className: "max-w-5xl mx-auto px-4 pt-4 content-bottom-space" },
         React.createElement(Card, { className: "p-4" },
             React.createElement(SectionTitle, { title: "\u540C\u6B65\u8A2D\u5B9A", desc: "Firebase \u4F7F\u7528\u4F60\u63D0\u4F9B\u7684 qldmax \u5C08\u6848\uFF0C\u8CC7\u6599\u8DEF\u5F91\u6CBF\u7528\u76EE\u524D\u9019\u5957\u7B56\u7565\u5100\u8868\u677F\u3002" }),
@@ -733,6 +842,22 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                 React.createElement("button", { onClick: manualSave, className: "py-3 rounded-2xl bg-brand-600 text-white font-black active:scale-95" }, "\u624B\u52D5\u540C\u6B65"),
                 React.createElement("button", { onClick: loginGoogle, className: "py-3 rounded-2xl bg-slate-900 text-white font-black active:scale-95" }, "Google \u767B\u5165"),
                 React.createElement("button", { onClick: logout, className: "py-3 rounded-2xl bg-slate-100 text-slate-700 font-black active:scale-95" }, "\u5207\u56DE\u533F\u540D"))));
+    const ExecutionModal = () => !pendingExecution ? null : React.createElement("div", { className: "fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" },
+        React.createElement("div", { className: "bg-white rounded-3xl shadow-2xl w-full max-w-md p-5" },
+            React.createElement("div", { className: "flex items-start justify-between gap-3 mb-3" },
+                React.createElement("div", null,
+                    React.createElement("div", { className: "text-[10px] font-black text-brand-600 tracking-widest" }, "執行前確認"),
+                    React.createElement("div", { className: "text-xl font-black text-slate-950" }, metrics.title),
+                    React.createElement("div", { className: "text-xs font-bold text-slate-400 mt-1" }, "請確認價格、股數、DCA 期數與備註後再寫入紀錄。")),
+                React.createElement(Pill, { tone: metrics.tone }, metrics.alloc.label)),
+            React.createElement("div", { className: "bg-slate-50 border border-slate-100 rounded-2xl p-3 mb-3" },
+                React.createElement("div", { className: "text-[10px] font-black text-slate-500" }, "總資產"),
+                React.createElement("div", { className: "font-mono text-2xl font-black text-slate-950" }, "$", money(metrics.totalUsd, 2)),
+                metrics.signal === 'OFF' && React.createElement("div", { className: "text-xs font-bold text-red-600 mt-1" }, "DCA：第 ", metrics.nextDcaMonth, "/6 期，買 QQQ 約 $", money(metrics.dcaBuyUsd, 0))),
+            React.createElement("div", { className: "space-y-2 max-h-48 overflow-auto mb-4" }, metrics.actionLines.map((a, i) => React.createElement("div", { key: i, className: "text-sm font-black text-slate-800 leading-relaxed bg-white border border-slate-100 rounded-2xl p-2" }, i + 1, ". ", a))),
+            React.createElement("div", { className: "grid grid-cols-2 gap-2" },
+                React.createElement("button", { onClick: () => setPendingExecution(false), className: "py-3 rounded-2xl bg-slate-100 text-slate-700 font-black active:scale-95" }, "取消"),
+                React.createElement("button", { onClick: performExecution, className: `py-3 rounded-2xl text-white font-black active:scale-95 ${metrics.signal === 'OFF' || metrics.signal === 'HOT2' ? 'bg-red-600' : 'bg-brand-600'}` }, "確認執行"))));
     const BottomNav = () => React.createElement("nav", { className: "fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 safe-bottom" },
         React.createElement("div", { className: "max-w-5xl mx-auto grid grid-cols-5 gap-1 px-2 pt-2" },
             React.createElement("button", { onClick: () => setPage('home'), className: `py-3 rounded-2xl text-[11px] font-black active:scale-95 ${page === 'home' ? 'bg-slate-900 text-white' : 'text-slate-500'}` }, "首頁"),
@@ -747,6 +872,7 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
         page === 'logs' && React.createElement(Logs, null),
         page === 'sync' && React.createElement(Sync, null),
         React.createElement(BottomNav, null),
+        React.createElement(ExecutionModal, null),
         toast && React.createElement("div", { className: "fixed left-1/2 -translate-x-1/2 bottom-28 z-50 bg-slate-900 text-white rounded-2xl px-4 py-3 text-sm font-black shadow-2xl" }, toast));
 };
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App, null));
