@@ -57,6 +57,7 @@ const auth = HAS_FIREBASE ? firebase.auth() : null;
 const db = HAS_FIREBASE ? firebase.firestore() : null;
 const DOC_PATH = ["strategyDashboards", "tqqq-qqq200-main"];
 const STRATEGY_ID = "tqqq-spy200";
+const STRATEGY_VERSION = "SPY200-4-3-HOT-19-24-28";
 const RECORD_SCHEMA_VERSION = 2;
 const LOCAL_KEY = "tqqqSpy200PermanentV7";
 const readStoredObject = (suffix = "") => {
@@ -103,9 +104,8 @@ const DEFAULT = {
     entryBuffer: 4, exitBuffer: 3, hot1: 19, hot2: 24, hot3: 28,
     // 正式策略狀態：市場、過熱與 DCA 分開保存，避免中間區覆蓋狀態。
     marketState: "NEUTRAL", hotRank: 0, riskOnCycleId: "",
-    strategyVersion: "SPY200-4-3-HOT-19-24-28-v1.1", strategyActivatedAt: "2026-07",
     strategyPhase: "INTRO_QQQ", // INTRO_QQQ → WAIT_REENTRY → ACTIVE
-    parameterLockMonths: 12,
+    parametersLocked: true,
     dcaActive: false, dcaCompleted: 0, dcaPoolUsd: 0, dcaLastDate: "", dcaNextDueDate: "", riskOffCycleId: "",
     notes: "",
     sharesTqqq: 0, sharesQqq: 0, cashUsd: 0, otherUsd: 0, usdtwd: 32, currency: "USD", assetHighUsd: 0, lastExecutedAt: "", lastExecutionSummary: "",
@@ -122,7 +122,7 @@ const normalizeRecord = raw => {
             recordSchemaVersion: RECORD_SCHEMA_VERSION,
             recordId: r.recordId || r.id || makeRecordId(),
             strategyId: r.strategyId || STRATEGY_ID,
-            strategyVersion: r.strategyVersion || DEFAULT.strategyVersion,
+            strategyVersion: r.strategyVersion || STRATEGY_VERSION,
             recordType: r.recordType || r.kind || 'execution',
             createdAt: r.createdAt || r.time || new Date().toISOString(),
             dates: { marketClose: r.marketCloseDate || r.marketDate || '', signal: r.signalDate || r.marketDate || '', execution: r.executionDate || String(r.time||'').slice(0,10) || '' },
@@ -164,7 +164,7 @@ const normalizeData = raw => {
     clean.marketCloseDate=clean.marketCloseDate||clean.marketDate||'';
     return clean;
 };
-const PERSONAL_KEYS = new Set(["sharesTqqq","sharesQqq","cashUsd","otherUsd","usdtwd","currency","notes","marketState","hotRank","dcaActive","dcaCompleted","dcaPoolUsd","dcaLastDate","dcaNextDueDate","riskOffCycleId","riskOnCycleId","strategyVersion","strategyActivatedAt","strategyPhase","parameterLockMonths"]);
+const PERSONAL_KEYS = new Set(["sharesTqqq","sharesQqq","cashUsd","otherUsd","usdtwd","currency","notes","marketState","hotRank","dcaActive","dcaCompleted","dcaPoolUsd","dcaLastDate","dcaNextDueDate","riskOffCycleId","riskOnCycleId","strategyPhase","parametersLocked"]);
 const STRATEGY_TEXT = `TQQQ｜SPY 200SMA +4/-3＋QQQ 三階過熱鎖定策略（正式版 v1.1）
 
 一、首次導入保護
@@ -199,7 +199,7 @@ QQQ 高於 +28%：0% TQQQ / 100% QQQ。
 5. SPY 中間區維持上一狀態。
 
 八、參數紀律
-正式預設為 Risk-On +4%、Risk-Off -3%、HOT1 +19%、HOT2 +24%、HOT3 +28%。採用後至少 12 個月不調整門檻，避免因短期績效追逐最佳參數。`;
+正式預設為 Risk-On +4%、Risk-Off -3%、HOT1 +19%、HOT2 +24%、HOT3 +28%。參數平時保持鎖定；確定需要修改時，必須先解鎖並確認警告，修改完成後再重新鎖定。`;
 const Card = ({ children, className = "" }) => React.createElement("div", { className: `bg-white rounded-3xl border border-slate-200 shadow-soft ${className}` }, children);
 const Pill = ({ children, tone = "slate" }) => {
     const cls = { slate: "bg-slate-100 text-slate-700 border-slate-200", blue: "bg-brand-50 text-brand-700 border-brand-100", green: "bg-emerald-50 text-emerald-700 border-emerald-100", red: "bg-red-50 text-red-700 border-red-100", amber: "bg-amber-50 text-amber-700 border-amber-100", purple: "bg-purple-700 text-white border-purple-700", dark: "bg-slate-900 text-white border-slate-800" }[tone];
@@ -247,12 +247,7 @@ function evaluateStrategy(data) {
         const introMode=strategyPhase==='INTRO_QQQ';
         const waitingFirstReentry=strategyPhase==='WAIT_REENTRY';
         const strategyActive=strategyPhase==='ACTIVE';
-        const activatedMonth=String(data.strategyActivatedAt||DEFAULT.strategyActivatedAt);
-        const [actY,actM]=activatedMonth.split('-').map(Number);
-        const lockMonths=Math.max(12,parseInt(data.parameterLockMonths||12)||12);
-        const lockDate=(actY&&actM)?new Date(actY,actM-1+lockMonths,1):null;
-        const paramsLocked=!!lockDate && new Date()<lockDate;
-        const paramsLockUntil=lockDate?`${lockDate.getFullYear()}-${String(lockDate.getMonth()+1).padStart(2,'0')}`:'';
+        const paramsLocked=data.parametersLocked!==false;
         const riskOffNow=valid && spy<exitPx;
         const riskOnNow=valid && spy>entryPx;
         const thresholdRank=valid?(qqq>=qHot3?3:qqq>=qHot2?2:qqq>=qHot1?1:0):0;
@@ -389,7 +384,7 @@ function evaluateStrategy(data) {
         const scenarioFlags=[];
         if(valid){if(scenarioQqq>=qHot3)scenarioFlags.push(`QQQ 過熱三階 +${data.hot3}%`);else if(scenarioQqq>=qHot2)scenarioFlags.push(`QQQ 過熱二階 +${data.hot2}%`);else if(scenarioQqq>=qHot1)scenarioFlags.push(`QQQ 過熱一階 +${data.hot1}%`);if(!scenarioFlags.length)scenarioFlags.push('QQQ 未新增過熱觸發');}else scenarioFlags.push('資料不足');
         const scenario={movePct:scenarioMove,qqq:scenarioQqq,tqqq:scenarioTqqq,totalUsd:scenarioTotalUsd,totalTwd:scenarioTotalUsd*rate,pnlUsd:scenarioPnlUsd,pnlPct:scenarioPnlPct,flags:scenarioFlags};
-        return {valid,canExecute:valid && validationErrors.length===0,validationErrors,signal,tone,title,instruction,alloc,spyDev,qqqDev,entryPx,exitPx,qHot1,qHot2,qHot3,rows,totalUsd,totalDisplay,targetRows,assetHighUsd,drawdown,actionLines,distanceItems,scenario,marketState,effectiveRank,storedHot,storedMarket,immediateSignal,formalStateText,todayAction,riskOffNow,riskOnNow,dcaActiveEffective,dcaCyclePresent,dcaActiveBefore,dcaWillStop,dcaDue,dcaPool,dcaInstallment,dcaCompleted:dcaCompletedBefore,plannedCompleted,dcaBuyUsd,dcaBuyShares,dcaTargetQqq,dcaTargetCash,nextDue,startingNewCycle,investableUsd,strategyPhase,introMode,waitingFirstReentry,strategyActive,paramsLocked,paramsLockUntil};
+        return {valid,canExecute:valid && validationErrors.length===0,validationErrors,signal,tone,title,instruction,alloc,spyDev,qqqDev,entryPx,exitPx,qHot1,qHot2,qHot3,rows,totalUsd,totalDisplay,targetRows,assetHighUsd,drawdown,actionLines,distanceItems,scenario,marketState,effectiveRank,storedHot,storedMarket,immediateSignal,formalStateText,todayAction,riskOffNow,riskOnNow,dcaActiveEffective,dcaCyclePresent,dcaActiveBefore,dcaWillStop,dcaDue,dcaPool,dcaInstallment,dcaCompleted:dcaCompletedBefore,plannedCompleted,dcaBuyUsd,dcaBuyShares,dcaTargetQqq,dcaTargetCash,nextDue,startingNewCycle,investableUsd,strategyPhase,introMode,waitingFirstReentry,strategyActive,paramsLocked};
 
 }
 
@@ -404,8 +399,7 @@ function applyExecutionState(data, metrics, item, now=new Date()) {
         marketState:metrics.marketState,
         hotRank:(metrics.riskOffNow || metrics.introMode) ? 0 : metrics.effectiveRank,
         strategyPhase: metrics.introMode && metrics.riskOffNow ? 'WAIT_REENTRY' : (metrics.waitingFirstReentry && metrics.riskOnNow ? 'ACTIVE' : (data.strategyPhase || 'INTRO_QQQ')),
-        strategyVersion:data.strategyVersion || DEFAULT.strategyVersion,
-        strategyActivatedAt:data.strategyActivatedAt || DEFAULT.strategyActivatedAt
+        parametersLocked:data.parametersLocked!==false
     };
     const signalDate=data.marketDate||execDate;
     if(metrics.startingNewCycle){ next.riskOffCycleId=`RO-${signalDate}-${stamp}`; next.riskOnCycleId=''; }
@@ -626,7 +620,7 @@ const App = () => {
         const before={TQQQ:getNum(data.sharesTqqq),QQQ:getNum(data.sharesQqq),cashUsd:getNum(data.cashUsd),otherUsd:getNum(data.otherUsd)};
         const after={...before,cashUsd:nextCash};
         const totalAfter=metrics.totalUsd+sign*amount;
-        const rec=normalizeRecord({recordSchemaVersion:RECORD_SCHEMA_VERSION,recordId:makeRecordId(),strategyId:STRATEGY_ID,strategyVersion:data.strategyVersion||DEFAULT.strategyVersion,recordType:'cashflow',createdAt:new Date().toISOString(),dates:{marketClose:data.marketCloseDate||data.marketDate||'',signal:cashflowDate,execution:cashflowDate},prices:{SPY:getNum(data.spy),QQQ:getNum(data.qqq),TQQQ:getNum(data.tqqq)},indicators:{SPY200:getNum(data.spySma),QQQ200:getNum(data.qqqSma)},state:{marketState:data.marketState,hotRank:data.hotRank,strategyPhase:data.strategyPhase,dcaActive:data.dcaActive,dcaCompleted:data.dcaCompleted,riskOffCycleId:data.riskOffCycleId||'',riskOnCycleId:data.riskOnCycleId||''},holdings:{before,after},valuation:{totalUsd:totalAfter,totalDisplay:data.currency==='TWD'?`NT$${money(totalAfter*(getNum(data.usdtwd)||1),0)}`:`$${money(totalAfter,2)}`},decision:{title:typeText,allocation:'資金流',immediate:'',formalState:'',todayAction:`${typeText} $${money(amount,2)}`},cashflow:{type:cashflowType,amountUsd:amount,date:cashflowDate,note:cashflowNote},actions:[`${typeText} $${money(amount,2)}`],notes:cashflowNote,deletedAt:null});
+        const rec=normalizeRecord({recordSchemaVersion:RECORD_SCHEMA_VERSION,recordId:makeRecordId(),strategyId:STRATEGY_ID,strategyVersion:STRATEGY_VERSION,recordType:'cashflow',createdAt:new Date().toISOString(),dates:{marketClose:data.marketCloseDate||data.marketDate||'',signal:cashflowDate,execution:cashflowDate},prices:{SPY:getNum(data.spy),QQQ:getNum(data.qqq),TQQQ:getNum(data.tqqq)},indicators:{SPY200:getNum(data.spySma),QQQ200:getNum(data.qqqSma)},state:{marketState:data.marketState,hotRank:data.hotRank,strategyPhase:data.strategyPhase,dcaActive:data.dcaActive,dcaCompleted:data.dcaCompleted,riskOffCycleId:data.riskOffCycleId||'',riskOnCycleId:data.riskOnCycleId||''},holdings:{before,after},valuation:{totalUsd:totalAfter,totalDisplay:data.currency==='TWD'?`NT$${money(totalAfter*(getNum(data.usdtwd)||1),0)}`:`$${money(totalAfter,2)}`},decision:{title:typeText,allocation:'資金流',immediate:'',formalState:'',todayAction:`${typeText} $${money(amount,2)}`},cashflow:{type:cashflowType,amountUsd:amount,date:cashflowDate,note:cashflowNote},actions:[`${typeText} $${money(amount,2)}`],notes:cashflowNote,deletedAt:null});
         const next=normalizeData({...data,cashUsd:nextCash,history:[rec,...(data.history||[])]}); setData(next);
         const ok=await saveFormalData(next,`已記錄${typeText}`,rec); if(ok){setCashflowAmount('');setCashflowNote('');showToast(`${typeText}已記錄`);}
     };
@@ -676,7 +670,7 @@ const App = () => {
         } finally { setLoadingPrice(false); }
     };
     const buildLogItem = (kind = 'snapshot') => normalizeRecord({
-        recordSchemaVersion:RECORD_SCHEMA_VERSION, recordId:makeRecordId(), strategyId:STRATEGY_ID, strategyVersion:data.strategyVersion||DEFAULT.strategyVersion,
+        recordSchemaVersion:RECORD_SCHEMA_VERSION, recordId:makeRecordId(), strategyId:STRATEGY_ID, strategyVersion:STRATEGY_VERSION,
         recordType:kind, createdAt:new Date().toISOString(),
         dates:{marketClose:data.marketCloseDate||data.marketDate||'',signal:data.signalDate||data.marketDate||'',execution:todayStr()},
         prices:{SPY:getNum(data.spy),QQQ:getNum(data.qqq),TQQQ:getNum(data.tqqq)},
@@ -870,8 +864,7 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
              ["DCA",metrics.dcaActiveEffective?`${metrics.dcaCompleted}/6${metrics.dcaDue?' 到期':''}`:"未啟動",metrics.dcaActiveEffective?"text-blue-300":"text-slate-400"]].map((x,i)=>React.createElement("div",{key:i,className:"bg-white/10 rounded-2xl p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},x[0]),React.createElement("div",{className:`font-black mt-1 ${x[2]}`},x[1])))),
         React.createElement("div", { className:"mt-3 flex flex-wrap gap-2 text-[11px] font-bold text-slate-300" },
             React.createElement("span", { className:"bg-white/10 rounded-full px-3 py-1" }, `今日動作：${metrics.todayAction}`),
-            React.createElement("span", { className:"bg-white/10 rounded-full px-3 py-1" }, `版本 ${data.strategyVersion||DEFAULT.strategyVersion}`),
-            metrics.dcaActiveEffective && React.createElement("span", { className:"bg-white/10 rounded-full px-3 py-1" }, `下期預估 ${metrics.nextDue}（以 21 個平日估算）`),
+            metrics.dcaActiveEffective && React.createElement("span", { className:"bg-white/10 rounded-full px-3 py-1" }, `下期預估 ${metrics.nextDue}（21 個美股交易日）`),
             metrics.effectiveRank!==metrics.storedHot && React.createElement("span", { className:"bg-purple-500/20 text-purple-200 rounded-full px-3 py-1" }, `待執行後鎖定：第 ${metrics.effectiveRank} 階`),
             data.riskOnCycleId && React.createElement("span", { className:"bg-white/10 rounded-full px-3 py-1" }, `Risk-On 輪次 ${String(data.riskOnCycleId).split('-').slice(0,3).join('-')}`),
             data.riskOffCycleId && React.createElement("span", { className:"bg-white/10 rounded-full px-3 py-1" }, `Risk-Off 輪次 ${String(data.riskOffCycleId).split('-').slice(0,3).join('-')}`)));
@@ -881,7 +874,7 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
         React.createElement("div", { className: "bg-slate-50 border border-slate-100 rounded-2xl p-3 mb-3" },
             React.createElement("div", { className: "text-[10px] font-black text-slate-500 mb-1" }, "執行摘要"),
             React.createElement("div", { className: "text-sm font-black text-slate-900 leading-relaxed" }, metrics.instruction),
-            metrics.dcaActiveEffective && React.createElement("div", { className: "mt-2 text-xs font-bold text-blue-700" }, "DCA：目前 ", metrics.dcaCompleted, "/6｜", metrics.dcaDue ? `本期到期，執行後 ${metrics.plannedCompleted}/6` : `下期預估 ${metrics.nextDue}（以 21 個平日估算）`, metrics.dcaDue ? `｜本期約 $${money(metrics.dcaBuyUsd,0)}` : ""),
+            metrics.dcaActiveEffective && React.createElement("div", { className: "mt-2 text-xs font-bold text-blue-700" }, "DCA：目前 ", metrics.dcaCompleted, "/6｜", metrics.dcaDue ? `本期到期，執行後 ${metrics.plannedCompleted}/6` : `下期預估 ${metrics.nextDue}（21 個美股交易日）`, metrics.dcaDue ? `｜本期約 $${money(metrics.dcaBuyUsd,0)}` : ""),
             data.lastExecutedAt && React.createElement("div", { className: "mt-2 text-[11px] text-slate-400 font-bold" }, "上次確認：", data.lastExecutedAt),
             React.createElement("div", { className: "mt-2 text-[11px] text-brand-700 font-black" }, "建議下次檢查：", nextCheckText())),
         React.createElement("label", { className: "block mb-3" },
@@ -952,29 +945,30 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
         Collapsible({ id: "scenario", title: "QQQ 情境模擬", desc: "需要時再展開。", children: ScenarioCard() }),
         Collapsible({ id: "marketStatus", title: "市場資料狀態", desc: "資料日期、來源與新鮮度。", children: FreshnessCard() }),
         React.createElement(Card, { className: "p-4 mt-4" },
-            React.createElement(SectionTitle, { title: "策略參數", desc: "首次導入先持有 QQQ；完整經歷 Risk-Off 後再啟用 TQQQ。正式參數鎖定 12 個月。", right: React.createElement("button", { onClick: () => merge({ entryBuffer:4, exitBuffer:3, hot1:19, hot2:24, hot3:28 }), disabled:metrics.paramsLocked, className: `px-3 py-2 rounded-xl text-xs font-black ${metrics.paramsLocked?"bg-slate-100 text-slate-400 cursor-not-allowed":"bg-brand-50 text-brand-700"}` }, "恢復正式預設") }),
+            React.createElement(SectionTitle, { title: "策略參數", desc: "首次導入先持有 QQQ；完整經歷 Risk-Off 後再啟用 TQQQ。", right: React.createElement("button", { onClick: () => {
+                if(data.parametersLocked!==false){
+                    if(confirm("⚠️ 確定要解鎖策略參數嗎？\n\n修改 Risk-On、Risk-Off 或 HOT 門檻，可能改變整套策略的交易結果。請確認你已理解影響並確定要修改。")) patch('parametersLocked', false);
+                } else {
+                    patch('parametersLocked', true); showToast("策略參數已鎖定");
+                }
+            }, className: `px-3 py-2 rounded-xl text-xs font-black active:scale-95 ${data.parametersLocked!==false?"bg-slate-900 text-white":"bg-amber-500 text-white"}` }, data.parametersLocked!==false ? "🔒 已鎖定" : "🔓 重新鎖定") }),
             React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3" },
                 React.createElement(NumInput, { label: "Risk-On", value: data.entryBuffer, onChange: v => patch('entryBuffer', v), suffix: "%", disabled:metrics.paramsLocked }),
                 React.createElement(NumInput, { label: "Risk-Off", value: data.exitBuffer, onChange: v => patch('exitBuffer', v), suffix: "%", disabled:metrics.paramsLocked }),
                 React.createElement(NumInput, { label: "過熱一階（60/40）", value: data.hot1, onChange: v => patch('hot1', v), suffix: "%", disabled:metrics.paramsLocked }),
                 React.createElement(NumInput, { label: "過熱二階（30/70）", value: data.hot2, onChange: v => patch('hot2', v), suffix: "%", disabled:metrics.paramsLocked }),
                 React.createElement(NumInput, { label: "過熱三階（0/100）", value: data.hot3, onChange: v => patch('hot3', v), suffix: "%", disabled:metrics.paramsLocked })),
-            React.createElement("div", { className:`mt-3 rounded-2xl border p-3 ${metrics.paramsLocked?"bg-amber-50 border-amber-100":"bg-emerald-50 border-emerald-100"}` },
-                React.createElement("div", { className:`text-sm font-black ${metrics.paramsLocked?"text-amber-900":"text-emerald-900"}` }, metrics.paramsLocked?`參數鎖定至 ${metrics.paramsLockUntil}`:"參數鎖定期已結束"),
-                React.createElement("div", { className:`text-xs font-bold mt-1 leading-relaxed ${metrics.paramsLocked?"text-amber-700":"text-emerald-700"}` }, metrics.paramsLocked?"正式採用後 12 個月內不調整 +4/-3 與 19/24/28，避免追逐短期最佳值。":"如需調整，仍應先做完整回測並建立新版本。")),
+            React.createElement("div", { className:"flex flex-col sm:flex-row gap-2 mt-3" },
+                React.createElement("button", { onClick: () => {
+                    if(data.parametersLocked!==false) return;
+                    if(confirm("確定要恢復正式預設參數 +4% / -3% / 19% / 24% / 28% 嗎？")) merge({ entryBuffer:4, exitBuffer:3, hot1:19, hot2:24, hot3:28 }, true);
+                }, disabled:metrics.paramsLocked, className:`px-3 py-3 rounded-2xl text-xs font-black ${metrics.paramsLocked?"bg-slate-100 text-slate-400 cursor-not-allowed":"bg-brand-50 text-brand-700 border border-brand-100"}` }, "恢復正式預設"),
+                React.createElement("div", { className:`flex-1 rounded-2xl border p-3 ${metrics.paramsLocked?"bg-emerald-50 border-emerald-100":"bg-amber-50 border-amber-200"}` },
+                    React.createElement("div", { className:`text-sm font-black ${metrics.paramsLocked?"text-emerald-900":"text-amber-900"}` }, metrics.paramsLocked?"參數已鎖定":"⚠️ 參數目前可修改"),
+                    React.createElement("div", { className:`text-xs font-bold mt-1 leading-relaxed ${metrics.paramsLocked?"text-emerald-700":"text-amber-700"}` }, metrics.paramsLocked?"避免誤觸修改。需要調整時，按右上角解鎖並確認警告。":"修改完成後請按右上角「重新鎖定」，避免日後誤改。"))),
             React.createElement("div", { className:"mt-3 bg-purple-50 border border-purple-100 rounded-2xl p-3" },
                 React.createElement("div", { className:"text-sm font-black text-purple-900" }, "過熱重置規則"),
                 React.createElement("div", { className:"text-xs font-bold text-purple-700 mt-1 leading-relaxed" }, "同一個 Risk-On 週期只會往更低槓桿移動。必須先由 SPY 觸發 Risk-Off，之後重新站上 Risk-On 門檻，才依當下 QQQ 乖離重新配置。"))),
-        React.createElement(Card, { className: "p-4 mt-4" },
-            React.createElement(SectionTitle, { title: "正式參數版本", desc: "避免因短期績效頻繁調整；版本與啟用日期會隨正式資料保存。" }),
-            React.createElement("div", { className:"grid grid-cols-1 sm:grid-cols-2 gap-3" },
-                React.createElement("label", { className:"block bg-slate-50 border border-slate-200 rounded-2xl p-3" },
-                    React.createElement("div", { className:"text-[10px] font-black text-slate-500 mb-1" }, "策略版本"),
-                    React.createElement("input", { value:data.strategyVersion||DEFAULT.strategyVersion, onChange:e=>patch('strategyVersion',e.target.value), className:"w-full bg-transparent font-mono font-black text-sm min-h-[44px]" })),
-                React.createElement("label", { className:"block bg-slate-50 border border-slate-200 rounded-2xl p-3" },
-                    React.createElement("div", { className:"text-[10px] font-black text-slate-500 mb-1" }, "啟用月份"),
-                    React.createElement("input", { type:"month", value:data.strategyActivatedAt||DEFAULT.strategyActivatedAt, onChange:e=>patch('strategyActivatedAt',e.target.value), className:"w-full bg-transparent font-mono font-black text-sm min-h-[44px]" }))),
-            React.createElement("div", { className:"mt-3 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-100 rounded-2xl p-3" }, "正式參數採用後至少 12 個月不調整；若未來改參數，請建立新的策略版本。")),
         Collapsible({ id: "strategyText", title: "完整策略文字", desc: "需要查規則時再展開。", children: React.createElement("pre", { className: "whitespace-pre-wrap text-xs leading-relaxed bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-600 font-bold" }, STRATEGY_TEXT) }));
     const ProfitChart = ({ logs }) => {
         const chartLogs = (Array.isArray(logs) ? logs : []).filter(h => getNum(h.totalUsd) > 0).slice().reverse();
