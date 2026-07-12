@@ -57,7 +57,7 @@ const auth = HAS_FIREBASE ? firebase.auth() : null;
 const db = HAS_FIREBASE ? firebase.firestore() : null;
 const DOC_PATH = ["strategyDashboards", "tqqq-qqq200-main"];
 const STRATEGY_ID = "tqqq-spy200";
-const RECORD_SCHEMA_VERSION = 1;
+const RECORD_SCHEMA_VERSION = 2;
 const LOCAL_KEY = "tqqqSpy200PermanentV7";
 const readStoredObject = (suffix = "") => {
     try {
@@ -132,17 +132,23 @@ const normalizeRecord = raw => {
             holdings: { before:r.holdings?.before || r.beforeShares || r.shares || {}, after:r.holdings?.after || r.afterShares || r.shares || {} },
             valuation: { totalUsd:getNum(r.valuation?.totalUsd ?? r.totalUsd), totalDisplay:r.valuation?.totalDisplay || r.totalDisplay || '' },
             decision: { title:r.decision?.title || r.signal?.title || (typeof r.signal==='string'?r.signal:'') || '', allocation:r.decision?.allocation || r.signal?.allocation || r.allocation || '', immediate:r.decision?.immediate || r.signal?.immediate || r.immediateSignal || '', formalState:r.decision?.formalState || r.signal?.formalState || r.formalStateText || '', todayAction:r.decision?.todayAction || r.signal?.todayAction || r.todayAction || '' },
+            cashflow: { type:r.cashflow?.type || r.flowType || '', amountUsd:getNum(r.cashflow?.amountUsd ?? r.amountUsd), date:r.cashflow?.date || r.flowDate || r.executionDate || '', note:r.cashflow?.note || r.notes || '' },
             actions: Array.isArray(r.actions)?r.actions:[], notes:r.notes || '', deletedAt:r.deletedAt || null
         };
+    canonical.recordSchemaVersion=RECORD_SCHEMA_VERSION;
+    canonical.cashflow=canonical.cashflow||{type:'',amountUsd:0,date:'',note:''};
     const after=canonical.holdings?.after||{};
-    return { ...canonical,
+    const archiveDate=canonical.dates?.execution||canonical.dates?.signal||canonical.dates?.marketClose||String(canonical.createdAt||'').slice(0,10);
+    const archiveYear=String(archiveDate||'').slice(0,4)||'0000', archiveMonth=String(archiveDate||'').slice(5,7)||'00';
+    return { ...canonical, archiveYear, archiveMonth, archiveYearMonth:`${archiveYear}-${archiveMonth}`,
         time:canonical.createdAt, timeText:new Date(canonical.createdAt).toLocaleString('zh-TW'), kind:canonical.recordType,
         marketDate:canonical.dates?.marketClose||'', marketCloseDate:canonical.dates?.marketClose||'', signalDate:canonical.dates?.signal||'', executionDate:canonical.dates?.execution||'',
         signal:canonical.decision?.title||'', allocation:canonical.decision?.allocation||'', totalUsd:getNum(canonical.valuation?.totalUsd), totalDisplay:canonical.valuation?.totalDisplay||'',
         spy:getNum(canonical.prices?.SPY), spySma:getNum(canonical.indicators?.SPY200), qqq:getNum(canonical.prices?.QQQ), qqqSma:getNum(canonical.indicators?.QQQ200), tqqq:getNum(canonical.prices?.TQQQ), sgov:getNum(canonical.prices?.SGOV),
         shares:after, beforeShares:canonical.holdings?.before||{}, afterShares:after,
         marketState:canonical.state?.marketState||'', hotRank:getNum(canonical.state?.hotRank), dcaActive:Boolean(canonical.state?.dcaActive), dcaCompleted:getNum(canonical.state?.dcaCompleted),
-        immediateSignal:canonical.decision?.immediate||'', formalStateText:canonical.decision?.formalState||'', todayAction:canonical.decision?.todayAction||''
+        immediateSignal:canonical.decision?.immediate||'', formalStateText:canonical.decision?.formalState||'', todayAction:canonical.decision?.todayAction||'',
+        cashflowType:canonical.cashflow?.type||'', cashflowAmountUsd:getNum(canonical.cashflow?.amountUsd), cashflowDate:canonical.cashflow?.date||'', cashflowNote:canonical.cashflow?.note||''
     };
 };
 const normalizeData = raw => {
@@ -436,6 +442,18 @@ const App = () => {
     const [hasDraftChanges, setHasDraftChanges] = useState(false);
     const [logKindFilter, setLogKindFilter] = useState("all");
     const [logSignalFilter, setLogSignalFilter] = useState("all");
+    const [logYearFilter, setLogYearFilter] = useState("all");
+    const [logMonthFilter, setLogMonthFilter] = useState("all");
+    const [logSearch, setLogSearch] = useState("");
+    const [openLogGroups, setOpenLogGroups] = useState({});
+    const [recordsHasMore, setRecordsHasMore] = useState(false);
+    const [recordsCursor, setRecordsCursor] = useState(null);
+    const [loadingMoreRecords, setLoadingMoreRecords] = useState(false);
+    const [cashflowType, setCashflowType] = useState("deposit");
+    const [cashflowAmount, setCashflowAmount] = useState("");
+    const [cashflowDate, setCashflowDate] = useState(todayStr());
+    const [cashflowNote, setCashflowNote] = useState("");
+    const importInputRef = useRef(null);
     const [committedData, setCommittedData] = useState(() => {
         const committed = readStoredObject("_committed");
         const stored = Object.keys(committed).length ? committed : readStoredObject("");
@@ -482,13 +500,16 @@ const App = () => {
         setSyncText("正在讀取 Google 雲端正式資料…");
         Promise.all([
             docRef().get(),
-            recordsRef().orderBy("createdAt", "desc").get().catch(()=>null)
+            recordsRef().orderBy("createdAt", "desc").limit(200).get().catch(()=>null)
         ]).then(([snap,recordSnap]) => {
             if (cancelled) return;
             const cloud = snap && snap.exists ? (snap.data() || {}) : {};
             const embedded=(Array.isArray(cloud.history)?cloud.history:[]).map(normalizeRecord);
+            const localCached=(Array.isArray(readStoredObject('_committed').history)?readStoredObject('_committed').history:[]).map(normalizeRecord);
             const permanent=recordSnap ? recordSnap.docs.map(d=>normalizeRecord({...d.data(),recordId:d.id})) : [];
-            const byId=new Map(); [...embedded,...permanent].forEach(r=>{ if(!r.deletedAt) byId.set(r.recordId,r); });
+            setRecordsCursor(recordSnap && recordSnap.docs.length ? recordSnap.docs[recordSnap.docs.length-1] : null);
+            setRecordsHasMore(Boolean(recordSnap && recordSnap.docs.length===200));
+            const byId=new Map(); [...embedded,...localCached,...permanent].forEach(r=>{ if(!r.deletedAt) byId.set(r.recordId,r); });
             const normalized = normalizeData({...cloud,history:[...byId.values()].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))});
             setCommittedData(normalized);
             try { localStorage.setItem(LOCAL_KEY + "_committed", JSON.stringify(normalized)); } catch(e) {}
@@ -514,14 +535,9 @@ const App = () => {
             ignoreCloud.current = true;
             const { history: _history, ...currentOnly } = formal;
             await docRef().set(sanitize({ ...currentOnly, recordSchemaVersion:RECORD_SCHEMA_VERSION, updatedAtText: new Date().toLocaleString("zh-TW"), updatedAt: firebase.firestore.FieldValue.serverTimestamp() }), { merge: true });
-            if(recordsRef()) {
-                const allRecords=(Array.isArray(formal.history)?formal.history:[]).map(normalizeRecord);
-                if(recordToAppend && !allRecords.some(r=>r.recordId===recordToAppend.recordId)) allRecords.unshift(normalizeRecord(recordToAppend));
-                for(let i=0;i<allRecords.length;i+=400){
-                    const batch=db.batch();
-                    allRecords.slice(i,i+400).forEach(rec=>batch.set(recordsRef().doc(rec.recordId),sanitize({...rec,createdAt:rec.createdAt}),{merge:true}));
-                    await batch.commit();
-                }
+            if(recordsRef() && recordToAppend) {
+                const rec=normalizeRecord(recordToAppend);
+                await recordsRef().doc(rec.recordId).set(sanitize({...rec,createdAt:rec.createdAt}),{merge:true});
             }
             setSyncText(successText + " " + new Date().toLocaleTimeString("zh-TW", { hour:"2-digit", minute:"2-digit" }));
             setTimeout(() => ignoreCloud.current = false, 1200);
@@ -535,15 +551,8 @@ const App = () => {
         }
     };
     const manualSave = async () => {
-        const ok = await saveFormalData(data, "已手動同步");
-        if(ok && recordsRef()) {
-            try {
-                const logs=(Array.isArray(data.history)?data.history:[]).slice(0,500).map(normalizeRecord);
-                for(let i=0;i<logs.length;i+=400){ const batch=db.batch(); logs.slice(i,i+400).forEach(r=>batch.set(recordsRef().doc(r.recordId),sanitize(r),{merge:true})); await batch.commit(); }
-                setSyncText(`已同步正式資料與 ${logs.length} 筆永久紀錄`);
-            } catch(e){ setSyncText("正式資料已同步，但紀錄回補失敗："+e.message); }
-        }
-        showToast(ok ? "已手動同步正式資料與紀錄" : "同步失敗");
+        const ok = await saveFormalData(data, "已手動同步目前正式狀態");
+        showToast(ok ? "已同步目前正式狀態" : "同步失敗");
     };
     const discardDraft = () => {
         if (!hasDraftChanges) { showToast("目前沒有未儲存修改"); return; }
@@ -566,6 +575,71 @@ const App = () => {
         await auth.signOut();
         setSyncText("本機模式；Google 登入後才跨裝置同步");
         showToast("已切回本機模式");
+    };
+    const fetchAllCloudRecords = async () => {
+        if(!recordsRef()) return (data.history||[]).map(normalizeRecord);
+        let cursor=null,all=[];
+        for(let pageNo=0;pageNo<100;pageNo++){
+            let q=recordsRef().orderBy("createdAt","desc").limit(200); if(cursor)q=q.startAfter(cursor);
+            const snap=await q.get(); all.push(...snap.docs.map(d=>normalizeRecord({...d.data(),recordId:d.id})).filter(r=>!r.deletedAt));
+            if(snap.docs.length<200)break; cursor=snap.docs[snap.docs.length-1];
+        }
+        const map=new Map((data.history||[]).map(r=>[r.recordId,normalizeRecord(r)])); all.forEach(r=>map.set(r.recordId,r));
+        return [...map.values()].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
+    };
+    const loadAllRecords = async () => {
+        if(!recordsRef()){showToast('本機紀錄已全部載入');return;}
+        setLoadingMoreRecords(true);
+        try{const all=await fetchAllCloudRecords();setData(prev=>({...prev,history:all}));setCommittedData(prev=>({...prev,history:all}));setRecordsHasMore(false);setRecordsCursor(null);showToast(`已載入全部 ${all.length} 筆紀錄`);}catch(e){showToast('載入全部失敗：'+e.message);}finally{setLoadingMoreRecords(false);}
+    };
+    const loadMoreRecords = async () => {
+        if(!recordsRef() || !recordsCursor || loadingMoreRecords || !recordsHasMore) return;
+        setLoadingMoreRecords(true);
+        try{
+            const snap=await recordsRef().orderBy("createdAt","desc").startAfter(recordsCursor).limit(200).get();
+            const incoming=snap.docs.map(d=>normalizeRecord({...d.data(),recordId:d.id})).filter(r=>!r.deletedAt);
+            setData(prev=>{const map=new Map((prev.history||[]).map(r=>[r.recordId,normalizeRecord(r)]));incoming.forEach(r=>map.set(r.recordId,r));return {...prev,history:[...map.values()].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))};});
+            setCommittedData(prev=>{const map=new Map((prev.history||[]).map(r=>[r.recordId,normalizeRecord(r)]));incoming.forEach(r=>map.set(r.recordId,r));return {...prev,history:[...map.values()].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))};});
+            setRecordsCursor(snap.docs.length?snap.docs[snap.docs.length-1]:recordsCursor);
+            setRecordsHasMore(snap.docs.length===200);
+            showToast(`再載入 ${incoming.length} 筆紀錄`);
+        }catch(e){showToast('載入更多失敗：'+e.message);}finally{setLoadingMoreRecords(false);}
+    };
+    const importRecordsJson = async e => {
+        const file=e.target.files&&e.target.files[0]; e.target.value=''; if(!file)return;
+        try{
+            const parsed=JSON.parse(await file.text());
+            const source=Array.isArray(parsed)?parsed:(Array.isArray(parsed.records)?parsed.records:[]);
+            if(!source.length) throw new Error('備份內沒有 records 陣列');
+            const imported=source.map(normalizeRecord).filter(r=>r.recordId&&!r.deletedAt);
+            const existing=new Map((data.history||[]).map(r=>[r.recordId,normalizeRecord(r)]));
+            let added=0,updated=0;
+            imported.forEach(r=>{const old=existing.get(r.recordId);if(!old){added++;existing.set(r.recordId,r);}else if(String(r.createdAt||'')>=String(old.createdAt||'')){updated++;existing.set(r.recordId,r);}});
+            if(!confirm(`解析到 ${imported.length} 筆紀錄。\n新增 ${added} 筆、合併更新 ${updated} 筆。\n確定匯入嗎？`))return;
+            const merged=[...existing.values()].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
+            const restoreCurrent=parsed.currentState && confirm('備份也包含目前持股與策略狀態。是否一併還原？取消則只合併歷史紀錄。');
+            const next=normalizeData({...data,...(restoreCurrent?parsed.currentState:{}),history:merged}); setData(next); setCommittedData(next);
+            localStorage.setItem(LOCAL_KEY+'_committed',JSON.stringify(next));
+            if(recordsRef()){
+                for(let i=0;i<imported.length;i+=400){const batch=db.batch();imported.slice(i,i+400).forEach(r=>batch.set(recordsRef().doc(r.recordId),sanitize(r),{merge:true}));await batch.commit();}
+            }
+            if(restoreCurrent) await saveFormalData(next,'已還原目前狀態');
+            showToast(`匯入完成：新增 ${added}、更新 ${updated}${restoreCurrent?'，並還原目前狀態':''}`);
+        }catch(err){showToast('JSON 匯入失敗：'+err.message);}
+    };
+    const addCashflowRecord = async () => {
+        const amount=Math.abs(getNum(cashflowAmount)); if(amount<=0){showToast('請輸入大於 0 的金額');return;}
+        const sign=cashflowType==='withdrawal'?-1:1;
+        const nextCash=getNum(data.cashUsd)+sign*amount;
+        if(nextCash<0){showToast('出金金額不可大於目前現金');return;}
+        const typeText=cashflowType==='withdrawal'?'出金':'入金';
+        if(!confirm(`${typeText} $${money(amount,2)}，並把現金調整為 $${money(nextCash,2)}？`))return;
+        const before={TQQQ:getNum(data.sharesTqqq),QQQ:getNum(data.sharesQqq),SGOV:getNum(data.sharesSgov),cashUsd:getNum(data.cashUsd),otherUsd:getNum(data.otherUsd)};
+        const after={...before,cashUsd:nextCash};
+        const totalAfter=metrics.totalUsd+sign*amount;
+        const rec=normalizeRecord({recordSchemaVersion:RECORD_SCHEMA_VERSION,recordId:makeRecordId(),strategyId:STRATEGY_ID,strategyVersion:data.strategyVersion||DEFAULT.strategyVersion,recordType:'cashflow',createdAt:new Date().toISOString(),dates:{marketClose:data.marketCloseDate||data.marketDate||'',signal:cashflowDate,execution:cashflowDate},prices:{SPY:getNum(data.spy),QQQ:getNum(data.qqq),TQQQ:getNum(data.tqqq),SGOV:getNum(data.sgov)},indicators:{SPY200:getNum(data.spySma),QQQ200:getNum(data.qqqSma)},state:{marketState:data.marketState,hotRank:data.hotRank,strategyPhase:data.strategyPhase,dcaActive:data.dcaActive,dcaCompleted:data.dcaCompleted,riskOffCycleId:data.riskOffCycleId||'',riskOnCycleId:data.riskOnCycleId||''},holdings:{before,after},valuation:{totalUsd:totalAfter,totalDisplay:data.currency==='TWD'?`NT$${money(totalAfter*(getNum(data.usdtwd)||1),0)}`:`$${money(totalAfter,2)}`},decision:{title:typeText,allocation:'資金流',immediate:'',formalState:'',todayAction:`${typeText} $${money(amount,2)}`},cashflow:{type:cashflowType,amountUsd:amount,date:cashflowDate,note:cashflowNote},actions:[`${typeText} $${money(amount,2)}`],notes:cashflowNote,deletedAt:null});
+        const next=normalizeData({...data,cashUsd:nextCash,history:[rec,...(data.history||[])]}); setData(next);
+        const ok=await saveFormalData(next,`已記錄${typeText}`,rec); if(ok){setCashflowAmount('');setCashflowNote('');showToast(`${typeText}已記錄`);}
     };
     const metrics = useMemo(() => evaluateStrategy(data), [data]);
     const fetchPrices = async () => {
@@ -629,6 +703,7 @@ const App = () => {
         const logs = Array.isArray(data.history) ? data.history : [];
         const item = typeof target === "number" ? logs[target] : target;
         if (!item) return;
+        if(item.recordType==='cashflow'){alert('入金／出金紀錄不可直接刪除。請新增一筆相反方向、相同金額的資金流作為沖銷，才能保留完整稽核軌跡。');return;}
         if (!confirm(`確定隱藏這筆紀錄？\n${item.timeText || ""}\n${item.signal || ""}\n${item.totalDisplay || ("$"+money(item.totalUsd,0))}`)) return;
         const nextHistory=logs.filter(x => x.recordId !== item.recordId);
         setData(prev=>({...prev,history:nextHistory})); setCommittedData(prev=>({...prev,history:nextHistory}));
@@ -967,45 +1042,129 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
         if(recordsRef()) { try { for(let i=0;i<logs.length;i+=400){const batch=db.batch();logs.slice(i,i+400).forEach(r=>batch.set(recordsRef().doc(r.recordId),{deletedAt:new Date().toISOString(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));await batch.commit();} } catch(e){showToast('本機已清空，部分雲端標記失敗');return;} }
         showToast('已隱藏全部紀錄');
     };
-    const filteredLogs = (Array.isArray(data.history) ? data.history : []).filter(h => (logKindFilter === "all" || h.kind === logKindFilter) && (logSignalFilter === "all" || String(h.signal || "").includes(logSignalFilter)));
+    const recordDateText = h => h.executionDate || h.signalDate || h.marketDate || String(h.createdAt || h.time || '').slice(0,10) || '';
+    const recordYear = h => String(recordDateText(h)).slice(0,4) || '未分類';
+    const recordMonth = h => String(recordDateText(h)).slice(5,7) || '00';
+    const allLogs = (Array.isArray(data.history) ? data.history : []).slice().sort((a,b)=>String(b.createdAt||b.time||'').localeCompare(String(a.createdAt||a.time||'')));
+    const performance = useMemo(()=>{
+        const asc=allLogs.slice().sort((a,b)=>String(a.executionDate||a.createdAt).localeCompare(String(b.executionDate||b.createdAt)));
+        const valuations=asc.filter(r=>r.recordType!=='cashflow'&&getNum(r.totalUsd)>0);
+        if(valuations.length<2)return {ready:false,netFlow:0,profit:0,returnPct:0,start:0,end:0};
+        const first=valuations[0],last=valuations[valuations.length-1],start=getNum(first.totalUsd),end=getNum(last.totalUsd);
+        const startDate=parseDateLocal(first.executionDate||String(first.createdAt).slice(0,10)),endDate=parseDateLocal(last.executionDate||String(last.createdAt).slice(0,10));
+        const totalDays=Math.max(1,(endDate-startDate)/86400000);
+        let netFlow=0,weightedFlow=0;
+        asc.filter(r=>r.recordType==='cashflow').forEach(r=>{const signed=(r.cashflowType==='withdrawal'?-1:1)*Math.abs(getNum(r.cashflowAmountUsd));const d=parseDateLocal(r.cashflowDate||r.executionDate);if(!d||d<startDate||d>endDate)return;netFlow+=signed;const weight=Math.max(0,Math.min(1,(endDate-d)/86400000/totalDays));weightedFlow+=signed*weight;});
+        const profit=end-start-netFlow,den=start+weightedFlow; return {ready:true,start,end,netFlow,profit,returnPct:den!==0?profit/den:0};
+    },[allLogs]);
+    const availableYears = [...new Set(allLogs.map(recordYear))].sort((a,b)=>b.localeCompare(a));
+    const availableMonths = [...new Set(allLogs.filter(h=>logYearFilter==='all'||recordYear(h)===logYearFilter).map(recordMonth))].sort((a,b)=>b.localeCompare(a));
+    const filteredLogs = allLogs.filter(h => {
+        if(logKindFilter !== 'all' && h.kind !== logKindFilter) return false;
+        if(logSignalFilter !== 'all' && !String(h.signal || '').includes(logSignalFilter)) return false;
+        if(logYearFilter !== 'all' && recordYear(h) !== logYearFilter) return false;
+        if(logMonthFilter !== 'all' && recordMonth(h) !== logMonthFilter) return false;
+        const q=String(logSearch||'').trim().toLowerCase();
+        if(q){
+            const hay=[h.signal,h.allocation,h.notes,...(Array.isArray(h.actions)?h.actions:[]),h.marketDate,h.executionDate].join(' ').toLowerCase();
+            if(!hay.includes(q)) return false;
+        }
+        return true;
+    });
+    const groupedLogs = filteredLogs.reduce((acc,h)=>{
+        const y=recordYear(h), m=recordMonth(h), key=`${y}-${m}`;
+        if(!acc[key]) acc[key]={key,year:y,month:m,logs:[]};
+        acc[key].logs.push(h); return acc;
+    },{});
+    const logGroups = Object.values(groupedLogs).sort((a,b)=>b.key.localeCompare(a.key));
+    const toggleLogGroup = key => setOpenLogGroups(prev=>({...prev,[key]:prev[key]===undefined ? false : !prev[key]}));
+    const isLogGroupOpen = (key,index) => openLogGroups[key]===undefined ? index===0 : openLogGroups[key];
+    const downloadTextFile = (filename,text,type='application/json') => {
+        const blob=new Blob([text],{type:`${type};charset=utf-8`}); const url=URL.createObjectURL(blob); const a=document.createElement('a');
+        a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+    };
+    const exportRecordsJson = async () => {
+        try{showToast('正在整理完整備份…');const records=await fetchAllCloudRecords();const {history:_history,...currentState}=normalizeData(data);const payload={exportSchemaVersion:2,exportedAt:new Date().toISOString(),strategyId:STRATEGY_ID,recordCount:records.length,currentState,records};downloadTextFile(`tqqq-full-backup-${todayStr()}.json`,JSON.stringify(payload,null,2));showToast(`已完整備份 ${records.length} 筆紀錄與目前狀態`);}catch(e){showToast('備份失敗：'+e.message);}
+    };
+    const csvCell = v => `"${String(v??'').replace(/"/g,'""')}"`;
+    const exportRecordsCsv = async () => {
+        try{showToast('正在整理完整 CSV…');const records=await fetchAllCloudRecords();const header=['執行日','行情日','類型','訊號','配置','總資產USD','資金流類型','資金流USD','SPY','QQQ','TQQQ','TQQQ股數','QQQ股數','SGOV股數','現金USD','HOT','DCA進度','備註'];const rows=records.map(h=>[h.executionDate||'',h.marketDate||'',h.recordType||h.kind||'',h.signal||'',h.allocation||'',h.totalUsd||0,h.cashflowType||'',h.cashflowAmountUsd||0,h.spy||0,h.qqq||0,h.tqqq||0,h.shares?.TQQQ||0,h.shares?.QQQ||0,h.shares?.SGOV||0,h.shares?.cashUsd||0,h.hotRank||0,h.dcaCompleted||0,h.notes||'']);downloadTextFile(`tqqq-records-${todayStr()}.csv`,'\ufeff'+[header,...rows].map(r=>r.map(csvCell).join(',')).join('\n'),'text/csv');showToast(`已匯出完整 ${records.length} 筆 CSV`);}catch(e){showToast('CSV 匯出失敗：'+e.message);}
+    };
+    const LogItem = ({h,i}) => React.createElement("div", { key: h.recordId || h.time || i, className: "border border-slate-100 rounded-2xl p-3 bg-slate-50" },
+        React.createElement("div", { className: "flex justify-between gap-2 items-start" },
+            React.createElement("div", null,
+                React.createElement("div", { className: "font-black text-slate-900" }, h.signal),
+                React.createElement("div", { className: "text-[11px] text-slate-400 font-bold" }, h.timeText, "｜行情日 ", h.marketDate || '-')),
+            React.createElement("div", { className: "text-right" },
+                React.createElement("div", { className: "font-mono font-black text-slate-900" }, h.totalDisplay || ('$' + money(h.totalUsd, 2))),
+                React.createElement("button", { onClick: () => deleteLog(h), className: `mt-1 px-2 py-1 rounded-lg text-[10px] font-black active:scale-95 ${h.recordType==='cashflow'?'bg-slate-100 text-slate-500':'bg-red-50 text-red-700'}` }, h.recordType==='cashflow'?'需反向沖銷':'刪除'))),
+        React.createElement("div", { className: "mt-2 flex flex-wrap gap-2" },
+            h.recordType==='cashflow' ? React.createElement(Pill, { tone:h.cashflowType==='withdrawal'?'red':'green' }, `${h.cashflowType==='withdrawal'?'出金':'入金'} $${money(h.cashflowAmountUsd,2)}`) : null,
+            React.createElement(Pill, { tone: "blue" }, h.allocation || '-'),
+            React.createElement(Pill, null, "QQQ $", money(h.qqq, 2)),
+            React.createElement(Pill, null, "TQQQ $", money(h.tqqq, 2))),
+        React.createElement("div", { className: "mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2" },
+            React.createElement("div", { className: "bg-white rounded-xl p-2" }, React.createElement("div", { className: "text-[10px] font-black text-slate-400" }, "TQQQ 股數"), React.createElement("div", { className: "font-mono text-xs font-black" }, money(h.shares?.TQQQ, 4))),
+            React.createElement("div", { className: "bg-white rounded-xl p-2" }, React.createElement("div", { className: "text-[10px] font-black text-slate-400" }, "QQQ 股數"), React.createElement("div", { className: "font-mono text-xs font-black" }, money(h.shares?.QQQ, 4))),
+            React.createElement("div", { className: "bg-white rounded-xl p-2" }, React.createElement("div", { className: "text-[10px] font-black text-slate-400" }, "SGOV 股數"), React.createElement("div", { className: "font-mono text-xs font-black" }, money(h.shares?.SGOV, 4))),
+            React.createElement("div", { className: "bg-white rounded-xl p-2" }, React.createElement("div", { className: "text-[10px] font-black text-slate-400" }, "現金 USD"), React.createElement("div", { className: "font-mono text-xs font-black" }, "$", money(h.shares?.cashUsd, 0)))),
+        h.beforeShares && h.afterShares ? React.createElement("div", { className:"mt-2 bg-white border border-slate-100 rounded-2xl p-3" },
+            React.createElement("div", { className:"text-[10px] font-black text-slate-500 mb-2" }, "執行前 → 執行後"),
+            React.createElement("div", { className:"grid grid-cols-1 sm:grid-cols-2 gap-2" }, ["TQQQ","QQQ","SGOV","cashUsd"].map(k => { const names={TQQQ:'TQQQ',QQQ:'QQQ',SGOV:'SGOV',cashUsd:'現金 USD'}; const b=getNum(h.beforeShares[k]); const a=getNum(h.afterShares[k]); const d=a-b; return React.createElement("div", { key:k, className:"flex justify-between gap-2 text-xs font-bold" }, React.createElement("span", { className:"text-slate-500" }, names[k]), React.createElement("span", { className:"font-mono text-slate-900" }, money(b,4), " → ", money(a,4), d!==0 ? `（${d>0?'+':''}${money(d,4)}）` : '')); }))) : null,
+        h.actions && h.actions.length ? React.createElement("div", { className: "mt-2 text-xs text-slate-500 font-bold leading-relaxed" }, h.actions.map((a, ai) => React.createElement("div", { key: ai }, "・", a))) : null,
+        h.notes && React.createElement("div", { className: "mt-2 text-xs text-slate-500 font-bold leading-relaxed bg-white rounded-xl p-2" }, "備註：", h.notes));
     const Logs = () => React.createElement("main", { className: "max-w-5xl mx-auto px-4 pt-4 content-bottom-space" },
         React.createElement(Card, { className: "p-4" },
-            React.createElement(SectionTitle, { title: "歷史紀錄", desc: "每筆執行皆以版本化完整快照保存；介面與策略改版後仍可讀取。", right: React.createElement("button", { onClick: clearAllLogs, className: "px-3 py-2 rounded-xl bg-red-50 text-red-700 text-xs font-black" }, "清空") }),
-            React.createElement(ProfitChart, { logs: filteredLogs }),
-            React.createElement("div", { className:"grid grid-cols-2 gap-2 mb-4" },
-                React.createElement("select", { value:logKindFilter, onChange:e=>setLogKindFilter(e.target.value), className:"bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black" }, React.createElement("option", { value:"all" }, "全部類型"), React.createElement("option", { value:"execution" }, "已執行"), React.createElement("option", { value:"snapshot" }, "僅記錄")),
-                React.createElement("select", { value:logSignalFilter, onChange:e=>setLogSignalFilter(e.target.value), className:"bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black" }, React.createElement("option", { value:"all" }, "全部訊號"), React.createElement("option", { value:"Risk-On" }, "Risk-On"), React.createElement("option", { value:"Risk-Off" }, "Risk-Off"), React.createElement("option", { value:"過熱" }, "過熱"), React.createElement("option", { value:"中間區" }, "中間區"))),
-            React.createElement("div", { className: "space-y-3" },
-                filteredLogs.length === 0 && React.createElement("div", { className: "text-sm text-slate-400 font-bold text-center py-8" }, "尚無紀錄"),
-                filteredLogs.map((h, i) => React.createElement("div", { key: h.recordId || h.time || i, className: "border border-slate-100 rounded-2xl p-3 bg-slate-50" },
-                    React.createElement("div", { className: "flex justify-between gap-2 items-start" },
-                        React.createElement("div", null,
-                            React.createElement("div", { className: "font-black text-slate-900" }, h.signal),
-                            React.createElement("div", { className: "text-[11px] text-slate-400 font-bold" }, h.timeText, "｜行情日 ", h.marketDate || '-')),
-                        React.createElement("div", { className: "text-right" },
-                            React.createElement("div", { className: "font-mono font-black text-slate-900" }, h.totalDisplay || ('$' + money(h.totalUsd, 2))),
-                            React.createElement("button", { onClick: () => deleteLog(h), className: "mt-1 px-2 py-1 rounded-lg bg-red-50 text-red-700 text-[10px] font-black active:scale-95" }, "刪除"))),
-                    React.createElement("div", { className: "mt-2 flex flex-wrap gap-2" },
-                        React.createElement(Pill, { tone: "blue" }, h.allocation || '-'),
-                        React.createElement(Pill, null, "QQQ $", money(h.qqq, 2)),
-                        React.createElement(Pill, null, "TQQQ $", money(h.tqqq, 2))),
-                    React.createElement("div", { className: "mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2" },
-                        React.createElement("div", { className: "bg-white rounded-xl p-2" }, React.createElement("div", { className: "text-[10px] font-black text-slate-400" }, "TQQQ 股數"), React.createElement("div", { className: "font-mono text-xs font-black" }, money(h.shares?.TQQQ, 4))),
-                        React.createElement("div", { className: "bg-white rounded-xl p-2" }, React.createElement("div", { className: "text-[10px] font-black text-slate-400" }, "QQQ 股數"), React.createElement("div", { className: "font-mono text-xs font-black" }, money(h.shares?.QQQ, 4))),
-                        React.createElement("div", { className: "bg-white rounded-xl p-2" }, React.createElement("div", { className: "text-[10px] font-black text-slate-400" }, "SGOV 股數"), React.createElement("div", { className: "font-mono text-xs font-black" }, money(h.shares?.SGOV, 4))),
-                        React.createElement("div", { className: "bg-white rounded-xl p-2" }, React.createElement("div", { className: "text-[10px] font-black text-slate-400" }, "現金 USD"), React.createElement("div", { className: "font-mono text-xs font-black" }, "$", money(h.shares?.cashUsd, 0)))),
-                    h.beforeShares && h.afterShares ? React.createElement("div", { className:"mt-2 bg-white border border-slate-100 rounded-2xl p-3" },
-                        React.createElement("div", { className:"text-[10px] font-black text-slate-500 mb-2" }, "執行前 → 執行後"),
-                        React.createElement("div", { className:"grid grid-cols-1 sm:grid-cols-2 gap-2" }, ["TQQQ","QQQ","SGOV","cashUsd"].map(k => { const names={TQQQ:'TQQQ',QQQ:'QQQ',SGOV:'SGOV',cashUsd:'現金 USD'}; const b=getNum(h.beforeShares[k]); const a=getNum(h.afterShares[k]); const d=a-b; return React.createElement("div", { key:k, className:"flex justify-between gap-2 text-xs font-bold" }, React.createElement("span", { className:"text-slate-500" }, names[k]), React.createElement("span", { className:"font-mono text-slate-900" }, money(b,4), " → ", money(a,4), d!==0 ? `（${d>0?'+':''}${money(d,4)}）` : '')); }))) : null,
-                    h.actions && h.actions.length ? React.createElement("div", { className: "mt-2 text-xs text-slate-500 font-bold leading-relaxed" }, h.actions.map((a, ai) => React.createElement("div", { key: ai }, "・", a))) : null,
-                    h.notes && React.createElement("div", { className: "mt-2 text-xs text-slate-500 font-bold leading-relaxed bg-white rounded-xl p-2" }, "備註：", h.notes))))));
+            React.createElement(SectionTitle, { title: "歷史紀錄", desc: `共 ${allLogs.length} 筆；依執行年月分組，舊紀錄仍以版本化完整快照保存。`, right: React.createElement("div", {className:"flex gap-2"},
+                React.createElement("button", { onClick: exportRecordsJson, className: "px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black" }, "備份 JSON"),
+                React.createElement("button", { onClick:()=>importInputRef.current?.click(), className: "px-3 py-2 rounded-xl bg-brand-50 text-brand-700 text-xs font-black" }, "還原 JSON"),
+                React.createElement("input", { ref:importInputRef,type:"file",accept:"application/json,.json",onChange:importRecordsJson,className:"hidden" }),
+                React.createElement("button", { onClick: exportRecordsCsv, className: "px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-black" }, "匯出 CSV")) }),
+            React.createElement("div", {className:"grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4"},
+                React.createElement("div",{className:"bg-slate-50 rounded-2xl p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-500"},"淨入金"),React.createElement("div",{className:"font-mono font-black"},`${performance.netFlow>=0?'+':''}$${money(performance.netFlow,0)}`)),
+                React.createElement("div",{className:"bg-slate-50 rounded-2xl p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-500"},"扣除資金流損益"),React.createElement("div",{className:`font-mono font-black ${performance.profit>=0?'text-emerald-700':'text-red-700'}`},performance.ready?`${performance.profit>=0?'+':''}$${money(performance.profit,0)}`:'-')),
+                React.createElement("div",{className:"bg-slate-50 rounded-2xl p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-500"},recordsHasMore?"Modified Dietz（部分）":"Modified Dietz"),React.createElement("div",{className:`font-mono font-black ${performance.returnPct>=0?'text-emerald-700':'text-red-700'}`},performance.ready?pct(performance.returnPct,2):'-')),
+                React.createElement("div",{className:"bg-slate-50 rounded-2xl p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-500"},"已載入紀錄"),React.createElement("div",{className:"font-mono font-black"},allLogs.length))),
+            React.createElement("div",{className:"bg-brand-50 border border-brand-100 rounded-2xl p-3 mb-4"},
+                React.createElement("div",{className:"font-black text-brand-900 mb-2"},"入金／出金"),
+                React.createElement("div",{className:"grid grid-cols-2 sm:grid-cols-5 gap-2"},
+                    React.createElement("select",{value:cashflowType,onChange:e=>setCashflowType(e.target.value),className:"bg-white border border-brand-100 rounded-xl px-3 py-2 text-sm font-black"},React.createElement("option",{value:"deposit"},"入金"),React.createElement("option",{value:"withdrawal"},"出金")),
+                    React.createElement("input",{value:cashflowAmount,onChange:e=>setCashflowAmount(e.target.value.replace(/[^0-9.]/g,'')),inputMode:"decimal",placeholder:"金額 USD",className:"bg-white border border-brand-100 rounded-xl px-3 py-2 text-sm font-mono font-black",style:{fontSize:'16px'}}),
+                    React.createElement("input",{type:"date",value:cashflowDate,onChange:e=>setCashflowDate(e.target.value),className:"bg-white border border-brand-100 rounded-xl px-3 py-2 text-sm font-black"}),
+                    React.createElement("input",{value:cashflowNote,onChange:e=>setCashflowNote(e.target.value),placeholder:"備註",className:"bg-white border border-brand-100 rounded-xl px-3 py-2 text-sm font-bold",style:{fontSize:'16px'}}),
+                    React.createElement("button",{onClick:addCashflowRecord,className:"rounded-xl bg-brand-600 text-white font-black px-3 py-2"},"記錄並調整現金"))),
+            React.createElement(ProfitChart, { logs: filteredLogs.filter(r=>r.recordType!=='cashflow').slice(0,120) }),
+            React.createElement("div", { className:"grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3" },
+                React.createElement("select", { value:logYearFilter, onChange:e=>{setLogYearFilter(e.target.value);setLogMonthFilter('all');}, className:"bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black" }, React.createElement("option", { value:"all" }, "全部年份"), availableYears.map(y=>React.createElement("option",{key:y,value:y},`${y} 年`))),
+                React.createElement("select", { value:logMonthFilter, onChange:e=>setLogMonthFilter(e.target.value), className:"bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black" }, React.createElement("option", { value:"all" }, "全部月份"), availableMonths.map(m=>React.createElement("option",{key:m,value:m},`${Number(m)} 月`))),
+                React.createElement("select", { value:logKindFilter, onChange:e=>setLogKindFilter(e.target.value), className:"bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black" }, React.createElement("option", { value:"all" }, "全部類型"), React.createElement("option", { value:"execution" }, "已執行"), React.createElement("option", { value:"snapshot" }, "僅記錄"), React.createElement("option", { value:"cashflow" }, "入金／出金")),
+                React.createElement("select", { value:logSignalFilter, onChange:e=>setLogSignalFilter(e.target.value), className:"bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black" }, React.createElement("option", { value:"all" }, "全部訊號"), React.createElement("option", { value:"Risk-On" }, "Risk-On"), React.createElement("option", { value:"Risk-Off" }, "Risk-Off"), React.createElement("option", { value:"過熱" }, "過熱"), React.createElement("option", { value:"中間區" }, "中間區")),
+                React.createElement("input", { value:logSearch, onChange:e=>setLogSearch(e.target.value), placeholder:"搜尋備註／動作", className:"col-span-2 sm:col-span-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold", style:{fontSize:'16px'} })),
+            React.createElement("div", {className:"flex justify-between items-center mb-3 text-xs font-bold text-slate-500"},
+                React.createElement("span",null,`顯示 ${filteredLogs.length} 筆，共 ${logGroups.length} 個月份`),
+                React.createElement("button",{onClick:clearAllLogs,className:"text-red-600 font-black"},"隱藏全部")),
+            filteredLogs.length === 0 && React.createElement("div", { className: "text-sm text-slate-400 font-bold text-center py-8" }, "沒有符合條件的紀錄"),
+            React.createElement("div", {className:"space-y-3"}, logGroups.map((g,gi)=>{
+                const open=isLogGroupOpen(g.key,gi); const monthTotal=g.logs.length;
+                const valuationLogs=g.logs.filter(r=>r.recordType!=='cashflow'&&getNum(r.totalUsd)>0);
+                const latest=valuationLogs[0]||g.logs[0], oldest=valuationLogs[valuationLogs.length-1]||g.logs[g.logs.length-1];
+                const oldDate=String(oldest?.executionDate||oldest?.createdAt||''), newDate=String(latest?.executionDate||latest?.createdAt||'');
+                const monthFlow=g.logs.filter(r=>r.recordType==='cashflow'&&String(r.cashflowDate||r.executionDate||'')>oldDate&&String(r.cashflowDate||r.executionDate||'')<=newDate).reduce((sum,r)=>sum+(r.cashflowType==='withdrawal'?-1:1)*Math.abs(getNum(r.cashflowAmountUsd)),0);
+                const delta=valuationLogs.length>=2?getNum(latest.totalUsd)-getNum(oldest.totalUsd)-monthFlow:null;
+                return React.createElement("section",{key:g.key,className:"border border-slate-200 rounded-2xl overflow-hidden bg-white"},
+                    React.createElement("button",{type:"button",onClick:()=>toggleLogGroup(g.key),className:"w-full p-3 flex items-center justify-between gap-3 text-left bg-slate-50"},
+                        React.createElement("div",null,React.createElement("div",{className:"font-black text-slate-900"},`${g.year} 年 ${Number(g.month)} 月`),React.createElement("div",{className:"text-[11px] font-bold text-slate-400 mt-1"},`${monthTotal} 筆紀錄｜月底資產 ${latest?.totalDisplay||('$'+money(latest?.totalUsd,0))}｜已扣資金流`)),
+                        React.createElement("div",{className:"text-right"},React.createElement(Pill,{tone:delta==null?'slate':delta>=0?'green':'red'},delta==null?'樣本不足':`${delta>=0?'+':''}$${money(delta,0)}`),React.createElement("div",{className:"text-[10px] font-black text-slate-400 mt-1"},open?'收合':'展開'))),
+                    open && React.createElement("div",{className:"p-3 space-y-3"},g.logs.map((h,i)=>React.createElement(LogItem,{key:h.recordId||i,h,i}))));
+            })),
+            recordsHasMore && React.createElement("div",{className:"grid grid-cols-2 gap-2 mt-4"},React.createElement("button",{onClick:loadMoreRecords,disabled:loadingMoreRecords,className:"py-3 rounded-2xl bg-slate-100 text-slate-700 font-black disabled:opacity-50"},loadingMoreRecords?'載入中…':'載入更早 200 筆'),React.createElement("button",{onClick:loadAllRecords,disabled:loadingMoreRecords,className:"py-3 rounded-2xl bg-slate-900 text-white font-black disabled:opacity-50"},"載入全部歷史"))));
     const Sync = () => React.createElement("main", { className: "max-w-5xl mx-auto px-4 pt-4 content-bottom-space" },
         React.createElement(Card, { className: "p-4" },
             React.createElement(SectionTitle, { title: "\u540C\u6B65\u8A2D\u5B9A", desc: "Firebase \u4F7F\u7528\u4F60\u63D0\u4F9B\u7684 qldmax \u5C08\u6848\uFF0C\u8CC7\u6599\u8DEF\u5F91\u6CBF\u7528\u76EE\u524D\u9019\u5957\u7B56\u7565\u5100\u8868\u677F\u3002" }),
             React.createElement("div", { className: "bg-slate-950 text-white rounded-3xl p-4 mb-4" },
                 React.createElement("div", { className: "text-[10px] font-black text-slate-300" }, "Firebase \u72C0\u614B"),
                 React.createElement("div", { className: "font-black mt-1" }, syncText),
-                React.createElement("div", { className: "text-xs text-slate-400 mt-2 break-all" }, "projectId: qldmax\uFF5Ccurrent: strategyDashboards / tqqq-qqq200-main\uFF5Crecords: records / {recordId}")),
+                React.createElement("div", { className: "text-xs text-slate-400 mt-2 break-all" }, "projectId: qldmax\uFF5Ccurrent: strategyDashboards / tqqq-qqq200-main\uFF5Crecords: records / {recordId}｜每頁 200 筆")),
             React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" },
                 React.createElement("button", { onClick: manualSave, className: "py-3 rounded-2xl bg-brand-600 text-white font-black active:scale-95" }, "\u624B\u52D5\u540C\u6B65"),
                 React.createElement("button", { onClick: loginGoogle, className: "py-3 rounded-2xl bg-slate-900 text-white font-black active:scale-95" }, "Google \u767B\u5165"),
