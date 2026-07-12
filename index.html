@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="color-scheme" content="light only" />
-  <title>TQQQ SPY 200SMA Locked Hot-Level Dashboard v4.3</title>
+  <title>TQQQ SPY 200SMA Locked Hot-Level Dashboard v4.5 Stable</title>
   <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f172a'/><path d='M25 70 L45 48 L57 58 L76 28' stroke='%233b82f6' stroke-width='10' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='76' cy='28' r='7' fill='%233b82f6'/></svg>" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -56,7 +56,18 @@ if (HAS_FIREBASE && !firebase.apps.length)
 const auth = HAS_FIREBASE ? firebase.auth() : null;
 const db = HAS_FIREBASE ? firebase.firestore() : null;
 const DOC_PATH = ["strategyDashboards", "tqqq-qqq200-main"];
-const LOCAL_KEY = "tqqqQqq200AutoDash";
+const LOCAL_KEY = "tqqqSpy200LockedDashV45";
+const LEGACY_LOCAL_KEYS = ["tqqqQqq200AutoDash", "tqqqSpy200AutoDash"];
+const readStoredObject = (suffix = "") => {
+    const keys = [LOCAL_KEY, ...LEGACY_LOCAL_KEYS];
+    for (const key of keys) {
+        try {
+            const raw = localStorage.getItem(key + suffix);
+            if (raw) return JSON.parse(raw);
+        } catch (e) {}
+    }
+    return {};
+};
 const FINNHUB_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
 const todayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
 const getNum = v => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
@@ -75,7 +86,9 @@ const DEFAULT = {
     entryBuffer: 4, exitBuffer: 3, hot1: 19, hot2: 24, hot3: 28,
     // 正式策略狀態：市場、過熱與 DCA 分開保存，避免中間區覆蓋狀態。
     marketState: "NEUTRAL", hotRank: 0, riskOnCycleId: "",
-    strategyVersion: "SPY200-4-3-HOT-19-24-28-v1.0", strategyActivatedAt: "2026-07",
+    strategyVersion: "SPY200-4-3-HOT-19-24-28-v1.1", strategyActivatedAt: "2026-07",
+    strategyPhase: "INTRO_QQQ", // INTRO_QQQ → WAIT_REENTRY → ACTIVE
+    parameterLockMonths: 12,
     dcaActive: false, dcaCompleted: 0, dcaPoolUsd: 0, dcaLastDate: "", dcaNextDueDate: "", riskOffCycleId: "",
     // 舊版欄位保留供資料相容。
     dcaMonth: 0, currentState: "auto", prevWeekClose: 0, notes: "",
@@ -84,29 +97,51 @@ const DEFAULT = {
     priceUpdatedAt: "", smaUpdatedAt: "", lastFetchAttemptAt: "",
     priceSources: {}, history: []
 }
-const PERSONAL_KEYS = new Set(["sharesTqqq","sharesQqq","sharesSgov","cashUsd","otherUsd","usdtwd","currency","notes","marketState","hotRank","dcaActive","dcaCompleted","dcaPoolUsd","dcaLastDate","dcaNextDueDate","riskOffCycleId","riskOnCycleId","strategyVersion","strategyActivatedAt"]);
-const STRATEGY_TEXT = `TQQQ｜SPY 200SMA +4/-3 日線策略（依 Reddit 原文流程）
+const PERSONAL_KEYS = new Set(["sharesTqqq","sharesQqq","sharesSgov","cashUsd","otherUsd","usdtwd","currency","notes","marketState","hotRank","dcaActive","dcaCompleted","dcaPoolUsd","dcaLastDate","dcaNextDueDate","riskOffCycleId","riskOnCycleId","strategyVersion","strategyActivatedAt","strategyPhase","parameterLockMonths"]);
+const STRATEGY_TEXT = `TQQQ｜SPY 200SMA +4/-3＋QQQ 三階過熱鎖定策略（正式版 v1.1）
 
-1. 主風險訊號：使用 SPY 收盤價與 SPY 200SMA，每日收盤檢查，下一交易日執行。
-2. Risk-On：SPY 高於 200SMA +4%。新一輪進場時，再依 QQQ 相對 QQQ 200SMA 的乖離決定配置。
-3. Risk-Off：SPY 低於 200SMA -3%。TQQQ 與 QQQ 全部轉現金，啟動六期 QQQ DCA；同一輪 Risk-Off 不重啟資金池。
-4. 中間區：SPY 位於 -3% 至 +4%，維持上一個正式狀態；既有 DCA 繼續。
-5. 過熱一階：QQQ 高於 QQQ 200SMA +19%，配置 60% TQQQ / 40% QQQ。
-6. 過熱二階：QQQ 高於 +24%，配置 30% TQQQ / 70% QQQ。
-7. 過熱三階：QQQ 高於 +28%，配置 0% TQQQ / 100% QQQ。
-8. 過熱鎖定：同一個 Risk-On 週期內，hotRank 只能 0→1→2→3；QQQ 從 +28% 回落到 +24% 或更低時，仍維持已鎖定配置，不主動加回 TQQQ。
-9. 過熱重置：必須先由 SPY 觸發 Risk-Off；之後 SPY 再重新站上 +4%，才視為新一輪 Risk-On，並依當下 QQQ 乖離重新配置。
-10. DCA 重新轉強：DCA 尚未完成時，只要 SPY 每日收盤重新高於 +4%，停止剩餘 DCA，依當下 QQQ 乖離重新配置。
-11. 參數可調：Risk-On、Risk-Off 與三階過熱門檻皆可在參數頁修改；正式預設為 +4/-3、+19/+24/+28。`;
+一、首次導入保護
+首次啟用本策略時，不立即切換成 100% TQQQ。先以 100% QQQ 作為導入配置；必須先完整經歷一次 SPY Risk-Off，之後 SPY 再重新站上 200SMA +4%，才正式啟用 TQQQ 版本。首次導入期間即使 SPY 已在 Risk-On，也維持 100% QQQ。
+
+二、主風險訊號
+使用 SPY 每日收盤價與 SPY 200SMA 判斷，所有交易於下一個交易日執行。
+Risk-On：SPY 高於 200SMA +4%。
+Risk-Off：SPY 低於 200SMA -3%。
+中間區：SPY 位於 -3% 至 +4%，維持上一個正式狀態。
+
+三、Risk-Off 與 DCA
+Risk-Off 時，TQQQ 與 QQQ 全部轉現金，建立六期 QQQ DCA 資金池。第一期於 Risk-Off 執行日投入，之後約每隔 21 個交易日投入一份；同一輪 Risk-Off 不重啟資金池。
+
+四、DCA 重新轉強
+DCA 尚未完成時，若 SPY 每日收盤重新高於 +4%，優先停止剩餘 DCA，將現有 QQQ 與剩餘現金依當下 QQQ 過熱階級重新配置，並正式啟動新一輪 Risk-On。
+
+五、QQQ 三階過熱
+僅在正式啟用且 SPY 為 Risk-On 時生效：
+QQQ 高於 QQQ 200SMA +19%：60% TQQQ / 40% QQQ。
+QQQ 高於 +24%：30% TQQQ / 70% QQQ。
+QQQ 高於 +28%：0% TQQQ / 100% QQQ。
+
+六、過熱鎖定
+同一個 Risk-On 週期內，過熱階級只能 0→1→2→3，不能反向加回槓桿。QQQ 從 +28% 回落到 +24% 或更低時，仍維持已鎖定配置。只有先觸發 SPY Risk-Off，之後再重新站上 +4%，才開始新一輪並依當下 QQQ 乖離重新配置。
+
+七、訊號優先順序
+1. SPY Risk-Off。
+2. DCA 期間，SPY 是否重新 Risk-On。
+3. DCA 本期是否到期。
+4. Risk-On 期間的 QQQ 過熱階級。
+5. SPY 中間區維持上一狀態。
+
+八、參數紀律
+正式預設為 Risk-On +4%、Risk-Off -3%、HOT1 +19%、HOT2 +24%、HOT3 +28%。採用後至少 12 個月不調整門檻，避免因短期績效追逐最佳參數。`;
 const Card = ({ children, className = "" }) => React.createElement("div", { className: `bg-white rounded-3xl border border-slate-200 shadow-soft ${className}` }, children);
 const Pill = ({ children, tone = "slate" }) => {
     const cls = { slate: "bg-slate-100 text-slate-700 border-slate-200", blue: "bg-brand-50 text-brand-700 border-brand-100", green: "bg-emerald-50 text-emerald-700 border-emerald-100", red: "bg-red-50 text-red-700 border-red-100", amber: "bg-amber-50 text-amber-700 border-amber-100", purple: "bg-purple-700 text-white border-purple-700", dark: "bg-slate-900 text-white border-slate-800" }[tone];
     return React.createElement("span", { className: `inline-flex items-center px-2.5 py-1 rounded-full border text-[11px] font-black ${cls}` }, children);
 };
-const NumInput = ({ label, value, onChange, suffix = "", hint = "" }) => (React.createElement("label", { className: "block bg-slate-50 border border-slate-200 rounded-2xl p-3 focus-within:ring-2 focus-within:ring-brand-100 focus-within:border-brand-400" },
+const NumInput = ({ label, value, onChange, suffix = "", hint = "", disabled = false }) => (React.createElement("label", { className: "block bg-slate-50 border border-slate-200 rounded-2xl p-3 focus-within:ring-2 focus-within:ring-brand-100 focus-within:border-brand-400" },
     React.createElement("div", { className: "text-[10px] font-black text-slate-500 mb-1" }, label),
     React.createElement("div", { className: "flex items-center gap-2" },
-        React.createElement("input", { type: "text", inputMode: "decimal", autoComplete: "off", value: value !== null && value !== void 0 ? value : "", onChange: e => onChange(String(e.target.value).replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')), className: "w-full bg-transparent text-center font-mono font-black text-lg text-slate-900 min-h-[44px]", style: { fontSize: "16px" } }),
+        React.createElement("input", { type: "text", inputMode: "decimal", autoComplete: "off", disabled, value: value !== null && value !== void 0 ? value : "", onChange: e => onChange(String(e.target.value).replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')), className: `w-full bg-transparent text-center font-mono font-black text-lg min-h-[44px] ${disabled ? "text-slate-400 cursor-not-allowed" : "text-slate-900"}`, style: { fontSize: "16px" } }),
         suffix && React.createElement("span", { className: "text-xs font-black text-slate-400" }, suffix)),
     hint && React.createElement("div", { className: "text-[10px] text-slate-400 mt-1 leading-relaxed" }, hint)));
 const SectionTitle = ({ title, desc, right }) => React.createElement("div", { className: "flex items-end justify-between gap-3 mb-3" },
@@ -123,13 +158,6 @@ function sma(rows, n) { if (rows.length < n)
     return NaN; return rows.slice(-n).reduce((sum, x) => sum + x.Close, 0) / n; }
 const dateFromUnix = ts => { const d = new Date(ts * 1000); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
 async function fetchFinnhubQuote(symbol) {
-    const d = await fetchJson(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_KEY}`);
-    const close = getNum(d.c);
-    if (close <= 0)
-        throw new Error(symbol + " Finnhub 報價無資料");
-    return { symbol, close, date: todayStr() };
-}
-async function fetchFinnhubQuote(symbol) {
     const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_KEY}`, { cache: "no-store" });
     if (r.status === 429) throw new Error("Finnhub API 額度暫時用完（HTTP 429）");
     if (!r.ok) throw new Error(`Finnhub HTTP ${r.status}`);
@@ -142,12 +170,10 @@ async function fetchSymbol(symbol) {
     return await fetchFinnhubQuote(symbol);
 }
 const App = () => {
-    const [data, setData] = useState(() => { try {
-        return { ...DEFAULT, ...(JSON.parse(localStorage.getItem(LOCAL_KEY) || "{}")) };
-    }
-    catch (e) {
-        return DEFAULT;
-    } });
+    const [data, setData] = useState(() => {
+        const stored = readStoredObject("");
+        return { ...DEFAULT, ...stored, history: Array.isArray(stored.history) ? stored.history : [] };
+    });
     const [user, setUser] = useState(null);
     const [page, setPage] = useState("home");
     const [toast, setToast] = useState("");
@@ -157,10 +183,17 @@ const App = () => {
     const [pendingExecution, setPendingExecution] = useState(false);
     const [collapsed, setCollapsed] = useState({ holdings: true, scenario: false });
     const [hasDraftChanges, setHasDraftChanges] = useState(false);
-    const [simpleMode, setSimpleMode] = useState(() => localStorage.getItem(LOCAL_KEY + "_simpleMode") === "1");
+    const [simpleMode, setSimpleMode] = useState(() => {
+        if (localStorage.getItem(LOCAL_KEY + "_simpleMode") === "1") return true;
+        return LEGACY_LOCAL_KEYS.some(k => localStorage.getItem(k + "_simpleMode") === "1");
+    });
     const [logKindFilter, setLogKindFilter] = useState("all");
     const [logSignalFilter, setLogSignalFilter] = useState("all");
-    const [committedData, setCommittedData] = useState(() => { try { return { ...DEFAULT, ...(JSON.parse(localStorage.getItem(LOCAL_KEY + "_committed") || localStorage.getItem(LOCAL_KEY) || "{}")) }; } catch(e) { return DEFAULT; } });
+    const [committedData, setCommittedData] = useState(() => {
+        const committed = readStoredObject("_committed");
+        const stored = Object.keys(committed).length ? committed : readStoredObject("");
+        return { ...DEFAULT, ...stored, history: Array.isArray(stored.history) ? stored.history : [] };
+    });
     const ignoreCloud = useRef(false);
     const editingRef = useRef(false);
     const toggleCollapse = useCallback(id => setCollapsed(prev => ({ ...prev, [id]: !prev[id] })), []);
@@ -201,24 +234,26 @@ const App = () => {
         return () => unsub();
     }, []);
     useEffect(() => {
-        if (!user || user.isAnonymous || !docRef())
-            return;
-        const unsub = docRef().onSnapshot(snap => {
-            if (ignoreCloud.current || editingRef.current)
-                return;
+        if (!user || user.isAnonymous || !docRef()) return;
+        let cancelled = false;
+        setSyncText("正在讀取 Google 雲端正式資料…");
+        docRef().get().then(snap => {
+            if (cancelled) return;
             if (snap.exists) {
-                const cloud = snap.data();
+                const cloud = snap.data() || {};
                 const normalized = { ...DEFAULT, ...cloud, history: Array.isArray(cloud.history) ? cloud.history : [] };
                 setCommittedData(normalized);
                 try { localStorage.setItem(LOCAL_KEY + "_committed", JSON.stringify(normalized)); } catch(e) {}
-                if (!hasDraftChanges) setData(prev => ({ ...prev, ...normalized }));
-                setSyncText(hasDraftChanges ? "雲端有更新；草稿編輯中，暫不覆蓋" : "已讀取雲端正式資料");
+                if (!editingRef.current && !hasDraftChanges) setData(normalized);
+                setSyncText(hasDraftChanges ? "已讀取雲端；目前草稿未覆蓋" : "已讀取 Google 雲端正式資料");
+            } else {
+                setSyncText("Google 雲端尚無正式資料");
             }
-            else
-                setSyncText("雲端尚無資料");
-        }, err => setSyncText("雲端讀取失敗：" + err.message));
-        return () => unsub();
-    }, [user, hasDraftChanges]);
+        }).catch(err => {
+            if (!cancelled) setSyncText("雲端讀取失敗：" + err.message);
+        });
+        return () => { cancelled = true; };
+    }, [user]);
     useEffect(() => {
         try { localStorage.setItem(LOCAL_KEY, JSON.stringify(data)); } catch(e) {}
     }, [data]);
@@ -282,6 +317,16 @@ const App = () => {
         const storedHot=Math.max(0,Math.min(3,parseInt(data.hotRank ?? (legacyState==='HOT3'?3:legacyState==='HOT2'?2:legacyState==='HOT1'?1:0))||0));
         const storedDcaCompleted=Math.max(0,Math.min(6,parseInt(data.dcaCompleted ?? data.dcaMonth ?? 0)||0));
         const storedDcaActive=data.dcaActive===true || (getNum(data.dcaPoolUsd)>0 && storedDcaCompleted<6 && storedMarket==='RISK_OFF');
+        const strategyPhase=String(data.strategyPhase||'INTRO_QQQ').toUpperCase();
+        const introMode=strategyPhase==='INTRO_QQQ';
+        const waitingFirstReentry=strategyPhase==='WAIT_REENTRY';
+        const strategyActive=strategyPhase==='ACTIVE';
+        const activatedMonth=String(data.strategyActivatedAt||DEFAULT.strategyActivatedAt);
+        const [actY,actM]=activatedMonth.split('-').map(Number);
+        const lockMonths=Math.max(12,parseInt(data.parameterLockMonths||12)||12);
+        const lockDate=(actY&&actM)?new Date(actY,actM-1+lockMonths,1):null;
+        const paramsLocked=!!lockDate && new Date()<lockDate;
+        const paramsLockUntil=lockDate?`${lockDate.getFullYear()}-${String(lockDate.getMonth()+1).padStart(2,'0')}`:'';
         const riskOffNow=valid && spy<exitPx;
         const riskOnNow=valid && spy>entryPx;
         const thresholdRank=valid?(qqq>=qHot3?3:qqq>=qHot2?2:qqq>=qHot1?1:0):0;
@@ -325,29 +370,30 @@ const App = () => {
 
         let marketState=storedMarket;
         if(riskOffNow) marketState='RISK_OFF';
-        else if(riskOnNow) marketState='RISK_ON';
+        else if(riskOnNow && !introMode) marketState='RISK_ON';
+        else if(introMode) marketState='INTRO';
         // SPY 中間區維持上次正式 marketState。
 
-        // 依原文邏輯：同一 Risk-On 週期只允許單向降槓桿。
-        // 只有 SPY 先觸發 Risk-Off，之後重新站上 +4%，才開啟新一輪並依當下 QQQ 乖離重設。
-        let effectiveRank=storedHot;
-        const enteringNewRiskOn = riskOnNow && storedMarket !== 'RISK_ON';
+        // 同一 Risk-On 週期只允許單向降槓桿；首次導入期間固定 QQQ。
+        let effectiveRank=introMode?0:storedHot;
+        const enteringNewRiskOn = riskOnNow && storedMarket !== 'RISK_ON' && !introMode;
         if(riskOffNow){
             effectiveRank=0;
         } else if(enteringNewRiskOn){
             effectiveRank=thresholdRank;
-        } else if(riskOnNow && thresholdRank>effectiveRank){
+        } else if(riskOnNow && strategyActive && thresholdRank>effectiveRank){
             effectiveRank=thresholdRank;
         }
-        const immediateSignal=!valid?'資料不足':riskOffNow?'SPY 已觸發 Risk-Off':riskOnNow?`SPY Risk-On；QQQ 即時乖離 ${pct(qqqDev,1)}`:`SPY 位於中間區；QQQ 即時乖離 ${pct(qqqDev,1)}`;
+        const immediateSignal=!valid?'資料不足':riskOffNow?'SPY 已觸發 Risk-Off':introMode?'首次導入保護：維持 100% QQQ':riskOnNow?`SPY Risk-On；QQQ 即時乖離 ${pct(qqqDev,1)}`:`SPY 位於中間區；QQQ 即時乖離 ${pct(qqqDev,1)}`;
         const rankLabel=effectiveRank===3?'HOT3｜100% QQQ':effectiveRank===2?'HOT2｜30% TQQQ / 70% QQQ':effectiveRank===1?'HOT1｜60% TQQQ / 40% QQQ':'HOT0｜100% TQQQ';
         const formalRankLabel=storedHot===3?'HOT3｜100% QQQ':storedHot===2?'HOT2｜30% TQQQ / 70% QQQ':storedHot===1?'HOT1｜60% TQQQ / 40% QQQ':'HOT0｜100% TQQQ';
-        const formalStateText=storedMarket==='RISK_OFF'?'Risk-Off／DCA':storedMarket==='RISK_ON'?formalRankLabel:'中間區延續既有狀態';
+        const formalStateText=introMode?'首次導入｜100% QQQ':waitingFirstReentry?'等待首次 Risk-On／DCA':storedMarket==='RISK_OFF'?'Risk-Off／DCA':storedMarket==='RISK_ON'?formalRankLabel:'中間區延續既有狀態';
 
         let signal='NEUTRAL',tone='amber',title='SPY 中間區：維持原狀',instruction='SPY 位於 -3% 到 +4% 遲滯區，維持上次正式狀態。';
         let alloc={TQQQ:null,QQQ:null,SGOV:0,label:'維持原配置'};
         if(!valid){signal='DATA';tone='slate';title='資料不足';instruction='請更新 SPY、QQQ、TQQQ，並手動輸入 SPY／QQQ 200SMA。';}
         else if(riskOffNow){signal='OFF';tone='red';title='Risk-Off：全部轉現金並啟動 DCA';instruction=`SPY 已低於 200SMA -${data.exitBuffer}%。退出 TQQQ／QQQ，依六期計畫投入 QQQ。`;alloc={TQQQ:0,QQQ:(plannedCompleted/6)*100,SGOV:0,label:`DCA ${plannedCompleted}/6`};}
+        else if(introMode){signal='INTRO';tone='blue';title='首次導入保護：先持有 100% QQQ';instruction='目前不啟用 TQQQ。必須先完整經歷一次 Risk-Off，之後 SPY 再重新站上 +4%，才正式啟動槓桿策略。';alloc={TQQQ:0,QQQ:100,SGOV:0,label:'100% QQQ'};}
         else if(storedDcaActive && !riskOnNow){signal='DCA';tone='blue';title='DCA 進行中';instruction=dcaDue?`本期 DCA 已到期，累積目標為資金池 ${plannedCompleted}/6。`:`DCA 尚未到期，下一期預估 ${nextDue||'-'}。`;alloc={TQQQ:0,QQQ:(dcaCompletedBefore/6)*100,SGOV:0,label:`DCA ${dcaCompletedBefore}/6`};}
         else if(riskOnNow){
             signal=effectiveRank===3?'HOT3':effectiveRank===2?'HOT2':effectiveRank===1?'HOT1':'ON';
@@ -401,7 +447,7 @@ const App = () => {
         const scenarioFlags=[];
         if(valid){if(scenarioQqq>=qHot3)scenarioFlags.push(`QQQ 過熱三階 +${data.hot3}%`);else if(scenarioQqq>=qHot2)scenarioFlags.push(`QQQ 過熱二階 +${data.hot2}%`);else if(scenarioQqq>=qHot1)scenarioFlags.push(`QQQ 過熱一階 +${data.hot1}%`);if(!scenarioFlags.length)scenarioFlags.push('QQQ 未新增過熱觸發');}else scenarioFlags.push('資料不足');
         const scenario={movePct:scenarioMove,qqq:scenarioQqq,tqqq:scenarioTqqq,totalUsd:scenarioTotalUsd,totalTwd:scenarioTotalUsd*rate,pnlUsd:scenarioPnlUsd,pnlPct:scenarioPnlPct,flags:scenarioFlags};
-        return {valid,canExecute:valid && validationErrors.length===0,validationErrors,signal,tone,title,instruction,alloc,spyDev,qqqDev,entryPx,exitPx,qHot1,qHot2,qHot3,rows,totalUsd,totalDisplay,targetRows,assetHighUsd,drawdown,actionLines,distanceItems,scenario,marketState,effectiveRank,storedHot,storedMarket,immediateSignal,formalStateText,todayAction,riskOffNow,riskOnNow,dcaActiveEffective,dcaActiveBefore,dcaWillStop,dcaDue,dcaPool,dcaCompleted:dcaCompletedBefore,plannedCompleted,dcaBuyUsd,dcaBuyShares,dcaTargetQqq,dcaTargetCash,nextDue,startingNewCycle,investableUsd};
+        return {valid,canExecute:valid && validationErrors.length===0,validationErrors,signal,tone,title,instruction,alloc,spyDev,qqqDev,entryPx,exitPx,qHot1,qHot2,qHot3,rows,totalUsd,totalDisplay,targetRows,assetHighUsd,drawdown,actionLines,distanceItems,scenario,marketState,effectiveRank,storedHot,storedMarket,immediateSignal,formalStateText,todayAction,riskOffNow,riskOnNow,dcaActiveEffective,dcaActiveBefore,dcaWillStop,dcaDue,dcaPool,dcaCompleted:dcaCompletedBefore,plannedCompleted,dcaBuyUsd,dcaBuyShares,dcaTargetQqq,dcaTargetCash,nextDue,startingNewCycle,investableUsd,strategyPhase,introMode,waitingFirstReentry,strategyActive,paramsLocked,paramsLockUntil};
     }, [data]);
     const fetchPrices = async () => {
         if (loadingPrice) return;
@@ -517,15 +563,16 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
             lastExecutedAt:new Date().toLocaleString("zh-TW"),
             lastExecutionSummary:metrics.actionLines.join(" "),
             marketState:metrics.marketState,
-            hotRank:metrics.riskOffNow ? 0 : metrics.effectiveRank,
+            hotRank:(metrics.riskOffNow || metrics.introMode) ? 0 : metrics.effectiveRank,
             currentState:metrics.signal,
+            strategyPhase: metrics.introMode && metrics.riskOffNow ? 'WAIT_REENTRY' : (metrics.waitingFirstReentry && metrics.riskOnNow ? 'ACTIVE' : (data.strategyPhase || 'INTRO_QQQ')),
             strategyVersion:data.strategyVersion || DEFAULT.strategyVersion,
             strategyActivatedAt:data.strategyActivatedAt || DEFAULT.strategyActivatedAt
         };
         if(metrics.startingNewCycle){
             next.riskOffCycleId=`RO-${data.marketDate||todayStr()}-${Date.now()}`;
             next.riskOnCycleId='';
-        } else if(metrics.riskOnNow && String(data.marketState||'').toUpperCase()!=='RISK_ON'){
+        } else if(metrics.riskOnNow && !metrics.introMode && String(data.marketState||'').toUpperCase()!=='RISK_ON'){
             next.riskOnCycleId=`ON-${data.marketDate||todayStr()}-${Date.now()}`;
         }
         // 新 Risk-Off 或到期 DCA：只在本期確實到期時增加一期；中間區不會清掉週期。
@@ -683,6 +730,9 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
             : React.createElement("div", { className: "text-sm text-slate-400 font-bold" }, "資料不足，無法計算距離。")));
     const StateFlowCard = () => React.createElement(Card, { className:"p-4 mt-4 bg-gradient-to-br from-slate-900 to-slate-800 text-white border-slate-800" },
         React.createElement(SectionTitle, { title:"策略狀態機", desc:"市場、過熱與 DCA 分開記憶；過熱只在下一輪 Risk-On 重置。" }),
+            React.createElement("div", { className:`mb-3 rounded-2xl border p-3 ${metrics.introMode?'bg-blue-50 border-blue-100':metrics.waitingFirstReentry?'bg-amber-50 border-amber-100':'bg-emerald-50 border-emerald-100'}` },
+                React.createElement("div", { className:"text-[10px] font-black text-slate-500" }, "策略啟動階段"),
+                React.createElement("div", { className:`font-black mt-1 ${metrics.introMode?'text-blue-800':metrics.waitingFirstReentry?'text-amber-800':'text-emerald-800'}` }, metrics.introMode?'首次導入：固定 100% QQQ':metrics.waitingFirstReentry?'已經歷 Risk-Off：等待 SPY 重新站上 +4%':'正式啟用：TQQQ 策略運作中')),
         React.createElement("div", { className:"grid grid-cols-2 md:grid-cols-4 gap-2" },
             [["即時市場判斷",metrics.immediateSignal,metrics.riskOffNow?"text-red-300":"text-emerald-300"],
              ["正式策略狀態",metrics.formalStateText,"text-white"],
@@ -781,13 +831,16 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                     React.createElement("input", { type: "date", value: data.marketDate || "", onChange: e => patch('marketDate', e.target.value), className: "w-full bg-transparent text-center font-mono font-black min-h-[44px]" })),
 )),
         React.createElement(Card, { className: "p-4 mt-4" },
-            React.createElement(SectionTitle, { title: "策略參數", desc: "SPY 日線 +4/-3 為主風險訊號；QQQ 預設 19/24/28 三階過熱，同一 Risk-On 週期只減不加。", right: React.createElement("button", { onClick: () => merge({ entryBuffer:4, exitBuffer:3, hot1:19, hot2:24, hot3:28 }), className: "px-3 py-2 rounded-xl bg-brand-50 text-brand-700 text-xs font-black" }, "恢復正式預設") }),
+            React.createElement(SectionTitle, { title: "策略參數", desc: "首次導入先持有 QQQ；完整經歷 Risk-Off 後再啟用 TQQQ。正式參數鎖定 12 個月。", right: React.createElement("button", { onClick: () => merge({ entryBuffer:4, exitBuffer:3, hot1:19, hot2:24, hot3:28 }), disabled:metrics.paramsLocked, className: `px-3 py-2 rounded-xl text-xs font-black ${metrics.paramsLocked?"bg-slate-100 text-slate-400 cursor-not-allowed":"bg-brand-50 text-brand-700"}` }, "恢復正式預設") }),
             React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3" },
-                React.createElement(NumInput, { label: "Risk-On", value: data.entryBuffer, onChange: v => patch('entryBuffer', v), suffix: "%" }),
-                React.createElement(NumInput, { label: "Risk-Off", value: data.exitBuffer, onChange: v => patch('exitBuffer', v), suffix: "%" }),
-                React.createElement(NumInput, { label: "過熱一階（60/40）", value: data.hot1, onChange: v => patch('hot1', v), suffix: "%" }),
-                React.createElement(NumInput, { label: "過熱二階（30/70）", value: data.hot2, onChange: v => patch('hot2', v), suffix: "%" }),
-                React.createElement(NumInput, { label: "過熱三階（0/100）", value: data.hot3, onChange: v => patch('hot3', v), suffix: "%" })),
+                React.createElement(NumInput, { label: "Risk-On", value: data.entryBuffer, onChange: v => patch('entryBuffer', v), suffix: "%", disabled:metrics.paramsLocked }),
+                React.createElement(NumInput, { label: "Risk-Off", value: data.exitBuffer, onChange: v => patch('exitBuffer', v), suffix: "%", disabled:metrics.paramsLocked }),
+                React.createElement(NumInput, { label: "過熱一階（60/40）", value: data.hot1, onChange: v => patch('hot1', v), suffix: "%", disabled:metrics.paramsLocked }),
+                React.createElement(NumInput, { label: "過熱二階（30/70）", value: data.hot2, onChange: v => patch('hot2', v), suffix: "%", disabled:metrics.paramsLocked }),
+                React.createElement(NumInput, { label: "過熱三階（0/100）", value: data.hot3, onChange: v => patch('hot3', v), suffix: "%", disabled:metrics.paramsLocked })),
+            React.createElement("div", { className:`mt-3 rounded-2xl border p-3 ${metrics.paramsLocked?"bg-amber-50 border-amber-100":"bg-emerald-50 border-emerald-100"}` },
+                React.createElement("div", { className:`text-sm font-black ${metrics.paramsLocked?"text-amber-900":"text-emerald-900"}` }, metrics.paramsLocked?`參數鎖定至 ${metrics.paramsLockUntil}`:"參數鎖定期已結束"),
+                React.createElement("div", { className:`text-xs font-bold mt-1 leading-relaxed ${metrics.paramsLocked?"text-amber-700":"text-emerald-700"}` }, metrics.paramsLocked?"正式採用後 12 個月內不調整 +4/-3 與 19/24/28，避免追逐短期最佳值。":"如需調整，仍應先做完整回測並建立新版本。")),
             React.createElement("div", { className:"mt-3 bg-purple-50 border border-purple-100 rounded-2xl p-3" },
                 React.createElement("div", { className:"text-sm font-black text-purple-900" }, "過熱重置規則"),
                 React.createElement("div", { className:"text-xs font-bold text-purple-700 mt-1 leading-relaxed" }, "同一個 Risk-On 週期只會往更低槓桿移動。必須先由 SPY 觸發 Risk-Off，之後重新站上 Risk-On 門檻，才依當下 QQQ 乖離重新配置。"))),
@@ -800,7 +853,7 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                 React.createElement("label", { className:"block bg-slate-50 border border-slate-200 rounded-2xl p-3" },
                     React.createElement("div", { className:"text-[10px] font-black text-slate-500 mb-1" }, "啟用月份"),
                     React.createElement("input", { type:"month", value:data.strategyActivatedAt||DEFAULT.strategyActivatedAt, onChange:e=>patch('strategyActivatedAt',e.target.value), className:"w-full bg-transparent font-mono font-black text-sm min-h-[44px]" }))),
-            React.createElement("div", { className:"mt-3 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-100 rounded-2xl p-3" }, "建議至少觀察半年至一年，再評估是否調整門檻。")),
+            React.createElement("div", { className:"mt-3 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-100 rounded-2xl p-3" }, "正式參數採用後至少 12 個月不調整；若未來改參數，請建立新的策略版本。")),
         React.createElement(Card, { className: "p-4 mt-4" },
             React.createElement(SectionTitle, { title: "策略文字", desc: "所有正式訊號以每日收盤判斷，下一交易日執行。" }),
             React.createElement("pre", { className: "whitespace-pre-wrap text-xs leading-relaxed bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-600 font-bold" }, STRATEGY_TEXT)));
