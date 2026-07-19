@@ -315,6 +315,11 @@ function evaluateStrategy(data) {
             effectiveRank=thresholdRank;
         }
         const immediateSignal=!valid?'資料不足':riskOffNow?'SPY 已觸發 Risk-Off':introMode?'首次導入保護：維持 100% QQQ':riskOnNow?`SPY Risk-On；QQQ 即時乖離 ${pct(qqqDev,1)}`:`SPY 位於中間區；QQQ 即時乖離 ${pct(qqqDev,1)}`;
+        const thresholdRankLabel=thresholdRank===3?'HOT3':thresholdRank===2?'HOT2':thresholdRank===1?'HOT1':'HOT0';
+        const storedHotLabel=storedHot===3?'HOT3':storedHot===2?'HOT2':storedHot===1?'HOT1':'HOT0';
+        const effectiveHotLabel=effectiveRank===3?'HOT3':effectiveRank===2?'HOT2':effectiveRank===1?'HOT1':'HOT0';
+        const hotPullbackLocked=strategyActive && storedMarket==='RISK_ON' && storedHot>thresholdRank && !riskOffNow;
+        const hotCompareMessage=!valid?'資料不足，無法比較 HOT 階級。':introMode?'首次導入期間不啟用 HOT 鎖定。':riskOffNow?'Risk-Off 訊號優先；執行後本輪 HOT 才會清零。':hotPullbackLocked?`QQQ 已回落至 ${thresholdRankLabel} 區間，但本輪正式鎖定為 ${storedHotLabel}，維持原配置，不加回 TQQQ。`:effectiveRank>storedHot?`QQQ 已升至 ${effectiveHotLabel}，按「已執行」後才會正式鎖定。`:`即時門檻與本輪鎖定一致，維持 ${effectiveHotLabel}。`;
         const hotAlloc = pctValue => ({TQQQ:100-pctValue,QQQ:hotAsset==='QQQ'?pctValue:0,SPY:hotAsset==='SPY'?pctValue:0,SPYI:hotAsset==='SPYI'?pctValue:0,QQQI:hotAsset==='QQQI'?pctValue:0,label:`${100-pctValue}% TQQQ / ${pctValue}% ${hotAsset}`});
         const formalRankLabel=storedHot===3?`HOT3｜100% ${hotAsset}`:storedHot===2?`HOT2｜30% TQQQ / 70% ${hotAsset}`:storedHot===1?`HOT1｜60% TQQQ / 40% ${hotAsset}`:'HOT0｜100% TQQQ';
         const formalStateText=introMode?'首次導入｜100% QQQ':waitingFirstReentry?'等待首次 Risk-On／DCA':storedMarket==='RISK_OFF'?'Risk-Off／DCA':storedMarket==='RISK_ON'?formalRankLabel:'中間區延續既有狀態';
@@ -340,17 +345,30 @@ function evaluateStrategy(data) {
             title='SPY 中間區：延續 Risk-On 配置'; instruction=`維持上次正式配置 ${alloc.label}。`;
         }
 
-        const positionAsset=(introMode || riskOffNow || storedDcaActive) ? 'QQQ' : hotAsset;
-        const targetRows=['TQQQ',positionAsset].filter((v,i,a)=>a.indexOf(v)===i).map(sym=>{
+        // 首次導入與實際 DCA 期間固定使用 QQQ；DCA 重新 Risk-On 當天立即切回所選過熱替代標的。
+        const positionAsset=(introMode || riskOffNow || (storedDcaActive && !riskOnNow)) ? 'QQQ' : hotAsset;
+        // 交易計算必須包含所有目前仍有持倉的 ETF，才能在切換替代標的時列出舊標的賣出指令；
+        // 畫面持股區仍只顯示 TQQQ＋目前選定標的。
+        const heldSymbols=rows.filter(r=>['TQQQ','QQQ','SPY','SPYI','QQQI'].includes(r.name) && r.value>10).map(r=>r.name);
+        const tradeSymbols=['TQQQ',positionAsset,...heldSymbols].filter((v,i,a)=>a.indexOf(v)===i);
+        const calculationRows=tradeSymbols.map(sym=>{
             const row=rows.find(r=>r.name===sym)||{value:0,shares:0,price:0};
             let target=null;
             if(signal==='OFF'||signal==='DCA'){
                 target=sym==='QQQ'?dcaTargetQqq:0;
-            } else if(alloc[sym]!=null) target=investableUsd*alloc[sym]/100;
+            } else if(alloc[sym]!=null) {
+                target=investableUsd*alloc[sym]/100;
+            } else {
+                // 非目前選定的舊替代標的目標為 0，必須清倉。
+                target=0;
+            }
             const targetShares=target==null||row.price<=0?null:target/row.price;
             const diff=target==null?0:target-row.value;
             return {sym,current:row.value,currentShares:row.shares,price:row.price,target,diff,targetShares,shareDiff:targetShares==null?0:targetShares-row.shares,targetPct:alloc[sym]};
         });
+        // 首頁只顯示 TQQQ＋目前策略實際使用的單一標的；舊標的只保留在交易指令中供清倉。
+        const visibleSymbols=['TQQQ',positionAsset].filter((v,i,a)=>a.indexOf(v)===i);
+        const targetRows=visibleSymbols.map(sym=>calculationRows.find(r=>r.sym===sym)).filter(Boolean);
         const actionLines=[];
         if(!valid) actionLines.push('資料不足，請更新市場資料並輸入兩個 200SMA。');
         else if(signal==='OFF'||signal==='DCA'){
@@ -363,7 +381,7 @@ function evaluateStrategy(data) {
             if(!dcaDue && tqqqValue<=10) actionLines.push('本期 DCA 尚未到期，不需交易。');
             actionLines.push(`執行後預估保留現金約 $${money(dcaTargetCash,0)}。`);
         } else if(alloc.TQQQ!=null){
-            targetRows.forEach(r=>{if(r.target!=null&&Math.abs(r.diff)>=10)actionLines.push(`${r.diff>0?'買入':'賣出'} ${r.sym} 約 ${money(Math.abs(r.shareDiff),4)} 股，金額約 $${money(Math.abs(r.diff),0)}。`);});
+            calculationRows.forEach(r=>{if(r.target!=null&&Math.abs(r.diff)>=10)actionLines.push(`${r.diff>0?'買入':'賣出'} ${r.sym} 約 ${money(Math.abs(r.shareDiff),4)} 股，金額約 $${money(Math.abs(r.diff),0)}。`);});
             if(!actionLines.length)actionLines.push('目前部位與目標接近，不需要交易。');
         } else actionLines.push('SPY 位於中間區，維持原配置，不建立新切換。');
         const todayAction = actionLines.length===1 && actionLines[0].includes('不需要交易')
@@ -396,7 +414,7 @@ function evaluateStrategy(data) {
         const scenarioFlags=[];
         if(valid){if(scenarioQqq>=qHot3)scenarioFlags.push(`QQQ 過熱三階 +${data.hot3}%`);else if(scenarioQqq>=qHot2)scenarioFlags.push(`QQQ 過熱二階 +${data.hot2}%`);else if(scenarioQqq>=qHot1)scenarioFlags.push(`QQQ 過熱一階 +${data.hot1}%`);if(!scenarioFlags.length)scenarioFlags.push('QQQ 未新增過熱觸發');}else scenarioFlags.push('資料不足');
         const scenario={movePct:scenarioMove,qqq:scenarioQqq,tqqq:scenarioTqqq,totalUsd:scenarioTotalUsd,totalTwd:scenarioTotalUsd*rate,pnlUsd:scenarioPnlUsd,pnlPct:scenarioPnlPct,flags:scenarioFlags};
-        return {valid,canExecute:valid && validationErrors.length===0,validationErrors,signal,tone,title,instruction,alloc,spyDev,qqqDev,entryPx,exitPx,qHot1,qHot2,qHot3,rows,totalUsd,totalDisplay,targetRows,assetHighUsd,drawdown,actionLines,distanceItems,scenario,marketState,effectiveRank,storedHot,storedMarket,immediateSignal,formalStateText,todayAction,riskOffNow,riskOnNow,dcaActiveEffective,dcaCyclePresent,dcaActiveBefore,dcaWillStop,dcaDue,dcaPool,dcaInstallment,dcaCompleted:dcaCompletedBefore,plannedCompleted,dcaBuyUsd,dcaBuyShares,dcaTargetQqq,dcaTargetCash,nextDue,startingNewCycle,investableUsd,strategyPhase,introMode,waitingFirstReentry,strategyActive,paramsLocked,positionAsset};
+        return {valid,canExecute:valid && validationErrors.length===0,validationErrors,signal,tone,title,instruction,alloc,spyDev,qqqDev,entryPx,exitPx,qHot1,qHot2,qHot3,rows,totalUsd,totalDisplay,targetRows,assetHighUsd,drawdown,actionLines,distanceItems,scenario,marketState,effectiveRank,storedHot,storedMarket,thresholdRank,thresholdRankLabel,storedHotLabel,effectiveHotLabel,hotPullbackLocked,hotCompareMessage,immediateSignal,formalStateText,todayAction,riskOffNow,riskOnNow,dcaActiveEffective,dcaCyclePresent,dcaActiveBefore,dcaWillStop,dcaDue,dcaPool,dcaInstallment,dcaCompleted:dcaCompletedBefore,plannedCompleted,dcaBuyUsd,dcaBuyShares,dcaTargetQqq,dcaTargetCash,nextDue,startingNewCycle,investableUsd,strategyPhase,introMode,waitingFirstReentry,strategyActive,paramsLocked,positionAsset};
 
 }
 
@@ -429,6 +447,24 @@ function applyExecutionState(data, metrics, item, now=new Date()) {
     }
     return normalizeData({...data,...next});
 }
+
+function buildPreviewData(data, scenario) {
+    if(!scenario || scenario==='LIVE') return data;
+    const base=normalizeData({...data});
+    const spySma=getNum(base.spySma)>0?getNum(base.spySma):100;
+    const qqqSma=getNum(base.qqqSma)>0?getNum(base.qqqSma):100;
+    const entry=getNum(base.entryBuffer)/100, exit=getNum(base.exitBuffer)/100;
+    const h1=getNum(base.hot1)/100, h2=getNum(base.hot2)/100, h3=getNum(base.hot3)/100;
+    const next={...base,spySma,qqqSma,tqqq:getNum(base.tqqq)>0?base.tqqq:50,spyi:getNum(base.spyi)>0?base.spyi:50,qqqi:getNum(base.qqqi)>0?base.qqqi:50,marketDate:todayStr(),marketCloseDate:todayStr(),dcaActive:false,dcaCompleted:0,dcaPoolUsd:0,dcaLastDate:'',dcaNextDueDate:'',riskOffCycleId:'',riskOnCycleId:'PREVIEW'};
+    if(scenario==='INTRO') return {...next,strategyPhase:'INTRO_QQQ',marketState:'NEUTRAL',hotRank:0,spy:spySma*(1+entry+0.01),qqq:qqqSma*(1+h1/2)};
+    if(scenario==='HOT0') return {...next,strategyPhase:'ACTIVE',marketState:'RISK_ON',hotRank:0,spy:spySma*(1+entry+0.01),qqq:qqqSma*(1+Math.max(0,h1-0.02))};
+    if(scenario==='HOT1') return {...next,strategyPhase:'ACTIVE',marketState:'RISK_ON',hotRank:0,spy:spySma*(1+entry+0.01),qqq:qqqSma*(1+h1+0.001)};
+    if(scenario==='HOT2') return {...next,strategyPhase:'ACTIVE',marketState:'RISK_ON',hotRank:1,spy:spySma*(1+entry+0.01),qqq:qqqSma*(1+h2+0.001)};
+    if(scenario==='HOT3') return {...next,strategyPhase:'ACTIVE',marketState:'RISK_ON',hotRank:2,spy:spySma*(1+entry+0.01),qqq:qqqSma*(1+h3+0.001)};
+    if(scenario==='RISK_OFF') return {...next,strategyPhase:'ACTIVE',marketState:'RISK_ON',hotRank:2,spy:spySma*(1-exit-0.01),qqq:qqqSma*(1+h2)};
+    if(scenario==='DCA') return {...next,strategyPhase:'ACTIVE',marketState:'RISK_OFF',hotRank:0,spy:spySma,qqq:qqqSma*0.95,dcaActive:true,dcaCompleted:2,dcaPoolUsd:getNum(base.dcaPoolUsd)>0?base.dcaPoolUsd:Math.max(6000,getNum(base.cashUsd)),dcaLastDate:todayStr(),dcaNextDueDate:addTradingDays(todayStr(),21),riskOffCycleId:'PREVIEW-DCA'};
+    return base;
+}
 const App = () => {
     const [data, setData] = useState(() => {
         const stored = readStoredObject("");
@@ -441,6 +477,7 @@ const App = () => {
     const [loadingPrice, setLoadingPrice] = useState(false);
     const [priceError, setPriceError] = useState("");
     const [pendingExecution, setPendingExecution] = useState(false);
+    const [previewScenario, setPreviewScenario] = useState("LIVE");
     const [collapsed, setCollapsed] = useState({ scenario: true, marketStatus: true, strategyText: true });
     const [hasDraftChanges, setHasDraftChanges] = useState(false);
     const [logKindFilter, setLogKindFilter] = useState("all");
@@ -636,7 +673,9 @@ const App = () => {
         const next=normalizeData({...data,cashUsd:nextCash,history:[rec,...(data.history||[])]}); setData(next);
         const ok=await saveFormalData(next,`已記錄${typeText}`,rec); if(ok){setCashflowAmount('');setCashflowNote('');showToast(`${typeText}已記錄`);}
     };
-    const metrics = useMemo(() => evaluateStrategy(data), [data]);
+    const previewData = useMemo(() => buildPreviewData(data, previewScenario), [data, previewScenario]);
+    const metrics = useMemo(() => evaluateStrategy(previewData), [previewData]);
+    const previewActive = previewScenario !== "LIVE";
     const fetchPrices = async () => {
         if (loadingPrice) return;
         const last = Date.parse(data.lastFetchAttemptAt || "");
@@ -728,6 +767,7 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
     };
     const nextCheckText = () => "每日美股收盤後檢查，下一交易日執行";
     const confirmExecution = () => {
+        if (previewActive) { showToast("目前是測試預覽，請先切回正式資料"); return; }
         if (!metrics.canExecute) {
             showToast(metrics.validationErrors?.[0] || "資料不足，不能確認執行；請確認股價與 SPY／QQQ 200SMA。");
             return;
@@ -916,17 +956,23 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                 React.createElement(Pill, { tone: metrics.tone === 'amber' ? 'amber' : 'dark' }, metrics.alloc.label)),
             React.createElement("div", { className: "relative grid grid-cols-2 md:grid-cols-4 gap-2 mt-5" },
                 React.createElement("div", { className: `bg-white/70 rounded-2xl p-3` },
-                    React.createElement("div", { className: `text-[10px] font-black text-slate-500` }, "本輪過熱鎖定"),
-                    React.createElement("div", { className: "font-mono text-sm font-black" }, metrics.effectiveRank > 0 ? `第 ${metrics.effectiveRank} 階` : "未啟用")),
+                    React.createElement("div", { className: `text-[10px] font-black text-slate-500` }, "即時門檻"),
+                    React.createElement("div", { className: "font-mono text-sm font-black" }, metrics.valid ? metrics.thresholdRankLabel : "資料不足")),
                 React.createElement("div", { className: `bg-white/70 rounded-2xl p-3` },
-                    React.createElement("div", { className: `text-[10px] font-black text-slate-500` }, "QQQ / 200SMA"),
-                    React.createElement("div", { className: "font-mono text-lg font-black" }, pct(metrics.qqqDev))),
+                    React.createElement("div", { className: `text-[10px] font-black text-slate-500` }, "本輪正式鎖定"),
+                    React.createElement("div", { className: "font-mono text-sm font-black" }, metrics.introMode ? "未啟用" : metrics.storedHotLabel)),
                 React.createElement("div", { className: `bg-white/70 rounded-2xl p-3` },
                     React.createElement("div", { className: `text-[10px] font-black text-slate-500` }, "下次檢查"),
                     React.createElement("div", { className: "font-mono text-xs font-black" }, nextCheckText().replace('美股收盤後',''))),
                 React.createElement("div", { className: `bg-white/70 rounded-2xl p-3` },
                     React.createElement("div", { className: `text-[10px] font-black text-slate-500` }, "資料日期"),
-                    React.createElement("div", { className: "font-mono text-xs font-black" }, data.marketDate || '-')))),
+                    React.createElement("div", { className: "font-mono text-xs font-black" }, data.marketDate || '-'))),
+            React.createElement("div", { className: `relative mt-3 rounded-2xl border p-3 ${metrics.hotPullbackLocked?'bg-purple-50 border-purple-200':'bg-white/70 border-white/60'}` },
+                React.createElement("div", { className: "flex items-start gap-2" },
+                    React.createElement("span", { className: `shrink-0 mt-0.5 w-7 h-7 rounded-full flex items-center justify-center text-xs font-black ${metrics.hotPullbackLocked?'bg-purple-700 text-white':'bg-slate-900 text-white'}` }, metrics.hotPullbackLocked?'鎖':'HOT'),
+                    React.createElement("div", null,
+                        React.createElement("div", { className: `text-xs font-black ${metrics.hotPullbackLocked?'text-purple-900':'text-slate-900'}` }, `QQQ 即時乖離 ${pct(metrics.qqqDev,1)}｜即時 ${metrics.thresholdRankLabel}｜正式 ${metrics.storedHotLabel}`),
+                        React.createElement("div", { className: `text-xs font-bold mt-1 leading-relaxed ${metrics.hotPullbackLocked?'text-purple-700':'text-slate-600'}` }, metrics.hotCompareMessage))))),
         StateFlowCard(),
         TradeCard(),
         KeySignalsCard(),
@@ -946,10 +992,10 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                     React.createElement("input", { type: "date", value: data.marketDate || "", onChange: e => patch('marketDate', e.target.value), className: "w-full bg-transparent text-center font-mono font-black min-h-[44px]" })),
 )),
         React.createElement(Card, { className: "p-4 mt-4" },
-            React.createElement(SectionTitle, { title: "持股與現金", desc: "新券商起始資料；只保存目前版本欄位。" }),
+            React.createElement(SectionTitle, { title: "持股與現金", desc: `目前只顯示 TQQQ＋${data.hotAsset||'QQQ'}；切換過熱替代標的後，此欄位會立即同步。` }),
             React.createElement("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3" },
                 renderDraftNumInput("sharesTqqq", "TQQQ 股數"),
-                renderDraftNumInput(metrics.positionAsset==='QQQ'?'sharesQqq':metrics.positionAsset==='SPY'?'sharesSpy':metrics.positionAsset==='SPYI'?'sharesSpyi':'sharesQqqi', `${metrics.positionAsset||'QQQ'} 股數`),
+                renderDraftNumInput((data.hotAsset||'QQQ')==='QQQ'?'sharesQqq':(data.hotAsset||'QQQ')==='SPY'?'sharesSpy':(data.hotAsset||'QQQ')==='SPYI'?'sharesSpyi':'sharesQqqi', `${data.hotAsset||'QQQ'} 股數`),
                 renderDraftNumInput("cashUsd", "現金 USD"),
                 renderDraftNumInput("otherUsd", "其他資產 USD"),
                 renderDraftNumInput("usdtwd", "USD/TWD"),
@@ -986,6 +1032,15 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                 React.createElement("div", { className:`flex-1 rounded-2xl border p-3 ${metrics.paramsLocked?"bg-emerald-50 border-emerald-100":"bg-amber-50 border-amber-200"}` },
                     React.createElement("div", { className:`text-sm font-black ${metrics.paramsLocked?"text-emerald-900":"text-amber-900"}` }, metrics.paramsLocked?"參數已鎖定":"⚠️ 參數目前可修改"),
                     React.createElement("div", { className:`text-xs font-bold mt-1 leading-relaxed ${metrics.paramsLocked?"text-emerald-700":"text-amber-700"}` }, metrics.paramsLocked?"避免誤觸修改。需要調整時，按右上角解鎖並確認警告。":"修改完成後請按右上角「重新鎖定」，避免日後誤改。"))),
+            React.createElement("div", { className:"mt-3 bg-sky-50 border border-sky-200 rounded-2xl p-3" },
+                React.createElement("div", { className:"flex items-center justify-between gap-2" },
+                    React.createElement("div", null,
+                        React.createElement("div", { className:"text-sm font-black text-sky-900" }, "畫面測試情境"),
+                        React.createElement("div", { className:"text-xs font-bold text-sky-700 mt-1" }, "只預覽首頁訊號、配置與交易清單，不會修改、儲存或同步正式資料。")),
+                    previewScenario!=="LIVE" && React.createElement("button", { onClick:()=>{setPreviewScenario("LIVE");setPage("home");}, className:"shrink-0 px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black" }, "回正式資料")),
+                React.createElement("div", { className:"grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3" },
+                    [["LIVE","正式資料"],["INTRO","首次導入"],["HOT0","Risk-On"],["HOT1","HOT1"],["HOT2","HOT2"],["HOT3","HOT3"],["RISK_OFF","開始下跌"],["DCA","DCA 中"]].map(x=>React.createElement("button", { key:x[0], onClick:()=>{setPreviewScenario(x[0]);setPage("home");}, className:`py-2.5 rounded-xl text-xs font-black active:scale-95 ${previewScenario===x[0]?"bg-sky-600 text-white":"bg-white border border-sky-200 text-sky-800"}` }, x[1]))),
+                previewScenario!=="LIVE" && React.createElement("div", { className:"mt-2 text-xs font-black text-sky-800" }, `目前預覽：${previewScenario}｜過熱替代標的：${data.hotAsset||"QQQ"}`)),
             React.createElement("div", { className:"mt-3 bg-purple-50 border border-purple-100 rounded-2xl p-3" },
                 React.createElement("div", { className:"text-sm font-black text-purple-900" }, "過熱重置規則"),
                 React.createElement("div", { className:"text-xs font-bold text-purple-700 mt-1 leading-relaxed" }, "同一個 Risk-On 週期只會往更低槓桿移動。必須先由 SPY 觸發 Risk-Off，之後重新站上 Risk-On 門檻，才依當下 QQQ 乖離重新配置。"))),
@@ -1188,14 +1243,14 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                 metrics.riskOffNow && React.createElement("div", { className: "text-xs font-black text-red-700 mt-1" }, "Risk-Off 執行後會清除舊過熱鎖定，並建立或延續同一輪 DCA。")),
             React.createElement("div", { className: "bg-amber-50 border border-amber-100 rounded-2xl p-3 mb-3" },
                 React.createElement("div", { className: "text-[10px] font-black text-amber-700 mb-1" }, "本次草稿變更"),
-                [["TQQQ 股數", committedData.sharesTqqq, data.sharesTqqq], [`${metrics.positionAsset||"QQQ"} 股數`, committedData[metrics.positionAsset==="QQQ"?"sharesQqq":metrics.positionAsset==="SPY"?"sharesSpy":metrics.positionAsset==="SPYI"?"sharesSpyi":"sharesQqqi"], data[metrics.positionAsset==="QQQ"?"sharesQqq":metrics.positionAsset==="SPY"?"sharesSpy":metrics.positionAsset==="SPYI"?"sharesSpyi":"sharesQqqi"]], ["現金 USD", committedData.cashUsd, data.cashUsd], ["DCA 進度", committedData.dcaCompleted, data.dcaCompleted]].filter(x => String(x[1] ?? '') !== String(x[2] ?? '')).map((x,i) => React.createElement("div", { key:i, className:"text-xs font-bold text-amber-900" }, x[0], "：", x[1] || 0, " → ", x[2] || 0)),
+                [["TQQQ 股數", committedData.sharesTqqq, data.sharesTqqq], [`${data.hotAsset||"QQQ"} 股數`, committedData[(data.hotAsset||"QQQ")==="QQQ"?"sharesQqq":(data.hotAsset||"QQQ")==="SPY"?"sharesSpy":(data.hotAsset||"QQQ")==="SPYI"?"sharesSpyi":"sharesQqqi"], data[(data.hotAsset||"QQQ")==="QQQ"?"sharesQqq":(data.hotAsset||"QQQ")==="SPY"?"sharesSpy":(data.hotAsset||"QQQ")==="SPYI"?"sharesSpyi":"sharesQqqi"]], ["現金 USD", committedData.cashUsd, data.cashUsd], ["DCA 進度", committedData.dcaCompleted, data.dcaCompleted]].filter(x => String(x[1] ?? '') !== String(x[2] ?? '')).map((x,i) => React.createElement("div", { key:i, className:"text-xs font-bold text-amber-900" }, x[0], "：", x[1] || 0, " → ", x[2] || 0)),
                 !hasDraftChanges && React.createElement("div", { className:"text-xs font-bold text-amber-800" }, "沒有持倉草稿變更；仍會依目前訊號寫入執行紀錄。")),
             React.createElement("div", { className: "space-y-2 max-h-48 overflow-auto mb-4" }, metrics.actionLines.map((a, i) => React.createElement("div", { key: i, className: "text-sm font-black text-slate-800 leading-relaxed bg-white border border-slate-100 rounded-2xl p-2" }, i + 1, ". ", a))),
             React.createElement("div", { className: "grid grid-cols-2 gap-2" },
                 React.createElement("button", { onClick: () => setPendingExecution(false), className: "py-3 rounded-2xl bg-slate-100 text-slate-700 font-black active:scale-95" }, "取消"),
                 React.createElement("button", { onClick: performExecution, className: `py-3 rounded-2xl text-white font-black active:scale-95 ${metrics.signal === 'OFF' || metrics.signal === 'HOT2' ? 'bg-red-600' : 'bg-brand-600'}` }, "確認執行"))));
     const BottomNav = () => React.createElement(React.Fragment, null,
-        React.createElement("button", { onClick: confirmExecution, disabled:!metrics.canExecute, className: `fixed bottom-[5.4rem] left-1/2 -translate-x-1/2 z-50 px-8 py-3 rounded-full text-white font-black shadow-2xl border-4 border-white active:scale-95 ${metrics.canExecute?"bg-brand-600":"bg-slate-400 opacity-70"}` }, metrics.canExecute?"已執行":"資料待修正"),
+        React.createElement("button", { onClick: confirmExecution, disabled:previewActive || !metrics.canExecute, className: `fixed bottom-[5.4rem] left-1/2 -translate-x-1/2 z-50 px-8 py-3 rounded-full text-white font-black shadow-2xl border-4 border-white active:scale-95 ${!previewActive && metrics.canExecute?"bg-brand-600":"bg-slate-400 opacity-70"}` }, previewActive?"測試預覽中":metrics.canExecute?"已執行":"資料待修正"),
         React.createElement("nav", { className: "fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 safe-bottom" },
             React.createElement("div", { className: "max-w-5xl mx-auto grid grid-cols-4 gap-1 px-3 pt-2" },
                 React.createElement("button", { onClick: () => setPage('home'), className: `py-3 rounded-2xl text-[11px] font-black active:scale-95 ${page === 'home' ? 'bg-slate-900 text-white' : 'text-slate-500'}` }, "首頁"),
@@ -1204,6 +1259,7 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                 React.createElement("button", { onClick: () => setPage('sync'), className: `py-3 rounded-2xl text-[11px] font-black active:scale-95 ${page === 'sync' ? 'bg-slate-900 text-white' : 'text-slate-500'}` }, "同步"))));
     return React.createElement("div", null,
         Header(),
+        previewActive && React.createElement("div", { className:"sticky top-[65px] z-20 max-w-5xl mx-auto px-4 pt-2" }, React.createElement("div", { className:"bg-sky-600 text-white rounded-2xl px-4 py-3 flex items-center justify-between shadow-lg" }, React.createElement("div", { className:"text-sm font-black" }, `測試預覽：${previewScenario}｜${data.hotAsset||"QQQ"}`), React.createElement("button", { onClick:()=>setPreviewScenario("LIVE"), className:"px-3 py-1.5 rounded-xl bg-white text-sky-700 text-xs font-black" }, "結束預覽"))),
         page === 'home' && Home(),
         page === 'inputs' && Inputs(),
         page === 'logs' && Logs(),
