@@ -169,7 +169,7 @@ const PERSONAL_KEYS = new Set(["sharesTqqq","sharesQqq","sharesSpy","sharesSpyi"
 const STRATEGY_TEXT = `TQQQ｜SPY 200SMA +4/-3＋QQQ 三階過熱鎖定策略（正式版 v1.1）
 
 一、首次導入保護
-首次啟用本策略時，不立即切換成 100% TQQQ。先以 100% QQQ 作為導入配置；必須先完整經歷一次 SPY Risk-Off，之後 SPY 再重新站上 200SMA +4%，才正式啟用 TQQQ 版本。首次導入期間即使 SPY 已在 Risk-On，也維持 100% QQQ。
+首次啟用本策略時，不立即切換成 100% TQQQ，先以 100% QQQ 作為導入配置。正常情況下需先完整經歷一次 SPY Risk-Off，之後再重新站上 200SMA +4% 才正式啟用。若使用者確認市場已完成降溫，也可在 SPY 已符合 Risk-On 時，按「開啟新一輪 HOT」人工啟用；人工操作會留下歷史紀錄。
 
 二、主風險訊號
 使用 SPY 每日收盤價與 SPY 200SMA 判斷，所有交易於下一個交易日執行。
@@ -191,7 +191,7 @@ QQQ 高於 +28%：0% TQQQ / 100% 過熱替代標的。
 過熱替代標的可在參數頁選擇 QQQ、SPY、SPYI 或 QQQI；只影響 HOT 配置，首次導入與 Risk-Off DCA 仍固定使用 QQQ。
 
 六、過熱鎖定
-同一個 Risk-On 週期內，過熱階級只能 0→1→2→3，不能反向加回槓桿。QQQ 從 +28% 回落到 +24% 或更低時，仍維持已鎖定配置。只有先觸發 SPY Risk-Off，之後再重新站上 +4%，才開始新一輪並依當下 QQQ 乖離重新配置。
+同一個 Risk-On 週期內，過熱階級只能 0→1→2→3，不能自動反向加回槓桿。QQQ 從 +28% 回落到 +24% 或更低時，仍維持已鎖定配置。SPY 觸發 Risk-Off 後會自動重置；若使用者確認上一輪過熱已結束，也可按「開啟新一輪 HOT」，把正式 HOT 重設為當下即時階級並留下人工操作紀錄。
 
 七、訊號優先順序
 1. SPY Risk-Off。
@@ -594,6 +594,58 @@ const App = () => {
         const ok = await saveFormalData(data, "已手動同步目前正式狀態");
         showToast(ok ? "已同步目前正式狀態" : "同步失敗");
     };
+    const openNewHotCycle = async () => {
+        if(previewScenario!=="LIVE"){
+            showToast('請先回到正式資料再開啟新一輪 HOT');
+            return;
+        }
+        if(!metrics.valid){
+            showToast('市場資料不足，無法開啟新一輪 HOT');
+            return;
+        }
+        if(metrics.riskOffNow){
+            showToast('目前已觸發 Risk-Off，不能開啟新一輪 HOT');
+            return;
+        }
+        const phase=String(data.strategyPhase||'INTRO_QQQ').toUpperCase();
+        const isIntro=phase==='INTRO_QQQ';
+        const canResetActive=phase==='ACTIVE' && metrics.storedHot>metrics.thresholdRank;
+        if(isIntro && !metrics.riskOnNow){
+            showToast(`首次人工開啟 HOT 前，SPY 必須高於 200SMA +${data.entryBuffer}%`);
+            return;
+        }
+        if(!isIntro && !canResetActive){
+            showToast('目前不符合開啟新一輪 HOT 的條件');
+            return;
+        }
+        const newHot=Math.max(0,Math.min(3,metrics.thresholdRank));
+        const oldHot=Math.max(0,Math.min(3,metrics.storedHot));
+        const warning=isIntro
+            ? `⚠️ 確定人工開啟正式 HOT 策略嗎？\n\n目前 SPY 已符合 Risk-On，QQQ 即時門檻為 HOT${newHot}。確認後會跳過首次導入等待，正式階段改為 ACTIVE，並依 HOT${newHot} 產生配置建議。\n\n此操作不會自動修改股數，但可能立即出現買入 TQQQ 或替代標的的交易建議。`
+            : `⚠️ 確定開啟新一輪 HOT 嗎？\n\n目前本輪正式鎖定 HOT${oldHot}，QQQ 即時門檻已回落至 HOT${newHot}。確認後會把正式 HOT 重設為 HOT${newHot}，建立新的 Risk-On 週期，之後可再次由 HOT${newHot} 向上升階。\n\n這可能產生加回 TQQQ 的交易建議，請確認你認為上一輪過熱已結束。`;
+        if(!confirm(warning))return;
+        const now=new Date();
+        const before={TQQQ:getNum(data.sharesTqqq),QQQ:getNum(data.sharesQqq),SPY:getNum(data.sharesSpy),SPYI:getNum(data.sharesSpyi),QQQI:getNum(data.sharesQqqi),cashUsd:getNum(data.cashUsd),otherUsd:getNum(data.otherUsd)};
+        const cycleId=`ON-MANUAL-${data.marketDate||todayStr()}-${Date.now()}`;
+        const next=normalizeData({...data,strategyPhase:'ACTIVE',marketState:'RISK_ON',hotRank:newHot,riskOnCycleId:cycleId});
+        const nextMetrics=evaluateStrategy(next);
+        const rec=normalizeRecord({
+            recordSchemaVersion:RECORD_SCHEMA_VERSION,recordId:makeRecordId(),strategyId:STRATEGY_ID,strategyVersion:STRATEGY_VERSION,
+            recordType:'manual_hot_cycle',createdAt:now.toISOString(),
+            dates:{marketClose:data.marketCloseDate||data.marketDate||'',signal:todayStr(),execution:todayStr()},
+            prices:{SPY:getNum(data.spy),QQQ:getNum(data.qqq),TQQQ:getNum(data.tqqq),SPYI:getNum(data.spyi),QQQI:getNum(data.qqqi)},
+            indicators:{SPY200:getNum(data.spySma),QQQ200:getNum(data.qqqSma)},
+            state:{marketState:'RISK_ON',hotRank:newHot,hotAsset:data.hotAsset||'QQQ',strategyPhase:'ACTIVE',dcaActive:false,dcaCompleted:0,riskOffCycleId:data.riskOffCycleId||'',riskOnCycleId:cycleId},
+            holdings:{before,after:before},
+            valuation:{totalUsd:nextMetrics.totalUsd,totalDisplay:nextMetrics.totalDisplay},
+            decision:{title:'人工開啟新一輪 HOT',allocation:nextMetrics.alloc.label,immediate:`HOT${oldHot} → HOT${newHot}`,formalState:`Risk-On｜HOT${newHot}`,todayAction:nextMetrics.todayAction},
+            actions:[isIntro?'人工跳過首次導入並開啟正式 HOT':`人工重設本輪 HOT：HOT${oldHot} → HOT${newHot}`,'未自動修改持股；依新狀態產生交易建議'],notes:'使用者人工確認開啟新一輪 HOT',deletedAt:null
+        });
+        const formal=normalizeData({...next,history:[rec,...(data.history||[])]});
+        setData(formal);
+        const ok=await saveFormalData(formal,'已開啟新一輪 HOT',rec);
+        showToast(ok?`已開啟 HOT${newHot} 新週期`:'已存本機，但雲端同步失敗');
+    };
     const loginGoogle = async () => {
         if (!auth || typeof firebase === "undefined") { showToast("Firebase 未載入，無法 Google 登入"); return; }
         try {
@@ -992,10 +1044,10 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                     React.createElement("input", { type: "date", value: data.marketDate || "", onChange: e => patch('marketDate', e.target.value), className: "w-full bg-transparent text-center font-mono font-black min-h-[44px]" })),
 )),
         React.createElement(Card, { className: "p-4 mt-4" },
-            React.createElement(SectionTitle, { title: "持股與現金", desc: `目前只顯示 TQQQ＋${data.hotAsset||'QQQ'}；切換過熱替代標的後，此欄位會立即同步。` }),
+            React.createElement(SectionTitle, { title: "持股與現金", desc: `依目前策略階段顯示 TQQQ＋${metrics.positionAsset}；首次導入與 DCA 固定顯示 QQQ，正式 Risk-On 過熱才顯示所選替代標的。` }),
             React.createElement("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3" },
                 renderDraftNumInput("sharesTqqq", "TQQQ 股數"),
-                renderDraftNumInput((data.hotAsset||'QQQ')==='QQQ'?'sharesQqq':(data.hotAsset||'QQQ')==='SPY'?'sharesSpy':(data.hotAsset||'QQQ')==='SPYI'?'sharesSpyi':'sharesQqqi', `${data.hotAsset||'QQQ'} 股數`),
+                renderDraftNumInput(metrics.positionAsset==='QQQ'?'sharesQqq':metrics.positionAsset==='SPY'?'sharesSpy':metrics.positionAsset==='SPYI'?'sharesSpyi':'sharesQqqi', `${metrics.positionAsset} 股數`),
                 renderDraftNumInput("cashUsd", "現金 USD"),
                 renderDraftNumInput("otherUsd", "其他資產 USD"),
                 renderDraftNumInput("usdtwd", "USD/TWD"),
@@ -1032,6 +1084,18 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                 React.createElement("div", { className:`flex-1 rounded-2xl border p-3 ${metrics.paramsLocked?"bg-emerald-50 border-emerald-100":"bg-amber-50 border-amber-200"}` },
                     React.createElement("div", { className:`text-sm font-black ${metrics.paramsLocked?"text-emerald-900":"text-amber-900"}` }, metrics.paramsLocked?"參數已鎖定":"⚠️ 參數目前可修改"),
                     React.createElement("div", { className:`text-xs font-bold mt-1 leading-relaxed ${metrics.paramsLocked?"text-emerald-700":"text-amber-700"}` }, metrics.paramsLocked?"避免誤觸修改。需要調整時，按右上角解鎖並確認警告。":"修改完成後請按右上角「重新鎖定」，避免日後誤改。"))),
+            React.createElement("div", { className:`mt-3 rounded-2xl border p-3 ${(String(data.strategyPhase||'INTRO_QQQ').toUpperCase()==='INTRO_QQQ'||(metrics.strategyActive&&metrics.storedHot>metrics.thresholdRank&&!metrics.riskOffNow))?'bg-amber-50 border-amber-200':'bg-slate-50 border-slate-200'}` },
+                React.createElement("div", { className:"flex flex-col sm:flex-row sm:items-center justify-between gap-3" },
+                    React.createElement("div", null,
+                        React.createElement("div", { className:"text-sm font-black text-slate-900" }, "開啟新一輪 HOT"),
+                        React.createElement("div", { className:"text-xs font-bold mt-1 leading-relaxed text-slate-600" },
+                            String(data.strategyPhase||'INTRO_QQQ').toUpperCase()==='INTRO_QQQ'
+                                ? `首次導入可在 SPY 已高於 +${data.entryBuffer}% 時人工啟用；會依當下 QQQ 即時門檻開始。`
+                                : (metrics.strategyActive&&metrics.storedHot>metrics.thresholdRank&&!metrics.riskOffNow
+                                    ? `本輪已鎖定 HOT${metrics.storedHot}，即時已回落至 HOT${metrics.thresholdRank}；可人工重開新週期。`
+                                    : "只有首次導入已符合 Risk-On，或正式 HOT 已回落低於本輪鎖定時，才可使用。"))),
+                    ((String(data.strategyPhase||'INTRO_QQQ').toUpperCase()==='INTRO_QQQ'&&metrics.riskOnNow&&!metrics.riskOffNow)||(metrics.strategyActive&&metrics.storedHot>metrics.thresholdRank&&!metrics.riskOffNow))
+                        && React.createElement("button", { onClick:openNewHotCycle, className:"shrink-0 px-4 py-3 rounded-2xl bg-amber-600 text-white text-sm font-black active:scale-95" }, "開啟新一輪 HOT"))),
             React.createElement("div", { className:"mt-3 bg-sky-50 border border-sky-200 rounded-2xl p-3" },
                 React.createElement("div", { className:"flex items-center justify-between gap-2" },
                     React.createElement("div", null,
@@ -1043,7 +1107,7 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                 previewScenario!=="LIVE" && React.createElement("div", { className:"mt-2 text-xs font-black text-sky-800" }, `目前預覽：${previewScenario}｜過熱替代標的：${data.hotAsset||"QQQ"}`)),
             React.createElement("div", { className:"mt-3 bg-purple-50 border border-purple-100 rounded-2xl p-3" },
                 React.createElement("div", { className:"text-sm font-black text-purple-900" }, "過熱重置規則"),
-                React.createElement("div", { className:"text-xs font-bold text-purple-700 mt-1 leading-relaxed" }, "同一個 Risk-On 週期只會往更低槓桿移動。必須先由 SPY 觸發 Risk-Off，之後重新站上 Risk-On 門檻，才依當下 QQQ 乖離重新配置。"))),
+                React.createElement("div", { className:"text-xs font-bold text-purple-700 mt-1 leading-relaxed" }, "同一個 Risk-On 週期只會往更低槓桿移動。SPY 觸發 Risk-Off 後會自動重置；若 QQQ 已由高階 HOT 回落，也可由使用者按「開啟新一輪 HOT」人工重設為當下即時階級。"))),
         Collapsible({ id: "strategyText", title: "完整策略文字", desc: "需要查規則時再展開。", children: React.createElement("pre", { className: "whitespace-pre-wrap text-xs leading-relaxed bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-600 font-bold" }, STRATEGY_TEXT) }));
     const ProfitChart = ({ logs }) => {
         const chartLogs = (Array.isArray(logs) ? logs : []).filter(h => getNum(h.totalUsd) > 0).slice().reverse();
@@ -1243,7 +1307,7 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                 metrics.riskOffNow && React.createElement("div", { className: "text-xs font-black text-red-700 mt-1" }, "Risk-Off 執行後會清除舊過熱鎖定，並建立或延續同一輪 DCA。")),
             React.createElement("div", { className: "bg-amber-50 border border-amber-100 rounded-2xl p-3 mb-3" },
                 React.createElement("div", { className: "text-[10px] font-black text-amber-700 mb-1" }, "本次草稿變更"),
-                [["TQQQ 股數", committedData.sharesTqqq, data.sharesTqqq], [`${data.hotAsset||"QQQ"} 股數`, committedData[(data.hotAsset||"QQQ")==="QQQ"?"sharesQqq":(data.hotAsset||"QQQ")==="SPY"?"sharesSpy":(data.hotAsset||"QQQ")==="SPYI"?"sharesSpyi":"sharesQqqi"], data[(data.hotAsset||"QQQ")==="QQQ"?"sharesQqq":(data.hotAsset||"QQQ")==="SPY"?"sharesSpy":(data.hotAsset||"QQQ")==="SPYI"?"sharesSpyi":"sharesQqqi"]], ["現金 USD", committedData.cashUsd, data.cashUsd], ["DCA 進度", committedData.dcaCompleted, data.dcaCompleted]].filter(x => String(x[1] ?? '') !== String(x[2] ?? '')).map((x,i) => React.createElement("div", { key:i, className:"text-xs font-bold text-amber-900" }, x[0], "：", x[1] || 0, " → ", x[2] || 0)),
+                [["TQQQ 股數", committedData.sharesTqqq, data.sharesTqqq], [`${metrics.positionAsset} 股數`, committedData[metrics.positionAsset==="QQQ"?"sharesQqq":metrics.positionAsset==="SPY"?"sharesSpy":metrics.positionAsset==="SPYI"?"sharesSpyi":"sharesQqqi"], data[metrics.positionAsset==="QQQ"?"sharesQqq":metrics.positionAsset==="SPY"?"sharesSpy":metrics.positionAsset==="SPYI"?"sharesSpyi":"sharesQqqi"]], ["現金 USD", committedData.cashUsd, data.cashUsd], ["DCA 進度", committedData.dcaCompleted, data.dcaCompleted]].filter(x => String(x[1] ?? '') !== String(x[2] ?? '')).map((x,i) => React.createElement("div", { key:i, className:"text-xs font-bold text-amber-900" }, x[0], "：", x[1] || 0, " → ", x[2] || 0)),
                 !hasDraftChanges && React.createElement("div", { className:"text-xs font-bold text-amber-800" }, "沒有持倉草稿變更；仍會依目前訊號寫入執行紀錄。")),
             React.createElement("div", { className: "space-y-2 max-h-48 overflow-auto mb-4" }, metrics.actionLines.map((a, i) => React.createElement("div", { key: i, className: "text-sm font-black text-slate-800 leading-relaxed bg-white border border-slate-100 rounded-2xl p-2" }, i + 1, ". ", a))),
             React.createElement("div", { className: "grid grid-cols-2 gap-2" },
