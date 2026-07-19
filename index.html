@@ -478,7 +478,7 @@ const App = () => {
     const [priceError, setPriceError] = useState("");
     const [pendingExecution, setPendingExecution] = useState(false);
     const [previewScenario, setPreviewScenario] = useState("LIVE");
-    const [collapsed, setCollapsed] = useState({ scenario: true, marketStatus: true, strategyText: true });
+    const [collapsed, setCollapsed] = useState({ scenario: true, marketStatus: true, strategyParams: true, hotCycle: true, previewScenarios: true, strategyText: true });
     const [hasDraftChanges, setHasDraftChanges] = useState(false);
     const [logKindFilter, setLogKindFilter] = useState("all");
     const [logSignalFilter, setLogSignalFilter] = useState("all");
@@ -1057,34 +1057,36 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                 React.createElement("select", { value:data.currency, onChange:e=>patch('currency',e.target.value), className:"px-4 rounded-2xl bg-slate-100 text-sm font-black" }, React.createElement("option", { value:"USD" }, "USD"), React.createElement("option", { value:"TWD" }, "TWD")))),
         Collapsible({ id: "scenario", title: "QQQ 情境模擬", desc: "需要時再展開。", children: ScenarioCard() }),
         Collapsible({ id: "marketStatus", title: "市場資料狀態", desc: "資料日期、來源與新鮮度。", children: FreshnessCard() }),
-        React.createElement(Card, { className: "p-4 mt-4" },
-            React.createElement(SectionTitle, { title: "策略參數", desc: "首次導入先持有 QQQ；完整經歷 Risk-Off 後再啟用 TQQQ。", right: React.createElement("button", { onClick: () => {
-                if(data.parametersLocked!==false){
-                    if(confirm("⚠️ 確定要解鎖策略參數嗎？\n\n修改 Risk-On、Risk-Off 或 HOT 門檻，可能改變整套策略的交易結果。請確認你已理解影響並確定要修改。")) patch('parametersLocked', false);
-                } else {
-                    patch('parametersLocked', true); showToast("策略參數已鎖定");
-                }
-            }, className: `px-3 py-2 rounded-xl text-xs font-black active:scale-95 ${data.parametersLocked!==false?"bg-slate-900 text-white":"bg-amber-500 text-white"}` }, data.parametersLocked!==false ? "🔒 已鎖定" : "🔓 重新鎖定") }),
-            React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3" },
-                React.createElement(NumInput, { label: "Risk-On", value: data.entryBuffer, onChange: v => patch('entryBuffer', v), suffix: "%", disabled:metrics.paramsLocked }),
-                React.createElement(NumInput, { label: "Risk-Off", value: data.exitBuffer, onChange: v => patch('exitBuffer', v), suffix: "%", disabled:metrics.paramsLocked }),
-                React.createElement(NumInput, { label: "過熱一階（60/40）", value: data.hot1, onChange: v => patch('hot1', v), suffix: "%", disabled:metrics.paramsLocked }),
-                React.createElement(NumInput, { label: "過熱二階（30/70）", value: data.hot2, onChange: v => patch('hot2', v), suffix: "%", disabled:metrics.paramsLocked }),
-                React.createElement(NumInput, { label: "過熱三階（0/100）", value: data.hot3, onChange: v => patch('hot3', v), suffix: "%", disabled:metrics.paramsLocked }),
-                React.createElement("label", { className: "block bg-slate-50 border border-slate-200 rounded-2xl p-3" },
-                    React.createElement("div", { className: "text-[10px] font-black text-slate-500 mb-1" }, "過熱替代標的"),
-                    React.createElement("select", { value:data.hotAsset||"QQQ", disabled:metrics.paramsLocked, onChange:e=>patch('hotAsset',e.target.value), className:`w-full bg-transparent text-center font-black min-h-[44px] ${metrics.paramsLocked?"text-slate-400":"text-slate-900"}` },
-                        React.createElement("option", { value:"QQQ" }, "QQQ"), React.createElement("option", { value:"SPY" }, "SPY"), React.createElement("option", { value:"SPYI" }, "SPYI"), React.createElement("option", { value:"QQQI" }, "QQQI")),
-                    React.createElement("div", { className:"text-[10px] text-slate-400 mt-1 leading-relaxed" }, "只影響 HOT1／HOT2／HOT3 被 TQQQ 釋出的比例；首次導入與 Risk-Off DCA 仍固定使用 QQQ。"))),
-            React.createElement("div", { className:"flex flex-col sm:flex-row gap-2 mt-3" },
-                React.createElement("button", { onClick: () => {
-                    if(data.parametersLocked!==false) return;
-                    if(confirm("確定要恢復正式預設參數 +4% / -3% / 19% / 24% / 28% 嗎？")) merge({ entryBuffer:4, exitBuffer:3, hot1:19, hot2:24, hot3:28, hotAsset:"QQQ" }, true);
-                }, disabled:metrics.paramsLocked, className:`px-3 py-3 rounded-2xl text-xs font-black ${metrics.paramsLocked?"bg-slate-100 text-slate-400 cursor-not-allowed":"bg-brand-50 text-brand-700 border border-brand-100"}` }, "恢復正式預設"),
-                React.createElement("div", { className:`flex-1 rounded-2xl border p-3 ${metrics.paramsLocked?"bg-emerald-50 border-emerald-100":"bg-amber-50 border-amber-200"}` },
-                    React.createElement("div", { className:`text-sm font-black ${metrics.paramsLocked?"text-emerald-900":"text-amber-900"}` }, metrics.paramsLocked?"參數已鎖定":"⚠️ 參數目前可修改"),
-                    React.createElement("div", { className:`text-xs font-bold mt-1 leading-relaxed ${metrics.paramsLocked?"text-emerald-700":"text-amber-700"}` }, metrics.paramsLocked?"避免誤觸修改。需要調整時，按右上角解鎖並確認警告。":"修改完成後請按右上角「重新鎖定」，避免日後誤改。"))),
-            React.createElement("div", { className:`mt-3 rounded-2xl border p-3 ${(String(data.strategyPhase||'INTRO_QQQ').toUpperCase()==='INTRO_QQQ'||(metrics.strategyActive&&metrics.storedHot>metrics.thresholdRank&&!metrics.riskOffNow))?'bg-amber-50 border-amber-200':'bg-slate-50 border-slate-200'}` },
+        Collapsible({ id: "strategyParams", title: "策略參數", desc: "Risk-On／Risk-Off、HOT 門檻與過熱替代標的。", children:
+            React.createElement("div", null,
+                React.createElement(SectionTitle, { title: "參數設定", desc: "首次導入先持有 QQQ；完整經歷 Risk-Off 後再啟用 TQQQ。", right: React.createElement("button", { onClick: () => {
+                    if(data.parametersLocked!==false){
+                        if(confirm("⚠️ 確定要解鎖策略參數嗎？\n\n修改 Risk-On、Risk-Off 或 HOT 門檻，可能改變整套策略的交易結果。請確認你已理解影響並確定要修改。")) patch('parametersLocked', false);
+                    } else {
+                        patch('parametersLocked', true); showToast("策略參數已鎖定");
+                    }
+                }, className: `px-3 py-2 rounded-xl text-xs font-black active:scale-95 ${data.parametersLocked!==false?"bg-slate-900 text-white":"bg-amber-500 text-white"}` }, data.parametersLocked!==false ? "🔒 已鎖定" : "🔓 重新鎖定") }),
+                React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3" },
+                    React.createElement(NumInput, { label: "Risk-On", value: data.entryBuffer, onChange: v => patch('entryBuffer', v), suffix: "%", disabled:metrics.paramsLocked }),
+                    React.createElement(NumInput, { label: "Risk-Off", value: data.exitBuffer, onChange: v => patch('exitBuffer', v), suffix: "%", disabled:metrics.paramsLocked }),
+                    React.createElement(NumInput, { label: "過熱一階（60/40）", value: data.hot1, onChange: v => patch('hot1', v), suffix: "%", disabled:metrics.paramsLocked }),
+                    React.createElement(NumInput, { label: "過熱二階（30/70）", value: data.hot2, onChange: v => patch('hot2', v), suffix: "%", disabled:metrics.paramsLocked }),
+                    React.createElement(NumInput, { label: "過熱三階（0/100）", value: data.hot3, onChange: v => patch('hot3', v), suffix: "%", disabled:metrics.paramsLocked }),
+                    React.createElement("label", { className: "block bg-slate-50 border border-slate-200 rounded-2xl p-3" },
+                        React.createElement("div", { className: "text-[10px] font-black text-slate-500 mb-1" }, "過熱替代標的"),
+                        React.createElement("select", { value:data.hotAsset||"QQQ", disabled:metrics.paramsLocked, onChange:e=>patch('hotAsset',e.target.value), className:`w-full bg-transparent text-center font-black min-h-[44px] ${metrics.paramsLocked?"text-slate-400":"text-slate-900"}` },
+                            React.createElement("option", { value:"QQQ" }, "QQQ"), React.createElement("option", { value:"SPY" }, "SPY"), React.createElement("option", { value:"SPYI" }, "SPYI"), React.createElement("option", { value:"QQQI" }, "QQQI")),
+                        React.createElement("div", { className:"text-[10px] text-slate-400 mt-1 leading-relaxed" }, "只影響 HOT1／HOT2／HOT3 被 TQQQ 釋出的比例；首次導入與 Risk-Off DCA 仍固定使用 QQQ。"))),
+                React.createElement("div", { className:"flex flex-col sm:flex-row gap-2 mt-3" },
+                    React.createElement("button", { onClick: () => {
+                        if(data.parametersLocked!==false) return;
+                        if(confirm("確定要恢復正式預設參數 +4% / -3% / 19% / 24% / 28% 嗎？")) merge({ entryBuffer:4, exitBuffer:3, hot1:19, hot2:24, hot3:28, hotAsset:"QQQ" }, true);
+                    }, disabled:metrics.paramsLocked, className:`px-3 py-3 rounded-2xl text-xs font-black ${metrics.paramsLocked?"bg-slate-100 text-slate-400 cursor-not-allowed":"bg-brand-50 text-brand-700 border border-brand-100"}` }, "恢復正式預設"),
+                    React.createElement("div", { className:`flex-1 rounded-2xl border p-3 ${metrics.paramsLocked?"bg-emerald-50 border-emerald-100":"bg-amber-50 border-amber-200"}` },
+                        React.createElement("div", { className:`text-sm font-black ${metrics.paramsLocked?"text-emerald-900":"text-amber-900"}` }, metrics.paramsLocked?"參數已鎖定":"⚠️ 參數目前可修改"),
+                        React.createElement("div", { className:`text-xs font-bold mt-1 leading-relaxed ${metrics.paramsLocked?"text-emerald-700":"text-amber-700"}` }, metrics.paramsLocked?"避免誤觸修改。需要調整時，按右上角解鎖並確認警告。":"修改完成後請按右上角「重新鎖定」，避免日後誤改。")))) }),
+        Collapsible({ id: "hotCycle", title: "開啟新一輪 HOT", desc: "人工啟用或在過熱回落後重開 HOT 週期。", children:
+            React.createElement("div", { className:`rounded-2xl border p-3 ${(String(data.strategyPhase||'INTRO_QQQ').toUpperCase()==='INTRO_QQQ'||(metrics.strategyActive&&metrics.storedHot>metrics.thresholdRank&&!metrics.riskOffNow))?'bg-amber-50 border-amber-200':'bg-slate-50 border-slate-200'}` },
                 React.createElement("div", { className:"flex flex-col sm:flex-row sm:items-center justify-between gap-3" },
                     React.createElement("div", null,
                         React.createElement("div", { className:"text-sm font-black text-slate-900" }, "開啟新一輪 HOT"),
@@ -1095,8 +1097,12 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                                     ? `本輪已鎖定 HOT${metrics.storedHot}，即時已回落至 HOT${metrics.thresholdRank}；可人工重開新週期。`
                                     : "只有首次導入已符合 Risk-On，或正式 HOT 已回落低於本輪鎖定時，才可使用。"))),
                     ((String(data.strategyPhase||'INTRO_QQQ').toUpperCase()==='INTRO_QQQ'&&metrics.riskOnNow&&!metrics.riskOffNow)||(metrics.strategyActive&&metrics.storedHot>metrics.thresholdRank&&!metrics.riskOffNow))
-                        && React.createElement("button", { onClick:openNewHotCycle, className:"shrink-0 px-4 py-3 rounded-2xl bg-amber-600 text-white text-sm font-black active:scale-95" }, "開啟新一輪 HOT"))),
-            React.createElement("div", { className:"mt-3 bg-sky-50 border border-sky-200 rounded-2xl p-3" },
+                        && React.createElement("button", { onClick:openNewHotCycle, className:"shrink-0 px-4 py-3 rounded-2xl bg-amber-600 text-white text-sm font-black active:scale-95" }, "開啟新一輪 HOT")),
+                React.createElement("div", { className:"mt-3 bg-purple-50 border border-purple-100 rounded-2xl p-3" },
+                    React.createElement("div", { className:"text-sm font-black text-purple-900" }, "過熱重置規則"),
+                    React.createElement("div", { className:"text-xs font-bold text-purple-700 mt-1 leading-relaxed" }, "同一個 Risk-On 週期只會往更低槓桿移動。SPY 觸發 Risk-Off 後會自動重置；若 QQQ 已由高階 HOT 回落，也可由使用者按「開啟新一輪 HOT」人工重設為當下即時階級。"))) }),
+        Collapsible({ id: "previewScenarios", title: "模擬情境", desc: "預覽首頁訊號、配置與交易清單，不修改正式資料。", children:
+            React.createElement("div", { className:"bg-sky-50 border border-sky-200 rounded-2xl p-3" },
                 React.createElement("div", { className:"flex items-center justify-between gap-2" },
                     React.createElement("div", null,
                         React.createElement("div", { className:"text-sm font-black text-sky-900" }, "畫面測試情境"),
@@ -1104,10 +1110,7 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                     previewScenario!=="LIVE" && React.createElement("button", { onClick:()=>{setPreviewScenario("LIVE");setPage("home");}, className:"shrink-0 px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-black" }, "回正式資料")),
                 React.createElement("div", { className:"grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3" },
                     [["LIVE","正式資料"],["INTRO","首次導入"],["HOT0","Risk-On"],["HOT1","HOT1"],["HOT2","HOT2"],["HOT3","HOT3"],["RISK_OFF","開始下跌"],["DCA","DCA 中"]].map(x=>React.createElement("button", { key:x[0], onClick:()=>{setPreviewScenario(x[0]);setPage("home");}, className:`py-2.5 rounded-xl text-xs font-black active:scale-95 ${previewScenario===x[0]?"bg-sky-600 text-white":"bg-white border border-sky-200 text-sky-800"}` }, x[1]))),
-                previewScenario!=="LIVE" && React.createElement("div", { className:"mt-2 text-xs font-black text-sky-800" }, `目前預覽：${previewScenario}｜過熱替代標的：${data.hotAsset||"QQQ"}`)),
-            React.createElement("div", { className:"mt-3 bg-purple-50 border border-purple-100 rounded-2xl p-3" },
-                React.createElement("div", { className:"text-sm font-black text-purple-900" }, "過熱重置規則"),
-                React.createElement("div", { className:"text-xs font-bold text-purple-700 mt-1 leading-relaxed" }, "同一個 Risk-On 週期只會往更低槓桿移動。SPY 觸發 Risk-Off 後會自動重置；若 QQQ 已由高階 HOT 回落，也可由使用者按「開啟新一輪 HOT」人工重設為當下即時階級。"))),
+                previewScenario!=="LIVE" && React.createElement("div", { className:"mt-2 text-xs font-black text-sky-800" }, `目前預覽：${previewScenario}｜過熱替代標的：${data.hotAsset||"QQQ"}`)) }),
         Collapsible({ id: "strategyText", title: "完整策略文字", desc: "需要查規則時再展開。", children: React.createElement("pre", { className: "whitespace-pre-wrap text-xs leading-relaxed bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-600 font-bold" }, STRATEGY_TEXT) }));
     const ProfitChart = ({ logs }) => {
         const chartLogs = (Array.isArray(logs) ? logs : []).filter(h => getNum(h.totalUsd) > 0).slice().reverse();
