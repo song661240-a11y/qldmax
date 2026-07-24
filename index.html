@@ -477,6 +477,7 @@ const App = () => {
     const [loadingPrice, setLoadingPrice] = useState(false);
     const [priceError, setPriceError] = useState("");
     const [pendingExecution, setPendingExecution] = useState(false);
+    const [executionPreparing, setExecutionPreparing] = useState(false);
     const [previewScenario, setPreviewScenario] = useState("LIVE");
     const [collapsed, setCollapsed] = useState({ scenario: true, marketStatus: true, strategyParams: true, hotCycle: true, previewScenarios: true, strategyText: true });
     const [hasDraftChanges, setHasDraftChanges] = useState(false);
@@ -728,51 +729,52 @@ const App = () => {
     const previewData = useMemo(() => buildPreviewData(data, previewScenario), [data, previewScenario]);
     const metrics = useMemo(() => evaluateStrategy(previewData), [previewData]);
     const previewActive = previewScenario !== "LIVE";
-    const fetchPrices = async () => {
-        if (loadingPrice) return;
+    const fetchPriceUpdates = async ({ force = false } = {}) => {
         const last = Date.parse(data.lastFetchAttemptAt || "");
-        if (Number.isFinite(last) && Date.now() - last < 60000) {
+        if (!force && Number.isFinite(last) && Date.now() - last < 60000) {
             const wait = Math.ceil((60000 - (Date.now() - last)) / 1000);
-            showToast(`請 ${wait} 秒後再更新，避免耗用 API 額度`);
-            return;
+            return { success:false, blocked:true, message:`請 ${wait} 秒後再更新，避免耗用 API 額度`, updates:null, failed:[] };
         }
-        setLoadingPrice(true);
-        setPriceError("");
-        merge({ lastFetchAttemptAt: new Date().toISOString() });
-        showToast("正在抓取股價");
+        const attemptedAt = new Date().toISOString();
+        const syms = ["SPY", "QQQ", "TQQQ", ...(["SPYI","QQQI"].includes(String(data.hotAsset||"QQQ").toUpperCase()) ? [String(data.hotAsset).toUpperCase()] : [])];
         try {
-            const syms = ["SPY", "QQQ", "TQQQ", ...(["SPYI","QQQI"].includes(String(data.hotAsset||"QQQ").toUpperCase()) ? [String(data.hotAsset).toUpperCase()] : [])];
             const results = await Promise.allSettled(syms.map(fetchSymbol));
-            const ok = {}, failed = [], priceSources = { ...(data.priceSources || {}) };
+            const updates = { lastFetchAttemptAt: attemptedAt }, failed = [], priceSources = { ...(data.priceSources || {}) };
             results.forEach((res, idx) => {
                 const sym = syms[idx];
                 if (res.status !== "fulfilled") { failed.push(`${sym}：${res.reason?.message || '失敗'}`); return; }
                 const x = res.value;
                 priceSources[sym] = x.quoteSource || "Finnhub";
-                if (sym === "SPY") { ok.spy = round2(x.close); ok.marketDate = x.date || todayStr(); ok.marketCloseDate = ok.marketDate; }
-                if (sym === "QQQ") { ok.qqq = round2(x.close); if(!ok.marketDate) ok.marketDate = x.date || todayStr(); if(!ok.marketCloseDate) ok.marketCloseDate=ok.marketDate; }
-                if (sym === "TQQQ") ok.tqqq = round2(x.close);
-                if (sym === "SPYI") ok.spyi = round2(x.close);
-                if (sym === "QQQI") ok.qqqi = round2(x.close);
+                if (sym === "SPY") { updates.spy = round2(x.close); updates.marketDate = x.date || todayStr(); updates.marketCloseDate = updates.marketDate; }
+                if (sym === "QQQ") { updates.qqq = round2(x.close); if(!updates.marketDate) updates.marketDate = x.date || todayStr(); if(!updates.marketCloseDate) updates.marketCloseDate=updates.marketDate; }
+                if (sym === "TQQQ") updates.tqqq = round2(x.close);
+                if (sym === "SPYI") updates.spyi = round2(x.close);
+                if (sym === "QQQI") updates.qqqi = round2(x.close);
             });
-            if (Object.keys(ok).length) {
-                ok.priceUpdatedAt = new Date().toISOString();
-                ok.priceSources = priceSources;
-                merge(ok);
-                if (failed.length) {
-                    setPriceError(`部分報價失敗：${failed.join('；')}。已保留舊值。`);
-                    showToast("部分股價更新成功");
-                } else showToast("股價已用 Finnhub 更新");
-            } else {
-                const msg = failed.join('；') || "自動抓價失敗";
-                setPriceError(msg);
-                showToast(msg.includes('429') ? "Finnhub 額度暫時用完" : "自動抓價失敗");
+            const requiredFailed = failed.length > 0;
+            if (Object.keys(updates).length > 1) {
+                updates.priceUpdatedAt = new Date().toISOString();
+                updates.priceSources = priceSources;
             }
+            return { success:!requiredFailed && Object.keys(updates).length > 1, blocked:false, message:failed.join('；'), updates, failed };
         } catch (e) {
-            const msg = e.message || "自動抓價失敗";
+            return { success:false, blocked:false, message:e.message || "自動抓價失敗", updates:{lastFetchAttemptAt:attemptedAt}, failed:[e.message || "自動抓價失敗"] };
+        }
+    };
+    const fetchPrices = async () => {
+        if (loadingPrice || executionPreparing) return;
+        setLoadingPrice(true);
+        setPriceError("");
+        showToast("正在抓取股價");
+        const result = await fetchPriceUpdates({force:false});
+        if(result.updates) merge(result.updates);
+        if(result.success){ showToast("股價已用 Finnhub 更新"); }
+        else {
+            const msg=result.message || "自動抓價失敗";
             setPriceError(msg);
-            showToast(msg.includes('429') ? "Finnhub 額度暫時用完" : "自動抓價失敗");
-        } finally { setLoadingPrice(false); }
+            showToast(result.blocked ? msg : (msg.includes('429') ? "Finnhub 額度暫時用完" : "股價更新不完整"));
+        }
+        setLoadingPrice(false);
     };
     const buildLogItem = (kind = 'snapshot') => normalizeRecord({
         recordSchemaVersion:RECORD_SCHEMA_VERSION, recordId:makeRecordId(), strategyId:STRATEGY_ID, strategyVersion:STRATEGY_VERSION,
@@ -818,17 +820,37 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
         }
     };
     const nextCheckText = () => "每日美股收盤後檢查，下一交易日執行";
-    const confirmExecution = () => {
+    const confirmExecution = async () => {
         if (previewActive) { showToast("目前是測試預覽，請先切回正式資料"); return; }
-        if (!metrics.canExecute) {
-            showToast(metrics.validationErrors?.[0] || "資料不足，不能確認執行；請確認股價與 SPY／QQQ 200SMA。");
-            return;
+        if (executionPreparing || loadingPrice) return;
+        setExecutionPreparing(true);
+        setPriceError("");
+        showToast("執行前正在更新股價…");
+        try {
+            const result = await fetchPriceUpdates({force:true});
+            if(!result.success){
+                const msg=result.message || "股價更新失敗";
+                if(result.updates) merge(result.updates);
+                setPriceError(`執行已阻止：${msg}`);
+                showToast(msg.includes('429') ? "API 額度用完，已停止執行" : "股價更新不完整，已停止執行");
+                return;
+            }
+            const freshData=normalizeData({...data,...result.updates});
+            const freshMetrics=evaluateStrategy(freshData);
+            setData(freshData);
+            if (!freshMetrics.canExecute) {
+                showToast(freshMetrics.validationErrors?.[0] || "更新後資料不足，不能確認執行");
+                return;
+            }
+            const logs = Array.isArray(freshData.history) ? freshData.history : [];
+            const today = todayStr();
+            const duplicate = logs.find(h => String(h.time || "").slice(0,10) === today && h.kind === "execution" && h.signal === freshMetrics.title && JSON.stringify(h.afterShares || h.shares || {}) === JSON.stringify({TQQQ:getNum(freshData.sharesTqqq),QQQ:getNum(freshData.sharesQqq),SPY:getNum(freshData.sharesSpy),SPYI:getNum(freshData.sharesSpyi),QQQI:getNum(freshData.sharesQqqi),cashUsd:getNum(freshData.cashUsd),otherUsd:getNum(freshData.otherUsd)}));
+            if (duplicate && !confirm("今天已經有相同訊號與持倉的執行紀錄，仍要再次儲存嗎？")) return;
+            showToast("股價已更新，請確認最新交易清單");
+            setTimeout(()=>setPendingExecution(true),0);
+        } finally {
+            setExecutionPreparing(false);
         }
-        const logs = Array.isArray(data.history) ? data.history : [];
-        const today = todayStr();
-        const duplicate = logs.find(h => String(h.time || "").slice(0,10) === today && h.kind === "execution" && h.signal === metrics.title && JSON.stringify(h.afterShares || h.shares || {}) === JSON.stringify({TQQQ:getNum(data.sharesTqqq),QQQ:getNum(data.sharesQqq),SPY:getNum(data.sharesSpy),SPYI:getNum(data.sharesSpyi),QQQI:getNum(data.sharesQqqi),cashUsd:getNum(data.cashUsd),otherUsd:getNum(data.otherUsd)}));
-        if (duplicate && !confirm("今天已經有相同訊號與持倉的執行紀錄，仍要再次儲存嗎？")) return;
-        setPendingExecution(true);
     };
     const performExecution = async () => {
         if (!metrics.canExecute) { showToast(metrics.validationErrors?.[0] || "資料不足，不能確認執行"); setPendingExecution(false); return; }
@@ -1317,7 +1339,7 @@ ${metrics.actionLines.map(x => '・' + x).join('\n')}
                 React.createElement("button", { onClick: () => setPendingExecution(false), className: "py-3 rounded-2xl bg-slate-100 text-slate-700 font-black active:scale-95" }, "取消"),
                 React.createElement("button", { onClick: performExecution, className: `py-3 rounded-2xl text-white font-black active:scale-95 ${metrics.signal === 'OFF' || metrics.signal === 'HOT2' ? 'bg-red-600' : 'bg-brand-600'}` }, "確認執行"))));
     const BottomNav = () => React.createElement(React.Fragment, null,
-        React.createElement("button", { onClick: confirmExecution, disabled:previewActive || !metrics.canExecute, className: `fixed bottom-[5.4rem] left-1/2 -translate-x-1/2 z-50 px-8 py-3 rounded-full text-white font-black shadow-2xl border-4 border-white active:scale-95 ${!previewActive && metrics.canExecute?"bg-brand-600":"bg-slate-400 opacity-70"}` }, previewActive?"測試預覽中":metrics.canExecute?"已執行":"資料待修正"),
+        React.createElement("button", { onClick: confirmExecution, disabled:previewActive || !metrics.canExecute || executionPreparing || loadingPrice, className: `fixed bottom-[5.4rem] left-1/2 -translate-x-1/2 z-50 px-8 py-3 rounded-full text-white font-black shadow-2xl border-4 border-white active:scale-95 ${!previewActive && metrics.canExecute && !executionPreparing && !loadingPrice?"bg-brand-600":"bg-slate-400 opacity-70"}` }, previewActive?"測試預覽中":executionPreparing?"更新股價中…":loadingPrice?"股價更新中":metrics.canExecute?"更新後執行":"資料待修正"),
         React.createElement("nav", { className: "fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 safe-bottom" },
             React.createElement("div", { className: "max-w-5xl mx-auto grid grid-cols-4 gap-1 px-3 pt-2" },
                 React.createElement("button", { onClick: () => setPage('home'), className: `py-3 rounded-2xl text-[11px] font-black active:scale-95 ${page === 'home' ? 'bg-slate-900 text-white' : 'text-slate-500'}` }, "首頁"),
