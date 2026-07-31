@@ -14,7 +14,7 @@ if (HAS_FIREBASE && !firebase.apps.length)
 const auth = HAS_FIREBASE ? firebase.auth() : null;
 const db = HAS_FIREBASE ? firebase.firestore() : null;
 const DOC_PATH = ["strategyDashboards", "tqqq-qqq200-main"];
-const APP_VERSION = "股票資產 PWA v4.6｜首頁快速更新與快取修正版";
+const APP_VERSION = "股票資產 PWA v4.7｜全介面可讀性修正版";
 const STRATEGY_ID = "tqqq-spy200";
 const STRATEGY_VERSION = "SPY200-4-3-HOT-19-24-28";
 const RECORD_SCHEMA_VERSION = 2;
@@ -1277,7 +1277,7 @@ const App = () => {
                         f))))));
     };
     const Home = () => {
-        const slideSectionClass = "snap-center snap-always shrink-0 w-full";
+        const slideSectionClass = "home-slide snap-center snap-always shrink-0 w-full";
         const closestSignal = (metrics.distanceItems || []).slice().sort((a,b)=>Math.abs(a.value)-Math.abs(b.value))[0] || null;
         const closestSignalText = closestSignal ? `${closestSignal.label}｜$${money(closestSignal.price,2)}｜距離 ${signedPctText(closestSignal.value,1)}` : "資料不足";
 
@@ -1309,7 +1309,7 @@ const App = () => {
                         React.createElement("div", { className:"text-[10px] font-black text-slate-500" }, "其他帳戶合計　›"),
                         React.createElement("div", { className:"mt-2 text-lg font-black text-slate-950 privacy-value" }, `NT$ ${money(portfolio.externalTwd,0)}`),
                         React.createElement("div", { className:"mt-1 text-[10px] font-bold text-slate-500" }, "點開查看 FT、複委託、台股與其他"))),
-                    React.createElement("button", { onClick:openQuickUpdateSheet, className:"quick-update-home-button w-full mt-3 py-4 rounded-[22px] bg-blue-600 text-white font-black shadow-lg" }, "↻ 快速更新 FT／複委託資產")));
+                    React.createElement("button", { onClick:openQuickUpdateSheet, className:"action-blue-button quick-update-home-button w-full mt-3 py-4 rounded-[22px] bg-blue-600 text-white font-black shadow-lg" }, "↻ 快速更新 FT／複委託資產")));
 
         const signalSlide = React.createElement("section", { className: slideSectionClass },
             React.createElement(Card, { className:`p-6 min-h-[70vh] flex flex-col justify-between ${SignalSkin()}` },
@@ -1336,7 +1336,7 @@ const App = () => {
                         React.createElement("div", { className:"mt-2 text-[10px] font-bold text-slate-500" }, `過熱替代標的：${data.hotAsset||'QQQ'}`)))));
 
         const tradeSlide = React.createElement("section", { className: slideSectionClass },
-            React.createElement(Card, { className:"p-6 min-h-[70vh] bg-gradient-to-br from-slate-950 to-slate-800 text-white flex flex-col justify-between" },
+            React.createElement(Card, { className:"trade-slide-card p-6 min-h-[70vh] bg-gradient-to-br from-slate-950 to-slate-800 text-white flex flex-col justify-between" },
                 React.createElement("div", null,
                     React.createElement("div", { className:"text-xs font-black tracking-[.18em] text-white/60" }, "今日交易"),
                     React.createElement("div", { className:"mt-4 text-3xl font-black leading-tight" }, metrics.alloc.label),
@@ -1353,8 +1353,8 @@ const App = () => {
             React.createElement("div", { className:"pull-indicator", style:{height:`${pullRefreshing?52:pullDistance}px`} }, React.createElement("div",null,pullRefreshing?"正在更新股價…":pullDistance>=54?"放開更新":"下拉更新")),
             React.createElement("div", { className:"home-page-head mb-4 flex items-center justify-between gap-3" },
                 React.createElement("div", null,
-                    React.createElement("div", { className:"text-[11px] font-black tracking-[.22em] text-brand-600" }, "LIQUID DASH"),
-                    React.createElement("div", { className:"text-sm font-bold text-slate-500 mt-1" }, "左右滑動查看總覽、訊號與今日交易")),
+                    React.createElement("div", { className:"text-[11px] font-black tracking-[.22em] text-brand-700" }, "LIQUID DASH"),
+                    React.createElement("div", { className:"text-sm font-bold text-slate-700 mt-1" }, "左右滑動查看總覽、訊號與今日交易")),
                 React.createElement("div", { className:"home-slide-dots flex gap-1.5" }, [0,1,2].map(idx => React.createElement("button", { key:idx, onClick:()=>scrollHomeTo(idx), className:`h-2.5 rounded-full transition-all ${homeSlide===idx?'w-8 bg-slate-900':'w-2.5 bg-slate-300'}` })))),
             React.createElement("div", { ref:homeSliderRef, onScroll:handleHomeSliderScroll, className:"home-slider flex gap-4 overflow-x-auto pb-2" }, overviewSlide, signalSlide, tradeSlide),
             React.createElement("div", { className:"home-page-count mt-4 flex justify-center" },
@@ -1799,7 +1799,7 @@ const App = () => {
             React.createElement("div", {className:"flex justify-between items-center mb-3 text-xs font-bold text-slate-500"},
                 React.createElement("span",null,`顯示 ${filteredLogs.length} 筆，共 ${logGroups.length} 個月份`),
                 React.createElement("button",{onClick:clearAllLogs,className:"text-red-600 font-black"},"隱藏全部")),
-            filteredLogs.length === 0 && React.createElement("div", { className: "text-sm text-slate-400 font-bold text-center py-8" }, "沒有符合條件的紀錄"),
+            filteredLogs.length === 0 && React.createElement("div", { className: "text-sm text-slate-600 font-bold text-center py-8" }, "沒有符合條件的紀錄"),
             React.createElement("div", {className:"space-y-3"}, logGroups.map((g,gi)=>{
                 const open=isLogGroupOpen(g.key,gi); const monthTotal=g.logs.length;
                 const valuationLogs=g.logs.filter(r=>r.recordType!=='cashflow'&&getNum(r.totalUsd)>0);
@@ -1833,9 +1833,9 @@ const App = () => {
                     const mm=String(m).padStart(2,'0');
                     const count=allLogs.filter(h=>recordYear(h)===yearForGrid&&recordMonth(h)===mm).length;
                     const active=logYearFilter===yearForGrid&&logMonthFilter===mm;
-                    return React.createElement("button", { key:mm, disabled:count===0, onClick:()=>{setLogYearFilter(yearForGrid);setLogMonthFilter(mm);setShowMonthSheet(false);}, className:`min-h-[72px] rounded-[22px] border text-center ${active?'bg-emerald-100 border-emerald-300 text-emerald-800':count?'bg-slate-50 border-slate-100 text-slate-700':'bg-slate-50/40 border-transparent text-slate-300'}` },
+                    return React.createElement("button", { key:mm, disabled:count===0, onClick:()=>{setLogYearFilter(yearForGrid);setLogMonthFilter(mm);setShowMonthSheet(false);}, className:`min-h-[72px] rounded-[22px] border text-center ${active?'bg-emerald-100 border-emerald-300 text-emerald-800':count?'bg-slate-50 border-slate-100 text-slate-700':'bg-slate-50 border-slate-100 text-slate-500'}` },
                         React.createElement("div", { className:"text-base font-black" }, `${m} 月`),
-                        React.createElement("div", { className:"text-[10px] font-bold mt-1 opacity-60" }, count?`${count} 筆`:'無紀錄'));
+                        React.createElement("div", { className:"text-[10px] font-bold mt-1 opacity-80" }, count?`${count} 筆`:'無紀錄'));
                 })),
                 React.createElement("button", { onClick:()=>{setLogYearFilter('all');setLogMonthFilter('all');setShowMonthSheet(false);}, className:"w-full mt-5 py-4 rounded-[22px] bg-slate-950 text-white font-black" }, "顯示全部紀錄")));
     };
@@ -1906,7 +1906,7 @@ const App = () => {
                 React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-slate-900" }, "切回本機模式"), React.createElement("span", { className:"block text-xs font-bold text-slate-500 mt-1" }, "保留手機本機資料，不再讀取 Google 雲端")),
                 React.createElement("span", { className:"text-2xl text-slate-400" }, "›"))),
         React.createElement("div", { className:"mt-8" },
-            React.createElement("div", { className:"text-xs font-black tracking-[.15em] text-red-500 mb-3 ml-2" }, "系統維護"),
+            React.createElement("div", { className:"text-xs font-black tracking-[.15em] text-red-700 mb-3 ml-2" }, "系統維護"),
             React.createElement("button", { onClick:resetAllCloudData, disabled:resettingCloud||!user||user.isAnonymous, className:"settings-row w-full text-left disabled:opacity-40" },
                 React.createElement("span", { className:"settings-icon text-red-600" }, "□"),
                 React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-red-700" }, resettingCloud?"正在重置…":"重置全部雲端與本機資料"), React.createElement("span", { className:"block text-xs font-bold text-red-500 mt-1 leading-relaxed" }, "永久刪除正式策略狀態與全部紀錄；建議先備份 JSON")),
@@ -2115,7 +2115,7 @@ const App = () => {
                     React.createElement("button",{onClick:()=>setShowAccountSheet(false),className:"w-11 h-11 rounded-full bg-slate-100 text-xl text-slate-500"},"×")),
                 React.createElement("div",{className:"space-y-3 mt-5"},rows),
                 React.createElement("div",{className:"grid grid-cols-2 gap-2 mt-5"},
-                    React.createElement("button",{onClick:()=>{setShowAccountSheet(false);openQuickUpdateSheet();},className:"py-4 rounded-[22px] bg-blue-600 text-white font-black"},"快速更新"),
+                    React.createElement("button",{onClick:()=>{setShowAccountSheet(false);openQuickUpdateSheet();},className:"action-blue-button py-4 rounded-[22px] bg-blue-600 text-white font-black"},"快速更新"),
                     React.createElement("button",{onClick:()=>{setShowAccountSheet(false);openSettingsView("accounts");setPage("settings");},className:"py-4 rounded-[22px] bg-slate-950 text-white font-black"},"完整設定"))));
     };
     const ExecutionModal = () => !pendingExecution ? null : React.createElement("div", { className: "fixed inset-0 z-50 sheet-backdrop sheet-animate-backdrop flex items-end sm:items-center justify-center p-4" },

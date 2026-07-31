@@ -339,3 +339,52 @@ button:active{transform:scale(.972)}
   .quick-update-sheet{max-width:720px!important;}
   .quick-update-home-button{font-size:14px;}
 }
+
+/* PWA v4.7｜全介面可讀性保護
+   所有高風險按鈕與深色卡片使用明確實色，不再依賴缺漏的 utility 才能看見。 */
+.action-blue-button,
+.quick-update-home-button{
+  background:#2563eb!important;
+  color:#ffffff!important;
+  -webkit-text-fill-color:#ffffff!important;
+  border:1px solid rgba(255,255,255,.30)!important;
+  box-shadow:0 12px 28px rgba(37,99,235,.28)!important;
+  opacity:1!important;
+}
+.action-blue-button:hover,
+.quick-update-home-button:hover{background:#1d4ed8!important;}
+.action-blue-button:disabled,
+.quick-update-home-button:disabled{
+  background:#64748b!important;
+  color:#ffffff!important;
+  -webkit-text-fill-color:#ffffff!important;
+}
+.trade-slide-card{
+  background:linear-gradient(145deg,#020617 0%,#0f172a 50%,#1e293b 100%)!important;
+  color:#ffffff!important;
+  -webkit-text-fill-color:currentColor;
+  border-color:rgba(255,255,255,.12)!important;
+}
+.trade-slide-card .text-white\/60{color:rgba(255,255,255,.72)!important;}
+.trade-slide-card .text-white\/70{color:rgba(255,255,255,.84)!important;}
+.trade-slide-card .bg-white\/10{background:rgba(255,255,255,.11)!important;}
+.trade-slide-card .border-white\/10{border-color:rgba(255,255,255,.16)!important;}
+button.text-white,
+[role="button"].text-white{
+  color:#ffffff!important;
+  -webkit-text-fill-color:#ffffff!important;
+}
+button.text-slate-950,
+button.text-slate-900,
+button.text-slate-800,
+button.text-slate-700{
+  -webkit-text-fill-color:currentColor;
+}
+/* 選取文字僅作一般反白，不再是讀取文字的必要手段。 */
+::selection{background:rgba(37,99,235,.24);color:inherit;}
+@media (forced-colors:active){
+  .action-blue-button,.quick-update-home-button,.trade-slide-card{forced-color-adjust:auto;}
+}
+
+/* v4.7｜次要說明文字也維持清楚，不使用過淡灰字。 */
+.text-slate-400{color:#64748b!important;}

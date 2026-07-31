@@ -1,19 +1,19 @@
-const CACHE_VERSION = "stock-assets-pwa-v4.6.0-quick-update-cache-fix-20260801";
+const CACHE_VERSION = "stock-assets-pwa-v4.7.0-contrast-audit-20260801";
 const APP_CACHE = `${CACHE_VERSION}-app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./manifest.webmanifest?v=4.6.0",
-  "./assets/tailwind.css?v=4.6.0",
-  "./assets/app.css?v=4.6.0",
-  "./assets/app.js?v=4.6.0",
-  "./assets/pwa.js?v=4.6.0",
-  "./icons/icon-192.png?v=4.6.0",
-  "./icons/icon-512.png?v=4.6.0",
-  "./icons/icon-maskable-512.png?v=4.6.0",
-  "./icons/favicon-64.png?v=4.6.0"
+  "./manifest.webmanifest?v=4.7.0",
+  "./assets/tailwind.css?v=4.7.0",
+  "./assets/app.css?v=4.7.0",
+  "./assets/app.js?v=4.7.0",
+  "./assets/pwa.js?v=4.7.0",
+  "./icons/icon-192.png?v=4.7.0",
+  "./icons/icon-512.png?v=4.7.0",
+  "./icons/icon-maskable-512.png?v=4.7.0",
+  "./icons/favicon-64.png?v=4.7.0"
 ];
 
 self.addEventListener("install", event => {
@@ -91,7 +91,7 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // app.css、app.js、pwa.js 與 Tailwind 採網路優先；離線時才回退快取。
+  // app.css、app.js、pwa.js 與 Tailwind 採網路優先；v4.7 重新產生完整 Tailwind 樣式，避免文字與背景同色。
   if (url.origin === self.location.origin && isCoreAppAsset(url)) {
     event.respondWith(networkFirst(request));
     return;
