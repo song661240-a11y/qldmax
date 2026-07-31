@@ -14,7 +14,7 @@ if (HAS_FIREBASE && !firebase.apps.length)
 const auth = HAS_FIREBASE ? firebase.auth() : null;
 const db = HAS_FIREBASE ? firebase.firestore() : null;
 const DOC_PATH = ["strategyDashboards", "tqqq-qqq200-main"];
-const APP_VERSION = "股票資產 PWA v4.3｜外部帳戶歷史";
+const APP_VERSION = "股票資產 PWA v4.5｜外部帳戶輸入修正版";
 const STRATEGY_ID = "tqqq-spy200";
 const STRATEGY_VERSION = "SPY200-4-3-HOT-19-24-28";
 const RECORD_SCHEMA_VERSION = 2;
@@ -133,11 +133,45 @@ const normalizeRecord = raw => {
         cashflowType:canonical.cashflow?.type||'', cashflowAmountUsd:getNum(canonical.cashflow?.amountUsd), cashflowDate:canonical.cashflow?.date||'', cashflowNote:canonical.cashflow?.note||''
     };
 };
+const REPLACEABLE_DAILY_RECORD_TYPES = new Set(["execution", "snapshot", "manual_hot_cycle"]);
+const recordDayText = record => String(record?.dates?.execution || record?.executionDate || record?.dates?.signal || record?.signalDate || record?.createdAt || "").slice(0,10);
+const dailyRecordKey = record => {
+    const rec=normalizeRecord(record);
+    const day=recordDayText(rec);
+    return REPLACEABLE_DAILY_RECORD_TYPES.has(rec.recordType) && day ? `${rec.recordType}|${day}` : "";
+};
+const collapseDailyRecords = records => {
+    const normalized=(Array.isArray(records)?records:[]).map(normalizeRecord).filter(r=>!r.deletedAt);
+    normalized.sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+    const seen=new Set(), kept=[];
+    normalized.forEach(rec=>{
+        const key=dailyRecordKey(rec);
+        if(key){ if(seen.has(key)) return; seen.add(key); }
+        kept.push(rec);
+    });
+    return kept;
+};
+const prepareSameDayRecord = (record, history) => {
+    const rec=normalizeRecord(record), key=dailyRecordKey(rec);
+    if(!key) return rec;
+    const same=collapseDailyRecords(history).filter(item=>dailyRecordKey(item)===key);
+    const keep=same[0]||null;
+    const allSame=(Array.isArray(history)?history:[]).map(normalizeRecord).filter(item=>dailyRecordKey(item)===key);
+    const recordId=keep?.recordId || rec.recordId;
+    const replacedRecordIds=[...new Set(allSame.map(item=>item.recordId).filter(id=>id&&id!==recordId))];
+    return normalizeRecord({...rec,recordId,replacedRecordIds});
+};
+const replaceSameDayHistory = (history, record) => {
+    const rec=normalizeRecord(record), key=dailyRecordKey(rec);
+    if(!key) return [rec,...collapseDailyRecords(history).filter(item=>item.recordId!==rec.recordId)];
+    return [rec,...collapseDailyRecords(history).filter(item=>dailyRecordKey(item)!==key && item.recordId!==rec.recordId)];
+};
+
 const normalizeData = raw => {
     const src=(raw&&typeof raw==='object')?raw:{};
     const clean={...DEFAULT};
     Object.keys(DEFAULT).forEach(key=>{ if(src[key]!==undefined) clean[key]=src[key]; });
-    clean.history=(Array.isArray(src.history)?src.history:[]).map(normalizeRecord).filter(r=>!r.deletedAt);
+    clean.history=collapseDailyRecords(src.history);
     clean.portfolioHistory=(Array.isArray(src.portfolioHistory)?src.portfolioHistory:[]).map(x=>({
         date:String(x?.date||'').slice(0,10),
         createdAt:x?.createdAt||'',
@@ -276,6 +310,26 @@ const NumInput = ({ label, value, onChange, suffix = "", hint = "", disabled = f
         React.createElement("input", { type: "text", inputMode: "decimal", autoComplete: "off", disabled, value: value !== null && value !== void 0 ? value : "", onChange: e => onChange(String(e.target.value).replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')), className: `w-full bg-transparent text-center font-mono font-black text-lg min-h-[44px] ${disabled ? "text-slate-400 cursor-not-allowed" : "text-slate-900"}`, style: { fontSize: "16px" } }),
         suffix && React.createElement("span", { className: "text-xs font-black text-slate-400" }, suffix)),
     hint && React.createElement("div", { className: "text-[10px] text-slate-400 mt-1 leading-relaxed" }, hint)));
+const StableDraftTextInput = ({ label, value, onDraft, hint = "", placeholder = "", autoCapitalize = "characters" }) => {
+    const [draft,setDraft]=useState(String(value??""));
+    const inputRef=useRef(null);
+    useEffect(()=>{ if(document.activeElement!==inputRef.current) setDraft(String(value??"")); },[value]);
+    return React.createElement("label", { className:"block bg-slate-50 border border-slate-200 rounded-2xl p-3 focus-within:ring-2 focus-within:ring-brand-100 focus-within:border-brand-400 stable-draft-field" },
+        React.createElement("div", { className:"text-[10px] font-black text-slate-500 mb-1" }, label),
+        React.createElement("input", { ref:inputRef, type:"text", autoComplete:"off", autoCapitalize, spellCheck:false, value:draft, placeholder, onChange:e=>{const next=e.target.value;setDraft(next);onDraft(next);}, className:"w-full bg-transparent text-center font-black text-lg min-h-[44px] text-slate-900", style:{fontSize:"16px"} }),
+        hint && React.createElement("div", { className:"text-[10px] text-slate-400 mt-1 leading-relaxed" }, hint));
+};
+const StableDraftNumInput = ({ label, value, onDraft, suffix = "", hint = "" }) => {
+    const [draft,setDraft]=useState(String(value??""));
+    const inputRef=useRef(null);
+    useEffect(()=>{ if(document.activeElement!==inputRef.current) setDraft(String(value??"")); },[value]);
+    return React.createElement("label", { className:"block bg-slate-50 border border-slate-200 rounded-2xl p-3 focus-within:ring-2 focus-within:ring-brand-100 focus-within:border-brand-400 stable-draft-field" },
+        React.createElement("div", { className:"text-[10px] font-black text-slate-500 mb-1" }, label),
+        React.createElement("div", { className:"flex items-center gap-2" },
+            React.createElement("input", { ref:inputRef, type:"text", inputMode:"decimal", autoComplete:"off", value:draft, onChange:e=>{const next=String(e.target.value).replace(/[^0-9.]/g,"").replace(/(\..*)\./g,"$1");setDraft(next);onDraft(next);}, className:"w-full bg-transparent text-center font-mono font-black text-lg min-h-[44px] text-slate-900", style:{fontSize:"16px"} }),
+            suffix && React.createElement("span", { className:"text-xs font-black text-slate-400" }, suffix)),
+        hint && React.createElement("div", { className:"text-[10px] text-slate-400 mt-1 leading-relaxed" }, hint));
+};
 const SectionTitle = ({ title, desc, right }) => React.createElement("div", { className: "flex items-end justify-between gap-3 mb-3" },
     React.createElement("div", null,
         React.createElement("h2", { className: "font-black text-slate-900" }, title),
@@ -589,6 +643,9 @@ const App = () => {
     const ignoreCloud = useRef(false);
     const editingRef = useRef(false);
     const draftChangesRef = useRef(false);
+    const externalDraftRef = useRef(pickExternalAccountState(data));
+    const updateExternalDraft = useCallback((key,value) => { externalDraftRef.current={...externalDraftRef.current,[key]:value}; }, []);
+    const collectExternalDraft = useCallback(() => normalizeData({...data,...externalDraftRef.current}), [data]);
     const toggleCollapse = useCallback(id => setCollapsed(prev => ({ ...prev, [id]: !prev[id] })), []);
     const showToast = useCallback(txt => { setToast(txt); setTimeout(() => setToast(""), 2600); }, []);
     const openSettingsView = useCallback(id => { setSettingsMotion("forward"); setSettingsView(id); }, []);
@@ -639,6 +696,9 @@ const App = () => {
         document.addEventListener('focusout', onFocusOut);
         return () => { document.removeEventListener('focusin', onFocusIn); document.removeEventListener('focusout', onFocusOut); };
     }, []);
+    useEffect(() => {
+        if(settingsView==="accounts") externalDraftRef.current=pickExternalAccountState(data);
+    }, [settingsView]);
     useEffect(() => {
         if (!auth) {
             setSyncText("Firebase 未載入，僅本機模式");
@@ -694,7 +754,13 @@ const App = () => {
             await docRef().set(sanitize({ ...currentOnly, recordSchemaVersion:RECORD_SCHEMA_VERSION, updatedAtText: new Date().toLocaleString("zh-TW"), updatedAt: firebase.firestore.FieldValue.serverTimestamp() }), { merge: true });
             if(recordsRef() && recordToAppend) {
                 const rec=normalizeRecord(recordToAppend);
-                await recordsRef().doc(rec.recordId).set(sanitize({...rec,createdAt:rec.createdAt}),{merge:true});
+                await recordsRef().doc(rec.recordId).set(sanitize({...rec,createdAt:rec.createdAt,deletedAt:null}),{merge:true});
+                const replaced=[...new Set(Array.isArray(rec.replacedRecordIds)?rec.replacedRecordIds:[])].filter(id=>id&&id!==rec.recordId);
+                if(replaced.length){
+                    const batch=db.batch();
+                    replaced.forEach(id=>batch.set(recordsRef().doc(id),{deletedAt:new Date().toISOString(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
+                    await batch.commit();
+                }
             }
             setSyncText(successText + " " + new Date().toLocaleTimeString("zh-TW", { hour:"2-digit", minute:"2-digit" }));
             setTimeout(() => ignoreCloud.current = false, 1200);
@@ -724,6 +790,7 @@ const App = () => {
             localStorage.setItem(LOCAL_KEY,JSON.stringify(mergedDraft));
             setCommittedData(mergedCommitted);
             setData(mergedDraft);
+            externalDraftRef.current=pickExternalAccountState(mergedDraft);
             const remainingStrategyDraft=[...PERSONAL_KEYS].filter(key=>!EXTERNAL_ACCOUNT_KEYS.has(key)).some(key=>JSON.stringify(mergedDraft[key])!==JSON.stringify(mergedCommitted[key]));
             draftChangesRef.current=remainingStrategyDraft;
             setHasDraftChanges(remainingStrategyDraft);
@@ -743,12 +810,16 @@ const App = () => {
     };
     const fetchSubPrice = async () => {
         if(loadingSubPrice)return;
-        const symbol=String(data.subSymbol||'').toUpperCase().replace(/[^A-Z0-9.\-]/g,'').slice(0,12);
+        const draft={...pickExternalAccountState(data),...externalDraftRef.current};
+        const symbol=String(draft.subSymbol||'').toUpperCase().replace(/[^A-Z0-9.\-]/g,'').slice(0,12);
         if(!symbol){showToast('請先輸入複委託股票代號');return;}
         setLoadingSubPrice(true);
         try{
             const q=await fetchSymbol(symbol);
-            merge({subSymbol:symbol,subPriceUsd:round2(q.close),subPriceUpdatedAt:new Date().toISOString()},true);
+            const next=normalizeData({...data,...draft,subSymbol:symbol,subPriceUsd:round2(q.close),subPriceUpdatedAt:new Date().toISOString()});
+            externalDraftRef.current=pickExternalAccountState(next);
+            setData(next);
+            draftChangesRef.current=true;setHasDraftChanges(true);
             flashUpdateSuccess();
             showToast(`✓ ${symbol} 股價已更新為 US$ ${money(q.close,2)}；儲存後才建立快照`);
         }catch(e){showToast(`${symbol} 更新失敗：${e.message||'無法取得報價'}`);}
@@ -798,7 +869,7 @@ const App = () => {
         const cycleId=`ON-MANUAL-${data.marketDate||todayStr()}-${Date.now()}`;
         const next=normalizeData({...data,strategyPhase:'ACTIVE',marketState:'RISK_ON',hotRank:newHot,riskOnCycleId:cycleId});
         const nextMetrics=evaluateStrategy(next);
-        const rec=normalizeRecord({
+        const recDraft=normalizeRecord({
             recordSchemaVersion:RECORD_SCHEMA_VERSION,recordId:makeRecordId(),strategyId:STRATEGY_ID,strategyVersion:STRATEGY_VERSION,
             recordType:'manual_hot_cycle',createdAt:now.toISOString(),
             dates:{marketClose:data.marketCloseDate||data.marketDate||'',signal:todayStr(),execution:todayStr()},
@@ -810,7 +881,8 @@ const App = () => {
             decision:{title:'人工開啟新一輪 HOT',allocation:nextMetrics.alloc.label,immediate:`HOT${oldHot} → HOT${newHot}`,formalState:`Risk-On｜HOT${newHot}`,todayAction:nextMetrics.todayAction},
             actions:[isIntro?'人工跳過首次導入並開啟正式 HOT':`人工重設本輪 HOT：HOT${oldHot} → HOT${newHot}`,'未自動修改持股；依新狀態產生交易建議'],notes:'使用者人工確認開啟新一輪 HOT',deletedAt:null
         });
-        const formal=normalizeData({...next,history:[rec,...(data.history||[])]});
+        const rec=prepareSameDayRecord(recDraft,data.history);
+        const formal=normalizeData({...next,history:replaceSameDayHistory(data.history,rec)});
         setData(formal);
         const ok=await saveFormalData(formal,'已開啟新一輪 HOT',rec);
         showToast(ok?`已開啟 HOT${newHot} 新週期`:'已存本機，但雲端同步失敗');
@@ -1061,10 +1133,6 @@ const App = () => {
                 showToast(freshMetrics.validationErrors?.[0] || `${missingMarketDataText(freshData)}，不能確認執行`);
                 return;
             }
-            const logs = Array.isArray(freshData.history) ? freshData.history : [];
-            const today = todayStr();
-            const duplicate = logs.find(h => String(h.time || "").slice(0,10) === today && h.kind === "execution" && h.signal === freshMetrics.title && JSON.stringify(h.afterShares || h.shares || {}) === JSON.stringify({TQQQ:getNum(freshData.sharesTqqq),QQQ:getNum(freshData.sharesQqq),SPY:getNum(freshData.sharesSpy),SPYI:getNum(freshData.sharesSpyi),QQQI:getNum(freshData.sharesQqqi),cashUsd:getNum(freshData.cashUsd),otherUsd:getNum(freshData.otherUsd)}));
-            if (duplicate && !confirm("今天已經有相同訊號與持倉的執行紀錄，仍要再次儲存嗎？")) return;
             flashUpdateSuccess();
             showToast("✓ 股價已更新，請確認最新交易清單");
             setTimeout(()=>setPendingExecution(true),0);
@@ -1074,12 +1142,13 @@ const App = () => {
     };
     const performExecution = async () => {
         if (!metrics.canExecute) { showToast(metrics.validationErrors?.[0] || `${missingMarketDataText(data)}，不能確認執行`); setPendingExecution(false); return; }
-        const item=buildLogItem('execution');
-        const formalData=applyExecutionState(data,metrics,item,new Date());
+        const item=prepareSameDayRecord(buildLogItem('execution'),data.history);
+        const applied=applyExecutionState(data,metrics,item,new Date());
+        const formalData=normalizeData({...applied,history:replaceSameDayHistory(applied.history,item)});
         setData(formalData);
-        const ok=await saveFormalData(formalData,"已執行並同步",item);
+        const ok=await saveFormalData(formalData,"已執行並同步（同日紀錄已覆蓋）",item);
         setPendingExecution(false);
-        showToast(ok?"已確認執行並更新策略狀態":"已寫入本機，但雲端同步失敗");
+        showToast(ok?"已確認執行；同一天同類紀錄只保留最新一筆":"已寫入本機，但雲端同步失敗");
     };
     const resetAssetHigh = () => { if (confirm('把目前總資產設為新的高點？')) {
         patch('assetHighUsd', metrics.totalUsd);
@@ -1471,7 +1540,7 @@ const App = () => {
             const idx=Math.round((local/Math.max(1,rect.width))*(coords.length-1));
             setActiveIndex(idx);
         };
-        const modeButtons=[["IB","IB 主策略"],["TOTAL","全部"],["FT","FT"],["SUB","複委託"]].map(([id,label])=>React.createElement("button",{key:id,onClick:()=>onMode(id),className:`shrink-0 px-3 py-2 rounded-full text-xs font-black ${mode===id?"bg-white text-slate-950":"text-white/65"}`},label));
+        const modeButtons=[["IB","IB 主策略"],["TOTAL","全部"],["FT","FT"],["SUB","複委託"]].map(([id,label])=>React.createElement("button",{key:id,onClick:()=>onMode(id),className:`history-option shrink-0 px-3 py-2 rounded-full text-xs font-black ${mode===id?"is-active":""}`},label));
         const header=React.createElement("div",{className:"flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"},
             React.createElement("div",null,React.createElement("div",{className:"text-[11px] font-black tracking-[.16em] text-white/55"},"歷史資產與損益"),React.createElement("div",{className:"text-2xl font-black mt-1"},title)),
             React.createElement("div",{className:"flex rounded-full bg-white/10 p-1 overflow-x-auto max-w-full"},modeButtons));
@@ -1498,11 +1567,11 @@ const App = () => {
                 React.createElement("div",{className:"col-span-3 text-center text-[10px] font-bold text-white/45"},`區間起點以來 ${signedPctText(selectedPct*100,2)}；已扣除已記錄入金／出金`)))
             :React.createElement("div",{className:"h-52 flex items-center justify-center text-center px-6 text-sm font-bold text-white/45 leading-relaxed"},modeMeta.empty);
         const chartBox=React.createElement("div",{className:"mt-4 rounded-[24px] bg-white/5 border border-white/10 p-2"},chartBody);
-        const rangeButtons=rangeOptions.map(([id,label])=>React.createElement("button",{key:id,onClick:()=>onRange(id),className:`shrink-0 min-w-[64px] px-4 py-2.5 rounded-full text-xs font-black snap-start ${range===id?"bg-white text-slate-950 shadow-lg":"bg-white/10 text-white/65"}`},label));
+        const rangeButtons=rangeOptions.map(([id,label])=>React.createElement("button",{key:id,onClick:()=>onRange(id),className:`history-option shrink-0 min-w-[64px] px-4 py-2.5 rounded-full text-xs font-black snap-start ${range===id?"is-active":""}`},label));
         const controls=React.createElement("div",{className:"flex gap-2 mt-4 overflow-x-auto pb-1 snap-x snap-mandatory",role:"tablist","aria-label":"圖表期間"},rangeButtons);
         const noteText=mode==='IB'?'IB 主策略仍是預設與核心績效；FT、複委託資料不參與任何策略訊號或交易計算。':mode==='FT'?'FT 只使用你輸入的 Total Account Value 快照，不追蹤短線持股明細。':mode==='SUB'?(portfolio.subAccount.holdingMode?`複委託以 ${portfolio.subAccount.symbol} 股數、股價與現金自動估值。`:'複委託尚未設定單一股票，暫時使用手動淨值。'):'全部股票資產為 IB、FT、複委託、台股與其他資產加總；已記錄的資金流會從損益中扣除。';
         const note=React.createElement("div",{className:"mt-3 text-[10px] font-bold text-white/40 leading-relaxed"},noteText);
-        return React.createElement(Card,{className:"p-5 mb-4 overflow-hidden bg-gradient-to-br from-slate-950 to-slate-800 text-white"},header,summary,chartBox,controls,note);
+        return React.createElement(Card,{className:"history-performance-card p-5 mb-4 overflow-hidden text-white"},header,summary,chartBox,controls,note);
     };
     const CalendarCard = ({logs}) => {
         const [yearText,monthText]=calendarMonth.split('-');
@@ -1857,9 +1926,13 @@ const App = () => {
                 renderDraftNumInput("dcaPoolUsd","DCA 資金池","USD")),
             React.createElement("button",{onClick:manualSave,className:"w-full mt-4 py-4 rounded-[22px] bg-slate-950 text-white font-black"},"儲存 IB 正式狀態")));
     const AccountsSettingsPage = () => {
-        const sub=computeSubAccountValue(data);
+        const draft={...pickExternalAccountState(data),...externalDraftRef.current};
+        const preview=normalizeData({...data,...draft});
+        const sub=computeSubAccountValue(preview);
         const recentFlows=(Array.isArray(data.externalCashflows)?data.externalCashflows:[]).slice(0,6);
-        return React.createElement(SettingsPage,{eyebrow:"其他券商",title:"FT 與複委託",desc:"IB 主策略完全獨立。FT 只記帳戶總資產；複委託可用單一股票與現金自動估值。"},
+        const stableNum=(field,label,suffix="",hint="")=>React.createElement(StableDraftNumInput,{key:field,label,value:draft[field],onDraft:v=>updateExternalDraft(field,v),suffix,hint});
+        const saveDraft=(text)=>saveExternalAccounts(collectExternalDraft(),text);
+        const content=React.createElement(React.Fragment,null,
             React.createElement(Card,{className:"p-5 mb-4 border-2 border-blue-100"},
                 React.createElement("div",{className:"rounded-[24px] bg-slate-950 text-white p-4 mb-4"},
                     React.createElement("div",{className:"text-[10px] font-black text-white/55"},"股票資產總覽"),
@@ -1870,31 +1943,31 @@ const App = () => {
                     React.createElement("div",{className:"text-xs font-bold text-blue-700 mt-1 leading-relaxed"},"本頁只會更新 FT、複委託、台股、其他資產與其歷史快照，不會修改 IB 持股、Risk-On／Off、HOT、DCA 或交易紀錄。"))),
             React.createElement(Card,{className:"p-5 mb-4"},
                 React.createElement(SectionTitle,{title:"Firstrade｜帳戶淨值模式",desc:"短線切換不用逐筆記錄，只輸入券商顯示的 Total Account Value。"}),
-                renderDraftNumInput("ftUsd","Firstrade Total Account Value","USD","含股票、ETF、現金與未結算金額的帳戶總資產。"),
+                stableNum("ftUsd","Firstrade Total Account Value","USD","輸入時只更新這個欄位，不會整頁重繪或跳回上方。"),
                 React.createElement("div",{className:"mt-3 rounded-2xl bg-slate-50 border border-slate-100 p-3 text-xs font-bold text-slate-600 leading-relaxed"},"交易再頻繁也不用輸入持股；更新淨值並儲存今日快照即可。入金／出金請在下方另行記錄，避免績效失真。"),
-                React.createElement("button",{onClick:()=>saveExternalAccounts(data,'Firstrade 今日淨值已儲存'),className:"w-full mt-4 py-4 rounded-[22px] bg-slate-950 text-white font-black"},"儲存 FT 今日淨值")),
+                React.createElement("button",{onClick:()=>saveDraft('Firstrade 今日淨值已儲存'),className:"w-full mt-4 py-4 rounded-[22px] bg-slate-950 text-white font-black"},"儲存 FT 今日淨值")),
             React.createElement(Card,{className:"p-5 mb-4"},
                 React.createElement(SectionTitle,{title:"複委託｜單一股票模式",desc:"輸入股票代號、股數與帳戶現金；股價可自動抓取或手動修正。"}),
                 React.createElement("div",{className:"grid grid-cols-1 sm:grid-cols-2 gap-3"},
-                    React.createElement(TextInput,{label:"股票代號",value:data.subSymbol,onChange:v=>patch('subSymbol',String(v).toUpperCase().replace(/[^A-Z0-9.\-]/g,'').slice(0,12)),placeholder:"例如 AAPL",hint:"美股代號；不影響 IB 使用的 SPY／QQQ／TQQQ 報價。"}),
-                    React.createElement(NumInput,{label:"目前股價",value:data.subPriceUsd,onChange:v=>patch('subPriceUsd',v),suffix:"USD",hint:data.subPriceUpdatedAt?`最後更新 ${new Date(data.subPriceUpdatedAt).toLocaleString('zh-TW')}`:"可按下方按鈕自動更新"}),
-                    renderDraftNumInput("subShares","持有股數","股"),
-                    renderDraftNumInput("subCashUsd","帳戶現金","USD"),
-                    renderDraftNumInput("subAvgCostUsd","平均成本（選填）","USD"),
+                    React.createElement(StableDraftTextInput,{label:"股票代號",value:draft.subSymbol,onDraft:v=>updateExternalDraft('subSymbol',String(v).toUpperCase().replace(/[^A-Z0-9.\-]/g,'').slice(0,12)),placeholder:"例如 AAPL",hint:"輸入完成後按下方藍色按鈕更新股價。"}),
+                    React.createElement(StableDraftNumInput,{label:"目前股價",value:draft.subPriceUsd,onDraft:v=>updateExternalDraft('subPriceUsd',v),suffix:"USD",hint:data.subPriceUpdatedAt?`最後更新 ${new Date(data.subPriceUpdatedAt).toLocaleString('zh-TW')}`:"可手動輸入，或按下方按鈕自動更新"})),
+                React.createElement("button",{type:"button",onClick:fetchSubPrice,disabled:loadingSubPrice,className:"sub-price-update-button w-full mt-3 py-4 rounded-[22px] bg-blue-600 text-white font-black disabled:opacity-50"},loadingSubPrice?"正在更新複委託股價…":"↻ 更新複委託股價"),
+                React.createElement("div",{className:"grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3"},
+                    stableNum("subShares","持有股數","股"),
+                    stableNum("subCashUsd","帳戶現金","USD"),
+                    stableNum("subAvgCostUsd","平均成本（選填）","USD"),
                     React.createElement("div",{className:"rounded-2xl bg-slate-950 text-white p-4"},
-                        React.createElement("div",{className:"text-[10px] font-black text-white/55"},sub.holdingMode?`${sub.symbol} 複委託估值`:"複委託手動淨值"),
+                        React.createElement("div",{className:"text-[10px] font-black text-white/55"},sub.holdingMode?`${sub.symbol} 複委託估值（儲存後更新）`:"複委託手動淨值"),
                         React.createElement("div",{className:"mt-2 text-xl font-black privacy-value"},`US$ ${money(sub.valueUsd,2)}`),
                         sub.costBasisUsd>0&&React.createElement("div",{className:`mt-1 text-xs font-black privacy-value ${sub.unrealizedUsd>=0?'text-emerald-300':'text-red-300'}`},`股票未實現 ${sub.unrealizedUsd>=0?'+':'-'}US$ ${money(Math.abs(sub.unrealizedUsd),2)}`))),
-                React.createElement("div",{className:"grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4"},
-                    React.createElement("button",{onClick:fetchSubPrice,disabled:loadingSubPrice,className:"py-4 rounded-[22px] bg-blue-600 text-white font-black disabled:opacity-50"},loadingSubPrice?"更新中…":"更新複委託股價"),
-                    React.createElement("button",{onClick:()=>saveExternalAccounts(data),className:"py-4 rounded-[22px] bg-slate-950 text-white font-black"},"儲存其他帳戶與今日快照")),
-                !sub.holdingMode&&React.createElement("div",{className:"mt-3"},renderDraftNumInput("subUsd","複委託手動備援淨值","USD","尚未設定有效股票代號與股價時才使用。"))),
+                React.createElement("button",{onClick:()=>saveDraft('複委託與今日快照已儲存'),className:"w-full mt-4 py-4 rounded-[22px] bg-slate-950 text-white font-black"},"儲存複委託與今日快照"),
+                !sub.holdingMode&&React.createElement("div",{className:"mt-3"},stableNum("subUsd","複委託手動備援淨值","USD","尚未設定有效股票代號與股價時才使用。"))),
             React.createElement(Card,{className:"p-5 mb-4"},
                 React.createElement(SectionTitle,{title:"台股與其他股票資產",desc:"維持手動淨值；只進入全部股票資產，不影響 IB。"}),
                 React.createElement("div",{className:"grid grid-cols-1 sm:grid-cols-2 gap-3"},
-                    renderDraftNumInput("twStockTwd","台股淨值","TWD"),
-                    renderDraftNumInput("otherTotalTwd","其他股票相關資產","TWD")),
-                React.createElement("button",{onClick:()=>saveExternalAccounts(data),className:"w-full mt-4 py-4 rounded-[22px] bg-slate-950 text-white font-black"},"儲存全部其他帳戶與今日快照")),
+                    stableNum("twStockTwd","台股淨值","TWD"),
+                    stableNum("otherTotalTwd","其他股票相關資產","TWD")),
+                React.createElement("button",{onClick:()=>saveDraft('全部其他帳戶與今日快照已儲存'),className:"w-full mt-4 py-4 rounded-[22px] bg-slate-950 text-white font-black"},"儲存全部其他帳戶與今日快照")),
             React.createElement(Card,{className:"p-5"},
                 React.createElement(SectionTitle,{title:"FT／複委託入金與出金",desc:"只記外部資金進出，不記短線買賣；績效圖會自動扣除。"}),
                 React.createElement("div",{className:"grid grid-cols-1 sm:grid-cols-2 gap-3"},
@@ -1905,6 +1978,7 @@ const App = () => {
                     React.createElement("label",{className:"sm:col-span-2 block bg-slate-50 border border-slate-200 rounded-2xl p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-500 mb-1"},"備註（選填）"),React.createElement("input",{type:"text",value:externalFlowNote,onChange:e=>setExternalFlowNote(e.target.value),placeholder:"例如新增本金、提領",className:"w-full min-h-[44px] bg-transparent font-bold",style:{fontSize:'16px'}}))),
                 React.createElement("button",{onClick:addExternalCashflow,className:"w-full mt-4 py-4 rounded-[22px] bg-emerald-600 text-white font-black"},"記錄資金流並建立今日快照"),
                 recentFlows.length>0&&React.createElement("div",{className:"mt-4 space-y-2"},recentFlows.map(flow=>React.createElement("div",{key:flow.id,className:"flex items-center justify-between gap-3 rounded-2xl bg-slate-50 border border-slate-100 p-3"},React.createElement("div",null,React.createElement("div",{className:"text-sm font-black text-slate-900"},`${flow.account==='FT'?'Firstrade':'複委託'}｜${flow.type==='withdrawal'?'出金':'入金'}`),React.createElement("div",{className:"text-[10px] font-bold text-slate-500 mt-1"},`${flow.date}${flow.note?'｜'+flow.note:''}`)),React.createElement("div",{className:`font-mono font-black privacy-value ${flow.type==='withdrawal'?'text-red-600':'text-emerald-600'}`},`${flow.type==='withdrawal'?'-':'+'}US$ ${money(flow.amountUsd,2)}`))))));
+        return SettingsPage({eyebrow:"其他券商",title:"FT 與複委託",desc:"IB 主策略完全獨立。FT 只記帳戶總資產；複委託可用單一股票與現金自動估值。",children:content});
     };
     const ParametersSettingsPage = () => React.createElement(SettingsPage,{eyebrow:"策略參數",title:"門檻與替代標的",desc:"平時保持鎖定。只有確定要更改正式規則時才解鎖。"},
         React.createElement(Card,{className:"p-5"},
@@ -1950,7 +2024,7 @@ const App = () => {
     const Settings = () => {
         if(settingsView==="market")return React.createElement(MarketSettingsPage);
         if(settingsView==="holdings")return React.createElement(HoldingsSettingsPage);
-        if(settingsView==="accounts")return React.createElement(AccountsSettingsPage);
+        if(settingsView==="accounts")return AccountsSettingsPage();
         if(settingsView==="params")return React.createElement(ParametersSettingsPage);
         if(settingsView==="appearance")return React.createElement(AppearanceSettingsPage);
         if(settingsView==="cashflow")return React.createElement(CashflowSettingsPage);

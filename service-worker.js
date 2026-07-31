@@ -1,4 +1,4 @@
-const CACHE_VERSION = "stock-assets-pwa-v4.3.0-external-accounts-20260731";
+const CACHE_VERSION = "stock-assets-pwa-v4.5.0-input-history-fix-20260731";
 const APP_CACHE = `${CACHE_VERSION}-app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 

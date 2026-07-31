@@ -1,0 +1,110 @@
+股票資產 PWA v4.5｜修正測試報告
+
+ZIP SHA-256：1ea40fb94cc266b1206b07f8ac13052d7635cb4a7ce32f8f6aec5b8f9ac268e0
+
+本次修正：
+- 複委託加入明顯可見的藍色「更新複委託股價」按鈕。
+- FT、複委託、台股等外部帳戶輸入改為欄位內局部狀態；每輸入一個字不再更新整個 App。
+- 歷史損益圖改用固定深色背景與明確文字顏色，未選取與已選取按鈕都可直接看見。
+- IB 執行、快照與人工 HOT 紀錄：同一天同類型只保留最新一筆；入金／出金仍保留每一筆。
+- IB 主策略核心計算完全未修改。
+
+檢查結果：
+- 檔案 index.html：通過
+- 檔案 manifest.webmanifest：通過
+- 檔案 service-worker.js：通過
+- 檔案 assets/app.js：通過
+- 檔案 assets/app.css：通過
+- 檔案 assets/tailwind.css：通過
+- 檔案 assets/pwa.js：通過
+- 檔案 icons/icon-192.png：通過
+- 檔案 icons/icon-512.png：通過
+- 檔案 icons/icon-maskable-512.png：通過
+- 檔案 icons/favicon-64.png：通過
+- JavaScript 語法 assets/app.js：通過
+- JavaScript 語法 assets/pwa.js：通過
+- JavaScript 語法 service-worker.js：通過
+- HTML 解析：通過
+- Manifest standalone：通過
+- Manifest scope：通過
+- Manifest 圖示 ./icons/icon-192.png：通過
+- Manifest 圖示 ./icons/icon-512.png：通過
+- Manifest 圖示 ./icons/icon-maskable-512.png：通過
+- 圖示尺寸 icons/icon-192.png：(192, 192)
+- 圖示尺寸 icons/icon-512.png：(512, 512)
+- 圖示尺寸 icons/icon-maskable-512.png：(512, 512)
+- 圖示尺寸 icons/favicon-64.png：(64, 64)
+- index 引用 ./assets/app.js：通過
+- index 引用 ./assets/app.css：通過
+- index 引用 ./assets/tailwind.css：通過
+- index 引用 ./assets/pwa.js：通過
+- index 引用 ./manifest.webmanifest：通過
+- 複委託更新按鈕：通過
+- 更新按鈕強制可見：通過
+- 外部帳戶穩定輸入：通過
+- 歷史圖選項可讀：通過
+- 同日紀錄覆蓋：通過
+- 舊 targetRows 錯誤：通過
+- PWA 快取版本：通過
+- IB 核心未變 evaluateStrategy：f818929ecd36e4a8
+- IB 核心未變 applyExecutionState：f88b0a282e07019c
+- Service Worker 快取 ./index.html：通過
+- Service Worker 快取 ./manifest.webmanifest：通過
+- Service Worker 快取 ./assets/tailwind.css：通過
+- Service Worker 快取 ./assets/app.css：通過
+- Service Worker 快取 ./assets/app.js：通過
+- Service Worker 快取 ./assets/pwa.js：通過
+- Service Worker 快取 ./icons/icon-192.png：通過
+- Service Worker 快取 ./icons/icon-512.png：通過
+- Service Worker 快取 ./icons/icon-maskable-512.png：通過
+- Service Worker 快取 ./icons/favicon-64.png：通過
+- 邏輯測試：v4.5 logic tests passed: 1012 + daily overwrite cases
+- Service Worker 模擬：{
+  "listeners": [
+    "activate",
+    "fetch",
+    "install",
+    "message"
+  ],
+  "cacheNames": [
+    "stock-assets-pwa-v4.5.0-input-history-fix-20260731-app"
+  ],
+  "shellEntries": 11
+}
+- 介面渲染測試：  "text": "本年至今",
+      "color": "rgb(226, 232, 240)",
+      "fill": "rgb(226, 232, 240)",
+      "bg": "rgba(255, 255, 255, 0.1)",
+      "active": false
+    },
+    {
+      "text": "1年",
+      "color": "rgb(226, 232, 240)",
+      "fill": "rgb(226, 232, 240)",
+      "bg": "rgba(255, 255, 255, 0.1)",
+      "active": false
+    },
+    {
+      "text": "最長",
+      "color": "rgb(226, 232, 240)",
+      "fill": "rgb(226, 232, 240)",
+      "bg": "rgba(255, 255, 255, 0.1)",
+      "active": false
+    }
+  ]
+}
+- ZIP index.html：通過
+- ZIP manifest.webmanifest：通過
+- ZIP service-worker.js：通過
+- ZIP assets/app.js：通過
+- ZIP assets/app.css：通過
+- ZIP assets/tailwind.css：通過
+- ZIP assets/pwa.js：通過
+- ZIP icons/icon-192.png：通過
+- ZIP icons/icon-512.png：通過
+- ZIP icons/icon-maskable-512.png：通過
+- ZIP icons/favicon-64.png：通過
+- ZIP 無多餘外層資料夾：通過
+
+測試限制：
+- 隔離環境無法連線外部 React、Firebase、Finnhub CDN；已完成語法、邏輯、Service Worker 模擬與本機 Chromium 相容渲染測試。實際行情更新仍需在 GitHub Pages 網址上以網路測試。
