@@ -14,7 +14,7 @@ if (HAS_FIREBASE && !firebase.apps.length)
 const auth = HAS_FIREBASE ? firebase.auth() : null;
 const db = HAS_FIREBASE ? firebase.firestore() : null;
 const DOC_PATH = ["strategyDashboards", "tqqq-qqq200-main"];
-const APP_VERSION = "股票資產 PWA v4.5｜外部帳戶輸入修正版";
+const APP_VERSION = "股票資產 PWA v4.6｜首頁快速更新與快取修正版";
 const STRATEGY_ID = "tqqq-spy200";
 const STRATEGY_VERSION = "SPY200-4-3-HOT-19-24-28";
 const RECORD_SCHEMA_VERSION = 2;
@@ -595,6 +595,8 @@ const App = () => {
     const [settingsView, setSettingsView] = useState("menu");
     const [settingsMotion, setSettingsMotion] = useState("forward");
     const [showAccountSheet, setShowAccountSheet] = useState(false);
+    const [showQuickUpdateSheet, setShowQuickUpdateSheet] = useState(false);
+    const [quickSaving, setQuickSaving] = useState(false);
     const [calendarMonth, setCalendarMonth] = useState(todayStr().slice(0,7));
     const [selectedCalendarDay, setSelectedCalendarDay] = useState("");
     const [pullDistance, setPullDistance] = useState(0);
@@ -651,6 +653,10 @@ const App = () => {
     const openSettingsView = useCallback(id => { setSettingsMotion("forward"); setSettingsView(id); }, []);
     const backToSettings = useCallback(() => { setSettingsMotion("back"); setSettingsView("menu"); }, []);
     const flashUpdateSuccess = useCallback(() => { setUpdateSuccess(true); setTimeout(() => setUpdateSuccess(false), 1400); }, []);
+    const openQuickUpdateSheet = useCallback(() => {
+        externalDraftRef.current = pickExternalAccountState(data);
+        setShowQuickUpdateSheet(true);
+    }, [data]);
     const priceFailureText = useCallback(result => {
         if(result?.blocked) return result.message || "更新太頻繁，請稍後再試";
         const failed = Array.isArray(result?.failed) ? result.failed.filter(Boolean) : [];
@@ -830,9 +836,22 @@ const App = () => {
         if(amount<=0){showToast('請輸入大於 0 的入金／出金金額');return;}
         if(!externalFlowDate){showToast('請選擇資金流日期');return;}
         const flow={id:makeRecordId(),account:externalFlowAccount,type:externalFlowType,amountUsd:amount,date:externalFlowDate,note:externalFlowNote.trim(),createdAt:new Date().toISOString()};
-        const next=normalizeData({...data,externalCashflows:[flow,...(Array.isArray(data.externalCashflows)?data.externalCashflows:[])]});
+        const next=normalizeData({...collectExternalDraft(),externalCashflows:[flow,...(Array.isArray(data.externalCashflows)?data.externalCashflows:[])]});
         const ok=await saveExternalAccounts(next,`${externalFlowAccount==='FT'?'Firstrade':'複委託'}${externalFlowType==='withdrawal'?'出金':'入金'}已記錄`);
         if(ok){setExternalFlowAmount('');setExternalFlowNote('');}
+    };
+    const saveQuickUpdate = async () => {
+        if(quickSaving)return;
+        setQuickSaving(true);
+        try{
+            const ok=await saveExternalAccounts(collectExternalDraft(),'FT、複委託與今日快照已儲存');
+            if(ok){
+                setShowQuickUpdateSheet(false);
+                flashUpdateSuccess();
+            }
+        }finally{
+            setQuickSaving(false);
+        }
     };
     const openNewHotCycle = async () => {
         if(previewScenario!=="LIVE"){
@@ -1289,7 +1308,8 @@ const App = () => {
                     React.createElement("button", { onClick:()=>setShowAccountSheet(true), className:"rounded-[24px] bg-white/75 border border-white/90 p-4 text-left active:scale-[.98]" },
                         React.createElement("div", { className:"text-[10px] font-black text-slate-500" }, "其他帳戶合計　›"),
                         React.createElement("div", { className:"mt-2 text-lg font-black text-slate-950 privacy-value" }, `NT$ ${money(portfolio.externalTwd,0)}`),
-                        React.createElement("div", { className:"mt-1 text-[10px] font-bold text-slate-500" }, "點開查看 FT、複委託、台股與其他")))));
+                        React.createElement("div", { className:"mt-1 text-[10px] font-bold text-slate-500" }, "點開查看 FT、複委託、台股與其他"))),
+                    React.createElement("button", { onClick:openQuickUpdateSheet, className:"quick-update-home-button w-full mt-3 py-4 rounded-[22px] bg-blue-600 text-white font-black shadow-lg" }, "↻ 快速更新 FT／複委託資產")));
 
         const signalSlide = React.createElement("section", { className: slideSectionClass },
             React.createElement(Card, { className:`p-6 min-h-[70vh] flex flex-col justify-between ${SignalSkin()}` },
@@ -2046,6 +2066,41 @@ const App = () => {
             React.createElement(Card,{className:"p-6 mb-5 bg-gradient-to-br from-white/92 to-indigo-50/80"},React.createElement("div",{className:"text-[11px] font-black tracking-[.2em] text-brand-600"},"設定"),React.createElement("div",{className:"mt-3 text-3xl font-black text-slate-950"},"每一項都是獨立頁面"),React.createElement("div",{className:"mt-2 text-sm font-bold text-slate-500 privacy-value"},`全部 ${portfolio.totalDisplay}｜IB ${portfolio.strategyDisplay}`)),
             React.createElement("div",{className:"settings-menu-grid space-y-3"},menuItems.map(([id,icon,title,desc])=>React.createElement("button",{key:id,onClick:()=>openSettingsView(id),className:"settings-row w-full text-left"},React.createElement("span",{className:"settings-icon text-blue-600 text-sm font-black"},icon),React.createElement("span",{className:"flex-1"},React.createElement("span",{className:"block text-[17px] font-black text-slate-900"},title),React.createElement("span",{className:"block text-xs font-bold text-slate-500 mt-1"},desc)),React.createElement("span",{className:"text-2xl text-slate-400"},"›")))));
     };
+    const QuickUpdateSheet = () => {
+        if(!showQuickUpdateSheet)return null;
+        const draft={...pickExternalAccountState(data),...externalDraftRef.current};
+        const preview=normalizeData({...data,...draft});
+        const sub=computeSubAccountValue(preview);
+        const stableNum=(field,label,suffix="",hint="")=>React.createElement(StableDraftNumInput,{key:field,label,value:draft[field],onDraft:v=>updateExternalDraft(field,v),suffix,hint});
+        const lastPriceTime=draft.subPriceUpdatedAt?new Date(draft.subPriceUpdatedAt).toLocaleString('zh-TW'):'尚未自動更新';
+        return React.createElement("div",{className:"fixed inset-0 z-[78] sheet-backdrop sheet-animate-backdrop flex items-end justify-center p-3",onClick:()=>setShowQuickUpdateSheet(false)},
+            React.createElement("div",{className:"sheet-panel quick-update-sheet w-full max-w-md max-h-[90vh] overflow-auto rounded-[34px] bg-white p-5 safe-bottom shadow-2xl",onClick:e=>e.stopPropagation()},
+                React.createElement("div",{className:"mx-auto w-12 h-1.5 rounded-full bg-slate-200 mb-5"}),
+                React.createElement("div",{className:"flex justify-between items-start gap-3"},
+                    React.createElement("div",null,
+                        React.createElement("div",{className:"text-[10px] font-black tracking-[.18em] text-blue-600"},"首頁快速更新"),
+                        React.createElement("div",{className:"mt-1 text-2xl font-black text-slate-950"},"更新 FT 與複委託"),
+                        React.createElement("div",{className:"mt-1 text-xs font-bold text-slate-500"},"一次儲存今日快照；IB 主策略完全不變。")),
+                    React.createElement("button",{onClick:()=>setShowQuickUpdateSheet(false),className:"w-11 h-11 rounded-full bg-slate-100 text-xl text-slate-500"},"×")),
+                React.createElement("div",{className:"mt-5 rounded-[24px] bg-slate-950 text-white p-4"},
+                    React.createElement("div",{className:"text-[10px] font-black text-white/55"},"目前全部股票總資產"),
+                    React.createElement("div",{className:"mt-2 text-2xl font-black privacy-value"},portfolio.totalDisplay),
+                    React.createElement("div",{className:"mt-1 text-xs font-bold text-white/60"},"本面板只更新外部帳戶與歷史快照")),
+                React.createElement("div",{className:"mt-4 rounded-[26px] bg-blue-50 border border-blue-100 p-4"},
+                    React.createElement(SectionTitle,{title:"Firstrade",desc:"輸入券商顯示的 Total Account Value；短線買賣不用逐筆記。"}),
+                    stableNum("ftUsd","FT 帳戶總資產","USD","輸入完成後按最下方一次儲存。")),
+                React.createElement("div",{className:"mt-4 rounded-[26px] bg-slate-50 border border-slate-100 p-4"},
+                    React.createElement(SectionTitle,{title:"複委託",desc:sub.holdingMode?`${sub.symbol}｜${money(getNum(draft.subShares),3)} 股`:'尚未設定有效股票代號與股數'}),
+                    React.createElement("div",{className:"grid grid-cols-1 sm:grid-cols-2 gap-3"},
+                        stableNum("subPriceUsd","目前股價","USD",`最後更新：${lastPriceTime}`),
+                        stableNum("subCashUsd","帳戶現金","USD","股數與成本等低頻資料仍放在完整設定。")),
+                    React.createElement("button",{type:"button",onClick:fetchSubPrice,disabled:loadingSubPrice,className:"sub-price-update-button w-full mt-3 py-4 rounded-[22px] bg-blue-600 text-white font-black disabled:opacity-50"},loadingSubPrice?"正在更新複委託股價…":`↻ 更新 ${String(draft.subSymbol||'複委託').toUpperCase()} 股價`),
+                    React.createElement("div",{className:"mt-3 rounded-2xl bg-white border border-slate-200 p-3 flex items-center justify-between gap-3"},
+                        React.createElement("div",null,React.createElement("div",{className:"text-[10px] font-black text-slate-500"},"目前複委託估值"),React.createElement("div",{className:"mt-1 text-xs font-bold text-slate-500"},sub.holdingMode?"股票市值＋帳戶現金":"使用手動備援淨值")),
+                        React.createElement("div",{className:"font-mono text-lg font-black text-slate-950 privacy-value"},`US$ ${money(sub.valueUsd,2)}`))),
+                React.createElement("button",{onClick:saveQuickUpdate,disabled:quickSaving,className:"w-full mt-5 py-4 rounded-[22px] bg-slate-950 text-white font-black disabled:opacity-50"},quickSaving?"正在儲存今日快照…":"儲存今日 FT＋複委託快照"),
+                React.createElement("button",{onClick:()=>{setShowQuickUpdateSheet(false);openSettingsView('accounts');setPage('settings');},className:"w-full mt-3 py-3 rounded-[20px] bg-slate-100 text-slate-700 text-xs font-black"},"修改股票代號、股數、成本或記錄入金／出金")));
+    };
     const AccountSheet = () => {
         if(!showAccountSheet)return null;
         const rows=portfolio.cards.map(card=>React.createElement("div",{key:card.key,className:"rounded-[24px] bg-slate-50 border border-slate-100 p-4"},
@@ -2059,7 +2114,9 @@ const App = () => {
                     React.createElement("div",null,React.createElement("div",{className:"text-2xl font-black text-slate-950"},"帳戶資產明細"),React.createElement("div",{className:"text-sm font-bold text-slate-500 mt-1"},portfolio.totalDisplay)),
                     React.createElement("button",{onClick:()=>setShowAccountSheet(false),className:"w-11 h-11 rounded-full bg-slate-100 text-xl text-slate-500"},"×")),
                 React.createElement("div",{className:"space-y-3 mt-5"},rows),
-                React.createElement("button",{onClick:()=>{setShowAccountSheet(false);openSettingsView("accounts");setPage("settings");},className:"w-full mt-5 py-4 rounded-[22px] bg-slate-950 text-white font-black"},"更新帳戶淨值")));
+                React.createElement("div",{className:"grid grid-cols-2 gap-2 mt-5"},
+                    React.createElement("button",{onClick:()=>{setShowAccountSheet(false);openQuickUpdateSheet();},className:"py-4 rounded-[22px] bg-blue-600 text-white font-black"},"快速更新"),
+                    React.createElement("button",{onClick:()=>{setShowAccountSheet(false);openSettingsView("accounts");setPage("settings");},className:"py-4 rounded-[22px] bg-slate-950 text-white font-black"},"完整設定"))));
     };
     const ExecutionModal = () => !pendingExecution ? null : React.createElement("div", { className: "fixed inset-0 z-50 sheet-backdrop sheet-animate-backdrop flex items-end sm:items-center justify-center p-4" },
         React.createElement("div", { className: "sheet-panel bg-white rounded-3xl shadow-2xl w-full max-w-md p-5" },
@@ -2102,6 +2159,7 @@ const App = () => {
         MonthSheet(),
         CalendarDaySheet(),
         AccountSheet(),
+        QuickUpdateSheet(),
         ExecutionModal(),
         toast && React.createElement("div", { className: "fixed left-1/2 -translate-x-1/2 bottom-40 z-50 bg-slate-900/90 backdrop-blur text-white rounded-2xl px-4 py-3 text-sm font-black shadow-2xl" }, toast));
 };

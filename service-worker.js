@@ -1,26 +1,25 @@
-const CACHE_VERSION = "stock-assets-pwa-v4.5.0-input-history-fix-20260731";
+const CACHE_VERSION = "stock-assets-pwa-v4.6.0-quick-update-cache-fix-20260801";
 const APP_CACHE = `${CACHE_VERSION}-app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./manifest.webmanifest",
-  "./assets/tailwind.css",
-  "./assets/app.css",
-  "./assets/app.js",
-  "./assets/pwa.js",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icons/icon-maskable-512.png",
-  "./icons/favicon-64.png"
+  "./manifest.webmanifest?v=4.6.0",
+  "./assets/tailwind.css?v=4.6.0",
+  "./assets/app.css?v=4.6.0",
+  "./assets/app.js?v=4.6.0",
+  "./assets/pwa.js?v=4.6.0",
+  "./icons/icon-192.png?v=4.6.0",
+  "./icons/icon-512.png?v=4.6.0",
+  "./icons/icon-maskable-512.png?v=4.6.0",
+  "./icons/favicon-64.png?v=4.6.0"
 ];
 
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(APP_CACHE)
       .then(cache => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())
   );
 });
 
@@ -44,6 +43,26 @@ const isLiveDataRequest = url =>
   url.hostname.includes("googleapis.com") ||
   url.hostname.includes("firebase") ||
   url.hostname.includes("google.com");
+
+const isCoreAppAsset = url => [
+  "/assets/app.css",
+  "/assets/app.js",
+  "/assets/pwa.js",
+  "/assets/tailwind.css"
+].some(path => url.pathname.endsWith(path));
+
+async function networkFirst(request, cacheName = APP_CACHE) {
+  try {
+    const response = await fetch(request, { cache: "no-store" });
+    if (response && response.ok) {
+      const copy = response.clone();
+      caches.open(cacheName).then(cache => cache.put(request, copy));
+    }
+    return response;
+  } catch (error) {
+    return (await caches.match(request)) || new Response("Not available offline", { status: 503 });
+  }
+}
 
 self.addEventListener("fetch", event => {
   const request = event.request;
@@ -72,23 +91,32 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // 同來源靜態檔採快取優先並背景更新。
+  // app.css、app.js、pwa.js 與 Tailwind 採網路優先；離線時才回退快取。
+  if (url.origin === self.location.origin && isCoreAppAsset(url)) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
+  // 其他同來源靜態檔案採快取優先。
   if (url.origin === self.location.origin) {
     event.respondWith((async () => {
       const cached = await caches.match(request);
-      const networkPromise = fetch(request).then(response => {
+      if (cached) return cached;
+      try {
+        const response = await fetch(request);
         if (response && response.ok) {
           const copy = response.clone();
           caches.open(APP_CACHE).then(cache => cache.put(request, copy));
         }
         return response;
-      }).catch(() => null);
-      return cached || await networkPromise || new Response("Not available", { status: 503 });
+      } catch (error) {
+        return new Response("Not available", { status: 503 });
+      }
     })());
     return;
   }
 
-  // React、Tailwind 等 CDN：首次上線載入後快取，之後可離線開啟介面。
+  // React、Firebase 等 CDN：首次上線載入後快取，之後可離線開啟介面。
   event.respondWith((async () => {
     const cached = await caches.match(request);
     if (cached) return cached;

@@ -330,3 +330,12 @@ button:active{transform:scale(.972)}
 .history-performance-card .text-white\/55{color:rgba(255,255,255,.72)!important;}
 .history-performance-card .text-white\/60,
 .history-performance-card .text-white\/65{color:rgba(255,255,255,.82)!important;}
+
+
+/* PWA v4.6｜首頁快速更新 */
+.quick-update-home-button{box-shadow:0 12px 26px rgba(37,99,235,.24);}
+.quick-update-sheet .stable-draft-field{background:#f8fafc!important;}
+@media (min-width:1180px){
+  .quick-update-sheet{max-width:720px!important;}
+  .quick-update-home-button{font-size:14px;}
+}
