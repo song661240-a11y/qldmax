@@ -40,6 +40,7 @@ jobs:
 
       - name: "檢查自動快照檔案"
         run: |
+          set -euo pipefail
           test -f automation/daily-portfolio-snapshot.mjs
           test -f automation/package.json
           node --version
@@ -50,6 +51,7 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
         run: |
+          set -euo pipefail
           if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
             echo "::error::缺少 GitHub Secret：FIREBASE_SERVICE_ACCOUNT"
             exit 1
