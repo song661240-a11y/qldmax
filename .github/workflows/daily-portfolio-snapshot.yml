@@ -1,1 +1,36 @@
-.github/workflows/daily-portfolio-snapshot.yml
+name: 每日盤後股票資產快照
+
+on:
+  schedule:
+    # UTC 22:35；美東夏令時間 18:35、冬令時間 17:35，皆已在美股收盤後。
+    - cron: "35 22 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: automation
+    steps:
+      - name: 下載程式碼
+        uses: actions/checkout@v4
+
+      - name: 安裝 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 安裝自動快照套件
+        run: npm install --no-audit --no-fund
+
+      - name: 更新盤後價格與今日資產快照
+        run: node daily-portfolio-snapshot.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          TARGET_DASHBOARD_ID: tqqq-qqq200-main
