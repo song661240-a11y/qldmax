@@ -54,15 +54,49 @@ const writeUiPreference = (key,value) => {
 const writeBackupCards = list => {
     localStorage.setItem(BACKUP_KEY, JSON.stringify((Array.isArray(list)?list:[]).slice(0,5)));
 };
-const FINNHUB_SESSION_KEY = "stockAssetsFinnhubSessionKey";
-function getFinnhubSessionKey() {
+const FINNHUB_LOCAL_KEY = "stockAssetsFinnhubDeviceKeyV1";
+const FINNHUB_LEGACY_SESSION_KEY = "stockAssetsFinnhubSessionKey";
+const isValidFinnhubKey = key => /^[A-Za-z0-9_-]{20,100}$/.test(String(key || "").trim());
+function notifyFinnhubKeyChanged() {
+    try { window.dispatchEvent(new Event("finnhub-key-changed")); } catch(e) {}
+}
+function readSavedFinnhubKey() {
     let key = "";
-    try { key = sessionStorage.getItem(FINNHUB_SESSION_KEY) || ""; } catch(e) {}
+    try { key = String(localStorage.getItem(FINNHUB_LOCAL_KEY) || "").trim(); } catch(e) {}
     if (!key) {
-        key = String(prompt("為避免 API Key 公開在 GitHub，請輸入 Finnhub API Key。只保存在這個瀏覽器分頁，關閉後自動清除。") || "").trim();
-        if (key) { try { sessionStorage.setItem(FINNHUB_SESSION_KEY, key); } catch(e) {} }
+        try {
+            const legacy = String(sessionStorage.getItem(FINNHUB_LEGACY_SESSION_KEY) || "").trim();
+            if (isValidFinnhubKey(legacy)) {
+                localStorage.setItem(FINNHUB_LOCAL_KEY, legacy);
+                sessionStorage.removeItem(FINNHUB_LEGACY_SESSION_KEY);
+                key = legacy;
+            }
+        } catch(e) {}
     }
-    if (!/^[A-Za-z0-9_-]{20,100}$/.test(key)) throw new Error("未提供有效的 Finnhub API Key；也可等待 GitHub Actions 每日盤後自動更新，或手動輸入價格");
+    return isValidFinnhubKey(key) ? key : "";
+}
+function saveFinnhubKey(key) {
+    const normalized = String(key || "").trim();
+    if (!isValidFinnhubKey(normalized)) return false;
+    try {
+        localStorage.setItem(FINNHUB_LOCAL_KEY, normalized);
+        sessionStorage.removeItem(FINNHUB_LEGACY_SESSION_KEY);
+        notifyFinnhubKeyChanged();
+        return true;
+    } catch(e) { return false; }
+}
+function clearFinnhubKey() {
+    try { localStorage.removeItem(FINNHUB_LOCAL_KEY); } catch(e) {}
+    try { sessionStorage.removeItem(FINNHUB_LEGACY_SESSION_KEY); } catch(e) {}
+    notifyFinnhubKeyChanged();
+}
+function getFinnhubKey() {
+    let key = readSavedFinnhubKey();
+    if (!key) {
+        key = String(prompt("請輸入 Finnhub API Key。會只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase；除非清除網站資料，否則下次開啟不用再輸入。") || "").trim();
+        if (key && !saveFinnhubKey(key)) key = "";
+    }
+    if (!isValidFinnhubKey(key)) throw new Error("未提供有效的 Finnhub API Key；也可等待 GitHub Actions 每日盤後自動更新，或手動輸入價格");
     return key;
 }
 const EXCHANGE_RATE_ENDPOINT = "https://open.er-api.com/v6/latest/USD";
@@ -415,7 +449,7 @@ const SectionTitle = ({ title, desc, right }) => React.createElement("div", { cl
         desc && React.createElement("p", { className: "text-xs text-slate-500 mt-1 leading-relaxed" }, desc)),
     right);
 async function fetchFinnhubQuote(symbol) {
-    const key = getFinnhubSessionKey();
+    const key = getFinnhubKey();
     const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(key)}`, { cache: "no-store", referrerPolicy:"no-referrer" });
     if (r.status === 429) throw new Error("Finnhub API 額度暫時用完（HTTP 429）");
     if (!r.ok) throw new Error(`Finnhub HTTP ${r.status}`);
@@ -694,6 +728,7 @@ const App = () => {
     const [initialDataReady, setInitialDataReady] = useState(!auth);
     const [loadingSubPrice, setLoadingSubPrice] = useState(false);
     const [priceError, setPriceError] = useState("");
+    const [finnhubKeySaved, setFinnhubKeySaved] = useState(() => Boolean(readSavedFinnhubKey()));
     const [pendingExecution, setPendingExecution] = useState(false);
     const [executionPreparing, setExecutionPreparing] = useState(false);
     const [previewScenario, setPreviewScenario] = useState("LIVE");
@@ -742,6 +777,26 @@ const App = () => {
     const collectExternalDraft = useCallback(() => normalizeData({...data,...externalDraftRef.current}), [data]);
     const toggleCollapse = useCallback(id => setCollapsed(prev => ({ ...prev, [id]: !prev[id] })), []);
     const showToast = useCallback(txt => { setToast(txt); setTimeout(() => setToast(""), 2600); }, []);
+    useEffect(() => {
+        const refreshFinnhubKeyState = () => setFinnhubKeySaved(Boolean(readSavedFinnhubKey()));
+        window.addEventListener("finnhub-key-changed", refreshFinnhubKeyState);
+        return () => window.removeEventListener("finnhub-key-changed", refreshFinnhubKeyState);
+    }, []);
+    const configureFinnhubKey = useCallback(() => {
+        const next = String(prompt(`${readSavedFinnhubKey()?"目前已儲存 Finnhub API Key。要更換時，":""}請貼上新的 Finnhub API Key。
+
+Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase。`) || "").trim();
+        if (!next) { showToast("Finnhub API Key 未變更"); return; }
+        if (!isValidFinnhubKey(next)) { showToast("Finnhub API Key 格式不正確"); return; }
+        if (saveFinnhubKey(next)) showToast("Finnhub API Key 已保存在這台裝置");
+        else showToast("瀏覽器無法保存 Finnhub API Key");
+    }, [showToast]);
+    const removeFinnhubKey = useCallback(() => {
+        if (!readSavedFinnhubKey()) { showToast("這台裝置目前沒有保存 Finnhub API Key"); return; }
+        if (!confirm("清除這台裝置保存的 Finnhub API Key？下次手動更新股價時會再次詢問。")) return;
+        clearFinnhubKey();
+        showToast("已清除這台裝置的 Finnhub API Key");
+    }, [showToast]);
     const openSettingsView = useCallback(id => { setSettingsMotion("forward"); setSettingsView(id); }, []);
     const backToSettings = useCallback(() => { setSettingsMotion("back"); setSettingsView("menu"); }, []);
     const flashUpdateSuccess = useCallback(() => { setUpdateSuccess(true); setTimeout(() => setUpdateSuccess(false), 1400); }, []);
@@ -2216,6 +2271,16 @@ const App = () => {
             React.createElement("div",{className:"grid grid-cols-2 gap-3 mt-4"},
                 React.createElement("button",{onClick:fetchPrices,disabled:loadingPrice,className:"py-4 rounded-[22px] bg-slate-950 text-white font-black disabled:opacity-50"},loadingPrice?"更新中…":"更新股價"),
                 React.createElement("button",{onClick:manualSave,className:"py-4 rounded-[22px] bg-brand-600 text-white font-black"},"儲存正式資料")),
+            React.createElement("div",{className:"mt-4 rounded-[22px] bg-slate-50 border border-slate-200 p-4"},
+                React.createElement("div",{className:"flex items-start justify-between gap-3"},
+                    React.createElement("div",null,
+                        React.createElement("div",{className:"text-sm font-black text-slate-900"},"Finnhub API Key｜本機保存"),
+                        React.createElement("div",{className:"text-xs font-bold text-slate-500 mt-1 leading-relaxed"},finnhubKeySaved?"已保存在這台裝置；重開分頁或重新啟動 App 都不用再輸入。":"尚未保存；第一次手動更新股價時會詢問一次。")),
+                    React.createElement("span",{className:`shrink-0 px-3 py-1.5 rounded-full text-xs font-black ${finnhubKeySaved?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}`},finnhubKeySaved?"已保存":"未設定")),
+                React.createElement("div",{className:"grid grid-cols-2 gap-3 mt-4"},
+                    React.createElement("button",{type:"button",onClick:configureFinnhubKey,className:"py-3 rounded-2xl bg-white border border-slate-200 text-slate-800 font-black"},finnhubKeySaved?"更換 Key":"設定 Key"),
+                    React.createElement("button",{type:"button",onClick:removeFinnhubKey,disabled:!finnhubKeySaved,className:"py-3 rounded-2xl bg-white border border-red-100 text-red-600 font-black disabled:opacity-40"},"清除本機 Key")),
+                React.createElement("div",{className:"mt-3 text-[11px] font-bold text-slate-400 leading-relaxed"},"只保存在本裝置的瀏覽器 localStorage，不會寫進公開程式碼、Firebase 或 GitHub。清除網站資料後需要重新輸入。")),
             React.createElement("div",{className:"mt-4"},FreshnessCard())));
     const HoldingsSettingsPage = () => React.createElement(SettingsPage,{eyebrow:"IB 策略帳戶",title:"持股與現金",desc:"這一頁才會影響 TQQQ、HOT、Risk-Off 與 DCA 的交易計算。"},
         React.createElement(Card,{className:"p-5"},

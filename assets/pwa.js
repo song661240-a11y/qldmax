@@ -47,7 +47,7 @@
     banner.innerHTML = `
       <div class="pwa-update-copy">
         <strong>股票資產已有新版</strong>
-        <span>v5.3.1 已修正 PWA 快取誤把圖片當首頁的問題，並保留安全強化設定。</span>
+        <span>v5.3.2 已讓 Finnhub API Key 安全保存在這台裝置，重開分頁不用再輸入；並保留 PWA 快取修復。</span>
       </div>
       <button type="button">套用新版</button>
     `;
