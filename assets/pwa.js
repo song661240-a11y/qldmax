@@ -47,7 +47,7 @@
     banner.innerHTML = `
       <div class="pwa-update-copy">
         <strong>股票資產已有新版</strong>
-        <span>v4.9 已加入 USD/TWD 每日線上更新、失敗沿用舊匯率與快照匯率保存。</span>
+        <span>v5.0 已加入全站 US$／NT$ 切換，以及每日盤後雲端自動資產快照支援。</span>
       </div>
       <button type="button">套用新版</button>
     `;

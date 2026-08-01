@@ -14,7 +14,7 @@ if (HAS_FIREBASE && !firebase.apps.length)
 const auth = HAS_FIREBASE ? firebase.auth() : null;
 const db = HAS_FIREBASE ? firebase.firestore() : null;
 const DOC_PATH = ["strategyDashboards", "tqqq-qqq200-main"];
-const APP_VERSION = "股票資產 PWA v4.9｜每日線上匯率版";
+const APP_VERSION = "股票資產 PWA v5.0｜全站幣別＋盤後自動快照";
 const STRATEGY_ID = "tqqq-spy200";
 const STRATEGY_VERSION = "SPY200-4-3-HOT-19-24-28";
 const RECORD_SCHEMA_VERSION = 2;
@@ -113,7 +113,8 @@ const DEFAULT = {
     notes: "",
     sharesTqqq: 0, sharesQqq: 0, sharesSpy: 0, sharesSpyi: 0, sharesQqqi: 0, cashUsd: 0, otherUsd: 0, usdtwd: 32, currency: "USD",
     exchangeRateUpdatedDate: "", exchangeRateUpdatedAt: "", exchangeRateSourceUpdatedAt: "", exchangeRateNextUpdateAt: "", exchangeRateLastAttemptDate: "", exchangeRateLastError: "", exchangeRateProvider: "",
-    ftUsd: 0, subUsd: 0, twStockTwd: 0, otherTotalTwd: 0,
+    autoSnapshotMarketDate: "", autoSnapshotUpdatedAt: "", autoSnapshotLastError: "", autoSnapshotSource: "",
+    ftUsd: 0, ftUpdatedAt: "", subUsd: 0, twStockTwd: 0, otherTotalTwd: 0,
     subSymbol: "", subShares: 0, subCashUsd: 0, subAvgCostUsd: 0, subPriceUsd: 0, subPriceUpdatedAt: "",
     externalCashflows: [],
     assetHighUsd: 0, lastExecutedAt: "", lastExecutionSummary: "",
@@ -215,7 +216,11 @@ const normalizeData = raw => {
         subPriceUsd:getNum(x?.subPriceUsd),
         twStockTwd:getNum(x?.twStockTwd),
         otherTotalTwd:getNum(x?.otherTotalTwd),
-        reason:String(x?.reason||'')
+        reason:String(x?.reason||''),
+        auto:x?.auto===true,
+        staleSymbols:Array.isArray(x?.staleSymbols)?x.staleSymbols.map(String).slice(0,10):[],
+        ftUpdatedAt:String(x?.ftUpdatedAt||''),
+        source:String(x?.source||'')
     })).filter(x=>x.date&&x.totalTwd>=0).sort((a,b)=>a.date.localeCompare(b.date)).slice(-1200);
     clean.externalCashflows=(Array.isArray(src.externalCashflows)?src.externalCashflows:[]).map(x=>({
         id:String(x?.id||makeRecordId()),
@@ -239,6 +244,11 @@ const normalizeData = raw => {
     clean.exchangeRateLastAttemptDate=String(clean.exchangeRateLastAttemptDate||"").slice(0,10);
     clean.exchangeRateLastError=String(clean.exchangeRateLastError||"").slice(0,240);
     clean.exchangeRateProvider=String(clean.exchangeRateProvider||"").slice(0,80);
+    clean.autoSnapshotMarketDate=String(clean.autoSnapshotMarketDate||"").slice(0,10);
+    clean.autoSnapshotUpdatedAt=String(clean.autoSnapshotUpdatedAt||"");
+    clean.autoSnapshotLastError=String(clean.autoSnapshotLastError||"").slice(0,240);
+    clean.autoSnapshotSource=String(clean.autoSnapshotSource||"").slice(0,80);
+    clean.ftUpdatedAt=String(clean.ftUpdatedAt||"");
     clean.schemaVersion=2;
     clean.hotRank=Math.max(0,Math.min(3,parseInt(clean.hotRank)||0));
     clean.dcaCompleted=Math.max(0,Math.min(6,parseInt(clean.dcaCompleted)||0));
@@ -252,9 +262,9 @@ const normalizeData = raw => {
     clean.marketCloseDate=clean.marketCloseDate||clean.marketDate||'';
     return clean;
 };
-const EXTERNAL_ACCOUNT_FIELDS=["ftUsd","subUsd","subSymbol","subShares","subCashUsd","subAvgCostUsd","subPriceUsd","subPriceUpdatedAt","twStockTwd","otherTotalTwd","externalCashflows"];
+const EXTERNAL_ACCOUNT_FIELDS=["ftUsd","ftUpdatedAt","subUsd","subSymbol","subShares","subCashUsd","subAvgCostUsd","subPriceUsd","subPriceUpdatedAt","twStockTwd","otherTotalTwd","externalCashflows"];
 const EXTERNAL_ACCOUNT_KEYS=new Set(EXTERNAL_ACCOUNT_FIELDS);
-const PERSONAL_KEYS = new Set(["sharesTqqq","sharesQqq","sharesSpy","sharesSpyi","sharesQqqi","cashUsd","otherUsd","usdtwd","currency","exchangeRateUpdatedDate","exchangeRateUpdatedAt","exchangeRateSourceUpdatedAt","exchangeRateNextUpdateAt","exchangeRateLastAttemptDate","exchangeRateLastError","exchangeRateProvider","ftUsd","subUsd","subSymbol","subShares","subCashUsd","subAvgCostUsd","subPriceUsd","subPriceUpdatedAt","twStockTwd","otherTotalTwd","externalCashflows","privacyMode","coverTheme","notes","marketState","hotRank","dcaActive","dcaCompleted","dcaPoolUsd","dcaLastDate","dcaNextDueDate","riskOffCycleId","riskOnCycleId","strategyPhase","parametersLocked","hotAsset"]);
+const PERSONAL_KEYS = new Set(["sharesTqqq","sharesQqq","sharesSpy","sharesSpyi","sharesQqqi","cashUsd","otherUsd","usdtwd","currency","exchangeRateUpdatedDate","exchangeRateUpdatedAt","exchangeRateSourceUpdatedAt","exchangeRateNextUpdateAt","exchangeRateLastAttemptDate","exchangeRateLastError","exchangeRateProvider","autoSnapshotMarketDate","autoSnapshotUpdatedAt","autoSnapshotLastError","autoSnapshotSource","ftUsd","ftUpdatedAt","subUsd","subSymbol","subShares","subCashUsd","subAvgCostUsd","subPriceUsd","subPriceUpdatedAt","twStockTwd","otherTotalTwd","externalCashflows","privacyMode","coverTheme","notes","marketState","hotRank","dcaActive","dcaCompleted","dcaPoolUsd","dcaLastDate","dcaNextDueDate","riskOffCycleId","riskOnCycleId","strategyPhase","parametersLocked","hotAsset"]);
 const pickExternalAccountState = source => EXTERNAL_ACCOUNT_FIELDS.reduce((out,key)=>{out[key]=source?.[key];return out;},{});
 const computeSubAccountValue = data => {
     const symbol=String(data?.subSymbol||'').toUpperCase();
@@ -269,29 +279,33 @@ const computeSubAccountValue = data => {
     const unrealizedUsd=costBasisUsd>0?stockValueUsd-costBasisUsd:0;
     return {symbol,shares,cashUsd,priceUsd,avgCostUsd,holdingMode,stockValueUsd,valueUsd,costBasisUsd,unrealizedUsd};
 };
-const computePortfolioSummary = (data, strategyUsdValue) => {
+const computePortfolioSummary = (data, strategyUsdValue, displayCurrency='TWD') => {
     const rate=getNum(data?.usdtwd)||1;
+    const currency=String(displayCurrency||'TWD').toUpperCase()==='USD'?'USD':'TWD';
     const strategyUsd=getNum(strategyUsdValue);
     const ftUsd=getNum(data?.ftUsd), subAccount=computeSubAccountValue(data), subUsd=subAccount.valueUsd;
     const twStockTwd=getNum(data?.twStockTwd), otherTotalTwd=getNum(data?.otherTotalTwd);
     const totalTwd=(strategyUsd+ftUsd+subUsd)*rate+twStockTwd+otherTotalTwd;
-    const cards=[
-        {key:'ib',label:'IB 策略帳戶',amountText:`US$ ${money(strategyUsd,2)}`,note:'唯一參與 TQQQ 策略',ratio:totalTwd>0?strategyUsd*rate/totalTwd:0},
-        {key:'ft',label:'Firstrade',amountText:`US$ ${money(ftUsd,2)}`,note:'只計入總資產',ratio:totalTwd>0?ftUsd*rate/totalTwd:0},
-        {key:'sub',label:'複委託',amountText:`US$ ${money(subUsd,2)}`,note:subAccount.holdingMode?`${subAccount.symbol} ${money(subAccount.shares,4)} 股＋現金`:'手動淨值；只計入總資產',ratio:totalTwd>0?subUsd*rate/totalTwd:0},
-        {key:'tw',label:'台股',amountText:`NT$ ${money(twStockTwd,0)}`,note:'只計入總資產',ratio:totalTwd>0?twStockTwd/totalTwd:0},
-        {key:'other',label:'其他股票資產',amountText:`NT$ ${money(otherTotalTwd,0)}`,note:'其他券商、證券或投資現金',ratio:totalTwd>0?otherTotalTwd/totalTwd:0}
-    ];
+    const totalUsd=rate>0?totalTwd/rate:0;
     const externalTwd=Math.max(0,totalTwd-strategyUsd*rate);
-    return {rate,strategyUsd,ftUsd,subUsd,subAccount,twStockTwd,otherTotalTwd,externalTwd,totalTwd,totalDisplay:`NT$ ${money(totalTwd,0)}`,strategyDisplay:`US$ ${money(strategyUsd,2)}`,cards};
+    const externalUsd=rate>0?externalTwd/rate:0;
+    const display=(usd,twd,digitsUsd=2)=>currency==='USD'?`US$ ${money(usd,digitsUsd)}`:`NT$ ${money(twd,0)}`;
+    const cards=[
+        {key:'ib',label:'IB 策略帳戶',amountText:display(strategyUsd,strategyUsd*rate),note:'唯一參與 TQQQ 策略',ratio:totalTwd>0?strategyUsd*rate/totalTwd:0},
+        {key:'ft',label:'Firstrade',amountText:display(ftUsd,ftUsd*rate),note:'只計入總資產',ratio:totalTwd>0?ftUsd*rate/totalTwd:0},
+        {key:'sub',label:'複委託',amountText:display(subUsd,subUsd*rate),note:subAccount.holdingMode?`${subAccount.symbol} ${money(subAccount.shares,4)} 股＋現金`:'手動淨值；只計入總資產',ratio:totalTwd>0?subUsd*rate/totalTwd:0},
+        {key:'tw',label:'台股',amountText:display(rate>0?twStockTwd/rate:0,twStockTwd),note:'只計入總資產',ratio:totalTwd>0?twStockTwd/totalTwd:0},
+        {key:'other',label:'其他股票資產',amountText:display(rate>0?otherTotalTwd/rate:0,otherTotalTwd),note:'其他券商、證券或投資現金',ratio:totalTwd>0?otherTotalTwd/totalTwd:0}
+    ];
+    return {rate,currency,strategyUsd,ftUsd,subUsd,subAccount,twStockTwd,otherTotalTwd,externalTwd,externalUsd,totalTwd,totalUsd,totalDisplay:display(totalUsd,totalTwd),strategyDisplay:display(strategyUsd,strategyUsd*rate),externalDisplay:display(externalUsd,externalTwd),cards};
 };
 const withPortfolioSnapshot = (raw, reason='save') => {
     const normalized=normalizeData(raw);
     const strategyUsd=getNum(evaluateStrategy(normalized).totalUsd);
     const summary=computePortfolioSummary(normalized,strategyUsd);
-    const date=todayStr();
-    const snapshot={date,createdAt:new Date().toISOString(),strategyUsd,totalTwd:summary.totalTwd,rate:summary.rate,rateUpdatedDate:normalized.exchangeRateUpdatedDate||date,rateProvider:normalized.exchangeRateProvider||"手動",ftUsd:summary.ftUsd,subUsd:summary.subUsd,subSymbol:summary.subAccount.symbol,subShares:summary.subAccount.shares,subCashUsd:summary.subAccount.cashUsd,subPriceUsd:summary.subAccount.priceUsd,twStockTwd:summary.twStockTwd,otherTotalTwd:summary.otherTotalTwd,reason};
-    const list=(Array.isArray(normalized.portfolioHistory)?normalized.portfolioHistory:[]).filter(x=>x.date!==date);
+    const date=(reason==='price_update'?(normalized.marketCloseDate||normalized.marketDate):latestCompletedUsTradingDay())||todayStr();
+    const snapshot={date:String(date).slice(0,10),createdAt:new Date().toISOString(),strategyUsd,totalTwd:summary.totalTwd,rate:summary.rate,rateUpdatedDate:normalized.exchangeRateUpdatedDate||String(date).slice(0,10),rateProvider:normalized.exchangeRateProvider||"手動",ftUsd:summary.ftUsd,ftUpdatedAt:normalized.ftUpdatedAt||"",subUsd:summary.subUsd,subSymbol:summary.subAccount.symbol,subShares:summary.subAccount.shares,subCashUsd:summary.subAccount.cashUsd,subPriceUsd:summary.subAccount.priceUsd,twStockTwd:summary.twStockTwd,otherTotalTwd:summary.otherTotalTwd,reason,auto:false,source:'app'};
+    const list=(Array.isArray(normalized.portfolioHistory)?normalized.portfolioHistory:[]).filter(x=>x.date!==String(date).slice(0,10));
     list.push(snapshot);
     list.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
     return normalizeData({...normalized,portfolioHistory:list.slice(-1200)});
@@ -904,7 +918,9 @@ const App = () => {
         showToast(ok ? "已同步目前正式狀態" : "同步失敗");
     };
     const saveExternalAccounts = async (source=data, successText="已儲存其他券商與今日快照") => {
-        const prepared=normalizeData({...source,subUsd:computeSubAccountValue(source).valueUsd});
+        const nowIso=new Date().toISOString();
+        const ftChanged=getNum(source?.ftUsd)!==getNum(committedDataRef.current?.ftUsd);
+        const prepared=normalizeData({...source,ftUpdatedAt:ftChanged||!source?.ftUpdatedAt?nowIso:source.ftUpdatedAt,subUsd:computeSubAccountValue(source).valueUsd});
         const externalPatch=pickExternalAccountState(prepared);
         const base=normalizeData({...committedData,...externalPatch,portfolioHistory:prepared.portfolioHistory||committedData.portfolioHistory||[]});
         const formalBase=withPortfolioSnapshot(base,'external_account');
@@ -1107,7 +1123,7 @@ const App = () => {
     };
     const previewData = useMemo(() => buildPreviewData(data, previewScenario), [data, previewScenario]);
     const metrics = useMemo(() => evaluateStrategy(previewData), [previewData]);
-    const portfolio = useMemo(() => computePortfolioSummary(previewData, metrics.totalUsd), [previewData.ftUsd, previewData.subUsd, previewData.subSymbol, previewData.subShares, previewData.subCashUsd, previewData.subAvgCostUsd, previewData.subPriceUsd, previewData.twStockTwd, previewData.otherTotalTwd, previewData.usdtwd, metrics.totalUsd]);
+    const portfolio = useMemo(() => computePortfolioSummary(previewData, metrics.totalUsd, historyCurrency), [previewData.ftUsd, previewData.subUsd, previewData.subSymbol, previewData.subShares, previewData.subCashUsd, previewData.subAvgCostUsd, previewData.subPriceUsd, previewData.twStockTwd, previewData.otherTotalTwd, previewData.usdtwd, metrics.totalUsd, historyCurrency]);
     const scrollHomeTo = useCallback((idx) => {
         const el = homeSliderRef.current;
         if (!el) return;
@@ -1307,7 +1323,7 @@ const App = () => {
                 React.createElement("div", { className:"desktop-status-pill flex gap-2" },
                     React.createElement(Pill, { tone: hasDraftChanges ? "amber" : "green" }, hasDraftChanges ? "草稿未存" : "已儲存"),
                     React.createElement(Pill, { tone: user && !user.isAnonymous ? "green" : "amber" }, user && !user.isAnonymous ? "Google" : "本機")),
-                React.createElement("button", { onClick:toggleHistoryCurrency, className:"history-currency-toggle min-w-[52px] h-11 px-2 rounded-2xl bg-white text-slate-800 border border-slate-200 text-[12px] font-black shadow-lg active:scale-95", title:`歷史損益圖目前顯示 ${historyCurrency==="TWD"?"新台幣":"美元"}；點擊切換` }, historyCurrency==="TWD"?"NT$":"US$"),
+                React.createElement("button", { onClick:toggleHistoryCurrency, className:"history-currency-toggle min-w-[52px] h-11 px-2 rounded-2xl bg-white text-slate-800 border border-slate-200 text-[12px] font-black shadow-lg active:scale-95", title:`全站資產目前顯示 ${historyCurrency==="TWD"?"新台幣":"美元"}；點擊切換` }, historyCurrency==="TWD"?"NT$":"US$"),
                 React.createElement("button", { onClick:()=>setUiPreference('privacyMode',!data.privacyMode), className:`w-11 h-11 rounded-2xl text-lg font-black shadow-lg active:scale-95 ${data.privacyMode?'bg-brand-600 text-white':'bg-white text-slate-700 border border-slate-200'}`, title:data.privacyMode?"顯示金額":"隱藏金額" }, data.privacyMode ? "◉" : "◎"),
                 React.createElement("button", { onClick: fetchPrices, disabled: loadingPrice, className: `w-11 h-11 rounded-2xl text-white text-lg font-black shadow-lg active:scale-95 disabled:opacity-50 ${updateSuccess?"bg-emerald-600 update-success":"bg-slate-950"}`, title:updateSuccess?"更新成功":loadingFx?"正在更新匯率":"更新股價並檢查今日匯率" }, loadingPrice ? "…" : updateSuccess ? "✓" : "↻"))));
     const freshnessInfo = useMemo(() => {
@@ -1342,6 +1358,12 @@ const App = () => {
                 data.exchangeRateLastError&&React.createElement("div", { className:"text-[10px] font-bold text-amber-700 mt-2 leading-relaxed" }, `錯誤：${data.exchangeRateLastError}`),
                 React.createElement("div", { className:"text-[10px] font-bold text-slate-500 mt-2 leading-relaxed" }, data.exchangeRateUpdatedAt?`本機更新：${new Date(data.exchangeRateUpdatedAt).toLocaleString('zh-TW')}`:"尚未線上更新"),
                 React.createElement("a", { href:"https://www.exchangerate-api.com", target:"_blank", rel:"noreferrer", className:"inline-block text-[10px] font-black text-blue-700 underline mt-2" }, "Rates By Exchange Rate API")),
+            React.createElement("div", { className:"bg-emerald-50 border border-emerald-100 rounded-2xl p-3" },
+                React.createElement("div", { className:"text-[10px] font-black text-emerald-700" }, "盤後自動快照"),
+                React.createElement("div", { className:"font-black text-sm text-slate-900 mt-1" }, data.autoSnapshotMarketDate||"尚未由雲端執行"),
+                React.createElement(Pill, { tone:data.autoSnapshotLastError?'amber':data.autoSnapshotMarketDate?'green':'slate' }, data.autoSnapshotLastError?'最近一次失敗':data.autoSnapshotMarketDate?'已自動記錄':'待設定'),
+                React.createElement("div", { className:"text-[10px] font-bold text-slate-500 mt-2 leading-relaxed" }, data.autoSnapshotUpdatedAt?`更新：${new Date(data.autoSnapshotUpdatedAt).toLocaleString('zh-TW')}｜FT 使用最後手動淨值`:'需完成 GitHub Actions 一次性設定；登入後手動更新會覆蓋同一美股交易日。'),
+                data.autoSnapshotLastError&&React.createElement("div", { className:"text-[10px] font-bold text-amber-700 mt-2" }, data.autoSnapshotLastError)),
             React.createElement("div", { className:"bg-slate-50 border border-slate-100 rounded-2xl p-3" }, React.createElement("div", { className:"text-[10px] font-black text-slate-500" }, "正式資料"), React.createElement("div", { className:"font-black text-sm text-slate-900 mt-1" }, hasDraftChanges ? '草稿尚未儲存' : '已正式儲存'), React.createElement(Pill, { tone:hasDraftChanges?'amber':'green' }, hasDraftChanges?'待執行':'正常')),
             React.createElement("div", { className:"bg-slate-50 border border-slate-100 rounded-2xl p-3 sm:col-span-2 lg:col-span-4" }, React.createElement("div", { className:"text-[10px] font-black text-slate-500 mb-1" }, "資料來源"), React.createElement("div", { className:"text-xs font-bold text-slate-700 leading-relaxed" }, `SPY：${data.priceSources?.SPY || '-'}｜QQQ：${data.priceSources?.QQQ || '-'}｜TQQQ：${data.priceSources?.TQQQ || '-'}｜${data.hotAsset||'QQQ'}：${data.priceSources?.[data.hotAsset||'QQQ'] || '-'}`), React.createElement("div", { className:"text-xs font-black text-brand-700 mt-2" }, "SPY／QQQ 200SMA 採手動輸入；匯率更新只影響資產顯示，不參與 IB 策略訊號。"))));
     const renderDraftNumInput = (field, label, suffix="", hint="") => {
@@ -1450,7 +1472,7 @@ const App = () => {
                         React.createElement("div", { className:"mt-1 text-[10px] font-bold text-white/60" }, "唯一參與 TQQQ 策略")),
                     React.createElement("button", { onClick:()=>setShowAccountSheet(true), className:"rounded-[24px] bg-white/75 border border-white/90 p-4 text-left active:scale-[.98]" },
                         React.createElement("div", { className:"text-[10px] font-black text-slate-500" }, "其他帳戶合計　›"),
-                        React.createElement("div", { className:"mt-2 text-lg font-black text-slate-950 privacy-value" }, `NT$ ${money(portfolio.externalTwd,0)}`),
+                        React.createElement("div", { className:"mt-2 text-lg font-black text-slate-950 privacy-value" }, portfolio.externalDisplay),
                         React.createElement("div", { className:"mt-1 text-[10px] font-bold text-slate-500" }, "點開查看 FT、複委託、台股與其他"))),
                     React.createElement("button", { onClick:openQuickUpdateSheet, className:"action-blue-button quick-update-home-button w-full mt-3 py-4 rounded-[22px] bg-blue-600 text-white font-black shadow-lg" }, "↻ 快速更新 FT／複委託資產")));
 
@@ -1549,7 +1571,7 @@ const App = () => {
                 React.createElement("div", { className:"mt-3 rounded-2xl bg-slate-950 text-white p-4" },
                     React.createElement("div", { className:"text-[10px] font-black text-white/60" }, "目前總覽"),
                     React.createElement("div", { className:"mt-2 text-2xl font-black" }, portfolio.totalDisplay),
-                    React.createElement("div", { className:"mt-1 text-xs font-bold text-white/70" }, `IB 策略 ${portfolio.strategyDisplay}｜FT US$ ${money(portfolio.ftUsd,2)}｜複委託 US$ ${money(portfolio.subUsd,2)}｜台股 NT$ ${money(portfolio.twStockTwd,0)}`))
+                    React.createElement("div", { className:"mt-1 text-xs font-bold text-white/70" }, `IB ${portfolio.cards[0].amountText}｜FT ${portfolio.cards[1].amountText}｜複委託 ${portfolio.cards[2].amountText}｜台股 ${portfolio.cards[3].amountText}`))
             ) }),
         Collapsible({ id: "scenario", title: "QQQ 情境模擬", desc: "需要時再展開。", children: ScenarioCard() }),
         Collapsible({ id: "marketStatus", title: "市場資料狀態", desc: "資料日期、來源與新鮮度。", children: FreshnessCard() }),
@@ -1739,7 +1761,7 @@ const App = () => {
         const rangeButtons=rangeOptions.map(([id,label])=>React.createElement("button",{key:id,onClick:()=>onRange(id),className:`history-option shrink-0 min-w-[64px] px-4 py-2.5 rounded-full text-xs font-black snap-start ${range===id?"is-active":""}`},label));
         const controls=React.createElement("div",{className:"flex gap-2 mt-4 overflow-x-auto pb-1 snap-x snap-mandatory",role:"tablist","aria-label":"圖表期間"},rangeButtons);
         const noteText=mode==='IB'?'IB 主策略仍是預設與核心績效；FT、複委託資料不參與任何策略訊號或交易計算。':mode==='FT'?'FT 只使用你輸入的 Total Account Value 快照，不追蹤短線持股明細。':mode==='SUB'?(portfolio.subAccount.holdingMode?`複委託以 ${portfolio.subAccount.symbol} 股數、股價與現金自動估值。`:'複委託尚未設定單一股票，暫時使用手動淨值。'):'全部股票資產為 IB、FT、複委託、台股與其他資產加總；已記錄的資金流會從損益中扣除。';
-        const note=React.createElement("div",{className:"mt-3 text-[10px] font-bold text-white/40 leading-relaxed"},`${noteText}｜目前統一以 ${historyCurrency==="TWD"?"新台幣":"美元"} 顯示，可用頁首 US$／NT$ 鍵切換。`);
+        const note=React.createElement("div",{className:"mt-3 text-[10px] font-bold text-white/40 leading-relaxed"},`${noteText}｜目前統一以 ${historyCurrency==="TWD"?"新台幣":"美元"} 顯示，可用頁首 US$／NT$ 鍵切換；總覽與帳戶明細會同步切換。`);
         return React.createElement(Card,{className:"history-performance-card p-5 mb-4 overflow-hidden text-white"},header,summary,chartBox,controls,note);
     };
     const CalendarCard = ({logs}) => {
