@@ -1,110 +1,66 @@
-股票資產 PWA v4.5｜修正測試報告
+股票資產 PWA v4.9｜每日線上匯率版
+測試日期：2026-08-01（台灣時間）
 
-ZIP SHA-256：1ea40fb94cc266b1206b07f8ac13052d7635cb4a7ce32f8f6aec5b8f9ac268e0
+一、本版新增
+1. 每天第一次開啟 App，自動檢查 USD/TWD；同一天已嘗試過就不重複連線。
+2. 頁首「↻」更新股價時，同時檢查今日匯率。
+3. 市場資料狀態頁新增 USD/TWD 卡片、更新時間、錯誤原因與「立即更新」。
+4. 線上更新失敗時保留上一個成功匯率，不影響股價更新與 IB 主策略。
+5. 每日資產快照保存當日匯率、匯率日期與來源。
+6. 歷史損益圖切換 NT$ 時，優先使用各日期快照匯率；舊快照缺少匯率時才使用目前匯率估算。
+7. 保留手動修改 USD/TWD；手動輸入會標記為手動匯率。
+8. Service Worker 對線上匯率 API 不做快取，app.js、app.css、pwa.js 仍採網路優先。
 
-本次修正：
-- 複委託加入明顯可見的藍色「更新複委託股價」按鈕。
-- FT、複委託、台股等外部帳戶輸入改為欄位內局部狀態；每輸入一個字不再更新整個 App。
-- 歷史損益圖改用固定深色背景與明確文字顏色，未選取與已選取按鈕都可直接看見。
-- IB 執行、快照與人工 HOT 紀錄：同一天同類型只保留最新一筆；入金／出金仍保留每一筆。
-- IB 主策略核心計算完全未修改。
+二、匯率來源
+- 來源：ExchangeRate-API Open Access endpoint。
+- 官方規格：無需 API Key、資料每日更新一次、允許快取並要求來源標示。
+- App 已加入「Rates By Exchange Rate API」來源標示。
+- 2026-08-01 線上驗證 endpoint 回傳 result=success，且包含 TWD、資料更新時間及下次更新時間。
 
-檢查結果：
-- 檔案 index.html：通過
-- 檔案 manifest.webmanifest：通過
-- 檔案 service-worker.js：通過
-- 檔案 assets/app.js：通過
-- 檔案 assets/app.css：通過
-- 檔案 assets/tailwind.css：通過
-- 檔案 assets/pwa.js：通過
-- 檔案 icons/icon-192.png：通過
-- 檔案 icons/icon-512.png：通過
-- 檔案 icons/icon-maskable-512.png：通過
-- 檔案 icons/favicon-64.png：通過
-- JavaScript 語法 assets/app.js：通過
-- JavaScript 語法 assets/pwa.js：通過
-- JavaScript 語法 service-worker.js：通過
-- HTML 解析：通過
-- Manifest standalone：通過
-- Manifest scope：通過
-- Manifest 圖示 ./icons/icon-192.png：通過
-- Manifest 圖示 ./icons/icon-512.png：通過
-- Manifest 圖示 ./icons/icon-maskable-512.png：通過
-- 圖示尺寸 icons/icon-192.png：(192, 192)
-- 圖示尺寸 icons/icon-512.png：(512, 512)
-- 圖示尺寸 icons/icon-maskable-512.png：(512, 512)
-- 圖示尺寸 icons/favicon-64.png：(64, 64)
-- index 引用 ./assets/app.js：通過
-- index 引用 ./assets/app.css：通過
-- index 引用 ./assets/tailwind.css：通過
-- index 引用 ./assets/pwa.js：通過
-- index 引用 ./manifest.webmanifest：通過
-- 複委託更新按鈕：通過
-- 更新按鈕強制可見：通過
-- 外部帳戶穩定輸入：通過
-- 歷史圖選項可讀：通過
-- 同日紀錄覆蓋：通過
-- 舊 targetRows 錯誤：通過
-- PWA 快取版本：通過
-- IB 核心未變 evaluateStrategy：f818929ecd36e4a8
-- IB 核心未變 applyExecutionState：f88b0a282e07019c
-- Service Worker 快取 ./index.html：通過
-- Service Worker 快取 ./manifest.webmanifest：通過
-- Service Worker 快取 ./assets/tailwind.css：通過
-- Service Worker 快取 ./assets/app.css：通過
-- Service Worker 快取 ./assets/app.js：通過
-- Service Worker 快取 ./assets/pwa.js：通過
-- Service Worker 快取 ./icons/icon-192.png：通過
-- Service Worker 快取 ./icons/icon-512.png：通過
-- Service Worker 快取 ./icons/icon-maskable-512.png：通過
-- Service Worker 快取 ./icons/favicon-64.png：通過
-- 邏輯測試：v4.5 logic tests passed: 1012 + daily overwrite cases
-- Service Worker 模擬：{
-  "listeners": [
-    "activate",
-    "fetch",
-    "install",
-    "message"
-  ],
-  "cacheNames": [
-    "stock-assets-pwa-v4.5.0-input-history-fix-20260731-app"
-  ],
-  "shellEntries": 11
-}
-- 介面渲染測試：  "text": "本年至今",
-      "color": "rgb(226, 232, 240)",
-      "fill": "rgb(226, 232, 240)",
-      "bg": "rgba(255, 255, 255, 0.1)",
-      "active": false
-    },
-    {
-      "text": "1年",
-      "color": "rgb(226, 232, 240)",
-      "fill": "rgb(226, 232, 240)",
-      "bg": "rgba(255, 255, 255, 0.1)",
-      "active": false
-    },
-    {
-      "text": "最長",
-      "color": "rgb(226, 232, 240)",
-      "fill": "rgb(226, 232, 240)",
-      "bg": "rgba(255, 255, 255, 0.1)",
-      "active": false
-    }
-  ]
-}
-- ZIP index.html：通過
-- ZIP manifest.webmanifest：通過
-- ZIP service-worker.js：通過
-- ZIP assets/app.js：通過
-- ZIP assets/app.css：通過
-- ZIP assets/tailwind.css：通過
-- ZIP assets/pwa.js：通過
-- ZIP icons/icon-192.png：通過
-- ZIP icons/icon-512.png：通過
-- ZIP icons/icon-maskable-512.png：通過
-- ZIP icons/favicon-64.png：通過
-- ZIP 無多餘外層資料夾：通過
+三、測試結果
+- JavaScript 語法：app.js、pwa.js、service-worker.js 全部通過。
+- HTML 與 Manifest：通過。
+- PWA 靜態檢查：29／29 通過。
+- 匯率純邏輯測試：12／12 通過。
+  - 同日跳過
+  - 跨日更新
+  - 手動強制更新
+  - 成功解析與四位小數
+  - HTTP 429 錯誤
+  - 異常匯率拒絕
+  - 快照保存匯率、日期、來源
+- App 自動更新整合測試：5／5 通過。
+  - 第一次開啟抓取一次
+  - 寫入本機資料
+  - 保存來源與日期
+  - 同一天重新開啟不重抓
+- 離線／失敗測試：4／4 通過。
+  - 失敗只嘗試一次
+  - 原匯率維持不變
+  - 錯誤原因保存
+  - 今日嘗試日期保存
+- 介面渲染：19／19 情境通過。
+  - 首頁
+  - 10 個設定子頁
+  - IB／全部／FT／複委託 × US$／NT$
+- IB 主策略外部帳戶隔離：1,000／1,000 通過。
+- 匯率變化不影響 IB 訊號與目標股數：1,000／1,000 通過。
+- evaluateStrategy：與 v4.8 完全一致。
+  SHA-256 前 16 碼：0733a52a3f621ca1
+- applyExecutionState：與 v4.8 完全一致。
+  SHA-256 前 16 碼：34fbb0e4ef5e4aaf
+- PWA 圖示尺寸：64、192、512、Maskable 512 全部正確。
 
-測試限制：
-- 隔離環境無法連線外部 React、Firebase、Finnhub CDN；已完成語法、邏輯、Service Worker 模擬與本機 Chromium 相容渲染測試。實際行情更新仍需在 GitHub Pages 網址上以網路測試。
+四、環境限制
+測試環境的容器 DNS 無法直接對外請求，因此實際 endpoint 可用性以線上 Web 驗證確認；App 成功、失敗、同日跳過與離線沿用流程，均使用相同回傳格式進行整合測試。
+
+五、上傳內容
+請解壓縮後，將以下內容覆蓋上傳到 GitHub Repository 最外層：
+- index.html
+- manifest.webmanifest
+- service-worker.js
+- .nojekyll
+- assets/
+- icons/
+
+看到「股票資產已有新版」後按「套用新版」。

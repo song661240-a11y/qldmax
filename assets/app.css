@@ -388,3 +388,30 @@ button.text-slate-700{
 
 /* v4.7｜次要說明文字也維持清楚，不使用過淡灰字。 */
 .text-slate-400{color:#64748b!important;}
+
+/* PWA v4.9｜每日線上匯率與歷史快照換算 */
+.settings-input-stable{
+  overflow-anchor:none;
+}
+.settings-input-stable input,
+.settings-input-stable textarea,
+.settings-input-stable select,
+.stable-draft-field{
+  overflow-anchor:none;
+}
+.settings-input-stable input,
+.settings-input-stable textarea,
+.settings-input-stable select{
+  scroll-margin-top:112px;
+}
+.history-currency-toggle{
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+@media(max-width:390px){
+  .history-currency-toggle{min-width:46px!important;padding-left:6px!important;padding-right:6px!important;font-size:10px!important;}
+  .mobile-header-title h1{font-size:17px!important;}
+}
+@media(max-width:767px){
+  input,textarea,select{font-size:16px!important;}
+}

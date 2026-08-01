@@ -1,19 +1,19 @@
-const CACHE_VERSION = "stock-assets-pwa-v4.7.0-contrast-audit-20260801";
+const CACHE_VERSION = "stock-assets-pwa-v4.9.0-daily-fx-20260801";
 const APP_CACHE = `${CACHE_VERSION}-app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./manifest.webmanifest?v=4.7.0",
-  "./assets/tailwind.css?v=4.7.0",
-  "./assets/app.css?v=4.7.0",
-  "./assets/app.js?v=4.7.0",
-  "./assets/pwa.js?v=4.7.0",
-  "./icons/icon-192.png?v=4.7.0",
-  "./icons/icon-512.png?v=4.7.0",
-  "./icons/icon-maskable-512.png?v=4.7.0",
-  "./icons/favicon-64.png?v=4.7.0"
+  "./manifest.webmanifest?v=4.9.0",
+  "./assets/tailwind.css?v=4.9.0",
+  "./assets/app.css?v=4.9.0",
+  "./assets/app.js?v=4.9.0",
+  "./assets/pwa.js?v=4.9.0",
+  "./icons/icon-192.png?v=4.9.0",
+  "./icons/icon-512.png?v=4.9.0",
+  "./icons/icon-maskable-512.png?v=4.9.0",
+  "./icons/favicon-64.png?v=4.9.0"
 ];
 
 self.addEventListener("install", event => {
@@ -40,6 +40,7 @@ self.addEventListener("message", event => {
 
 const isLiveDataRequest = url =>
   url.hostname.includes("finnhub.io") ||
+  url.hostname.includes("open.er-api.com") ||
   url.hostname.includes("googleapis.com") ||
   url.hostname.includes("firebase") ||
   url.hostname.includes("google.com");
@@ -70,7 +71,7 @@ self.addEventListener("fetch", event => {
 
   const url = new URL(request.url);
 
-  // 行情、Firebase 與登入資料永遠走網路，不寫入快取。
+  // 行情、匯率、Firebase 與登入資料永遠走網路，不寫入快取。
   if (isLiveDataRequest(url)) return;
 
   // HTML 採網路優先，避免 GitHub Pages 更新後仍顯示舊版。
@@ -91,7 +92,7 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // app.css、app.js、pwa.js 與 Tailwind 採網路優先；v4.7 重新產生完整 Tailwind 樣式，避免文字與背景同色。
+  // app.css、app.js、pwa.js 與 Tailwind 採網路優先；v4.9 採網路優先，並保留完整 Tailwind 樣式。
   if (url.origin === self.location.origin && isCoreAppAsset(url)) {
     event.respondWith(networkFirst(request));
     return;
