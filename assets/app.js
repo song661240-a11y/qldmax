@@ -14,12 +14,23 @@ if (HAS_FIREBASE && !firebase.apps.length)
 const auth = HAS_FIREBASE ? firebase.auth() : null;
 const db = HAS_FIREBASE ? firebase.firestore() : null;
 const DOC_PATH = ["strategyDashboards", "tqqq-qqq200-main"];
-const APP_VERSION = "股票資產 PWA v5.1｜全站幣別＋盤後自動快照＋Node.js 24";
+const APP_VERSION = "股票資產 PWA v5.2｜安全測試寫入＋紀錄回收區";
 const STRATEGY_ID = "tqqq-spy200";
 const STRATEGY_VERSION = "SPY200-4-3-HOT-19-24-28";
 const RECORD_SCHEMA_VERSION = 2;
 const LOCAL_KEY = "tqqqSpy200PermanentV7";
 const BACKUP_KEY = LOCAL_KEY + "_backupCardsV1";
+const TRASH_KEY = LOCAL_KEY + "_recordTrashV1";
+const readLocalTrash = () => {
+    try {
+        const raw=localStorage.getItem(TRASH_KEY);
+        const list=raw?JSON.parse(raw):[];
+        return Array.isArray(list)?list.map(normalizeRecord):[];
+    } catch(e){ return []; }
+};
+const writeLocalTrash = list => {
+    try { localStorage.setItem(TRASH_KEY,JSON.stringify((Array.isArray(list)?list:[]).map(normalizeRecord).slice(0,2400))); } catch(e) {}
+};
 const readStoredObject = (suffix = "") => {
     try {
         const raw = localStorage.getItem(LOCAL_KEY + suffix);
@@ -114,6 +125,7 @@ const DEFAULT = {
     sharesTqqq: 0, sharesQqq: 0, sharesSpy: 0, sharesSpyi: 0, sharesQqqi: 0, cashUsd: 0, otherUsd: 0, usdtwd: 32, currency: "USD",
     exchangeRateUpdatedDate: "", exchangeRateUpdatedAt: "", exchangeRateSourceUpdatedAt: "", exchangeRateNextUpdateAt: "", exchangeRateLastAttemptDate: "", exchangeRateLastError: "", exchangeRateProvider: "",
     autoSnapshotMarketDate: "", autoSnapshotUpdatedAt: "", autoSnapshotLastError: "", autoSnapshotSource: "",
+    autoSnapshotTestAt: "", autoSnapshotTestStatus: "", autoSnapshotTestMarketDate: "", autoSnapshotTestTotalTwd: 0,
     ftUsd: 0, ftUpdatedAt: "", subUsd: 0, twStockTwd: 0, otherTotalTwd: 0,
     subSymbol: "", subShares: 0, subCashUsd: 0, subAvgCostUsd: 0, subPriceUsd: 0, subPriceUpdatedAt: "",
     externalCashflows: [],
@@ -146,6 +158,8 @@ const normalizeRecord = raw => {
             actions: Array.isArray(r.actions)?r.actions:[], notes:r.notes || '', deletedAt:r.deletedAt || null
         };
     canonical.recordSchemaVersion=RECORD_SCHEMA_VERSION;
+    const deletedRaw=canonical.deletedAt;
+    canonical.deletedAt=deletedRaw?.toDate?deletedRaw.toDate().toISOString():(deletedRaw?String(deletedRaw):null);
     canonical.cashflow=canonical.cashflow||{type:'',amountUsd:0,date:'',note:''};
     const after=canonical.holdings?.after||{};
     const archiveDate=canonical.dates?.execution||canonical.dates?.signal||canonical.dates?.marketClose||String(canonical.createdAt||'').slice(0,10);
@@ -248,6 +262,10 @@ const normalizeData = raw => {
     clean.autoSnapshotUpdatedAt=String(clean.autoSnapshotUpdatedAt||"");
     clean.autoSnapshotLastError=String(clean.autoSnapshotLastError||"").slice(0,240);
     clean.autoSnapshotSource=String(clean.autoSnapshotSource||"").slice(0,80);
+    clean.autoSnapshotTestAt=String(clean.autoSnapshotTestAt||"");
+    clean.autoSnapshotTestStatus=String(clean.autoSnapshotTestStatus||"").slice(0,120);
+    clean.autoSnapshotTestMarketDate=String(clean.autoSnapshotTestMarketDate||"").slice(0,10);
+    clean.autoSnapshotTestTotalTwd=Math.max(0,getNum(clean.autoSnapshotTestTotalTwd));
     clean.ftUpdatedAt=String(clean.ftUpdatedAt||"");
     clean.schemaVersion=2;
     clean.hotRank=Math.max(0,Math.min(3,parseInt(clean.hotRank)||0));
@@ -264,7 +282,7 @@ const normalizeData = raw => {
 };
 const EXTERNAL_ACCOUNT_FIELDS=["ftUsd","ftUpdatedAt","subUsd","subSymbol","subShares","subCashUsd","subAvgCostUsd","subPriceUsd","subPriceUpdatedAt","twStockTwd","otherTotalTwd","externalCashflows"];
 const EXTERNAL_ACCOUNT_KEYS=new Set(EXTERNAL_ACCOUNT_FIELDS);
-const PERSONAL_KEYS = new Set(["sharesTqqq","sharesQqq","sharesSpy","sharesSpyi","sharesQqqi","cashUsd","otherUsd","usdtwd","currency","exchangeRateUpdatedDate","exchangeRateUpdatedAt","exchangeRateSourceUpdatedAt","exchangeRateNextUpdateAt","exchangeRateLastAttemptDate","exchangeRateLastError","exchangeRateProvider","autoSnapshotMarketDate","autoSnapshotUpdatedAt","autoSnapshotLastError","autoSnapshotSource","ftUsd","ftUpdatedAt","subUsd","subSymbol","subShares","subCashUsd","subAvgCostUsd","subPriceUsd","subPriceUpdatedAt","twStockTwd","otherTotalTwd","externalCashflows","privacyMode","coverTheme","notes","marketState","hotRank","dcaActive","dcaCompleted","dcaPoolUsd","dcaLastDate","dcaNextDueDate","riskOffCycleId","riskOnCycleId","strategyPhase","parametersLocked","hotAsset"]);
+const PERSONAL_KEYS = new Set(["sharesTqqq","sharesQqq","sharesSpy","sharesSpyi","sharesQqqi","cashUsd","otherUsd","usdtwd","currency","exchangeRateUpdatedDate","exchangeRateUpdatedAt","exchangeRateSourceUpdatedAt","exchangeRateNextUpdateAt","exchangeRateLastAttemptDate","exchangeRateLastError","exchangeRateProvider","autoSnapshotMarketDate","autoSnapshotUpdatedAt","autoSnapshotLastError","autoSnapshotSource","autoSnapshotTestAt","autoSnapshotTestStatus","autoSnapshotTestMarketDate","autoSnapshotTestTotalTwd","ftUsd","ftUpdatedAt","subUsd","subSymbol","subShares","subCashUsd","subAvgCostUsd","subPriceUsd","subPriceUpdatedAt","twStockTwd","otherTotalTwd","externalCashflows","privacyMode","coverTheme","notes","marketState","hotRank","dcaActive","dcaCompleted","dcaPoolUsd","dcaLastDate","dcaNextDueDate","riskOffCycleId","riskOnCycleId","strategyPhase","parametersLocked","hotAsset"]);
 const pickExternalAccountState = source => EXTERNAL_ACCOUNT_FIELDS.reduce((out,key)=>{out[key]=source?.[key];return out;},{});
 const computeSubAccountValue = data => {
     const symbol=String(data?.subSymbol||'').toUpperCase();
@@ -684,6 +702,9 @@ const App = () => {
     const [loadingMoreRecords, setLoadingMoreRecords] = useState(false);
     const [resettingCloud, setResettingCloud] = useState(false);
     const [showMonthSheet, setShowMonthSheet] = useState(false);
+    const [showTrashSheet, setShowTrashSheet] = useState(false);
+    const [trashRecords, setTrashRecords] = useState(() => readLocalTrash());
+    const [loadingTrash, setLoadingTrash] = useState(false);
     const [cashflowType, setCashflowType] = useState("deposit");
     const [cashflowAmount, setCashflowAmount] = useState("");
     const [cashflowDate, setCashflowDate] = useState(todayStr());
@@ -1255,20 +1276,88 @@ const App = () => {
         decision:{title:metrics.title,allocation:metrics.alloc.label,immediate:metrics.immediateSignal,formalState:metrics.formalStateText,todayAction:metrics.todayAction},
         actions:metrics.actionLines, notes:data.notes, deletedAt:null
     });
+    const mergeTrashRecords = records => {
+        const map=new Map(readLocalTrash().map(r=>[r.recordId,normalizeRecord(r)]));
+        (Array.isArray(records)?records:[]).map(normalizeRecord).forEach(r=>map.set(r.recordId,r));
+        const list=[...map.values()].sort((a,b)=>String(b.deletedAt||b.createdAt||'').localeCompare(String(a.deletedAt||a.createdAt||'')));
+        writeLocalTrash(list);
+        setTrashRecords(list);
+        return list;
+    };
+    const loadTrashRecords = async () => {
+        setLoadingTrash(true);
+        try {
+            const local=readLocalTrash();
+            if(!recordsRef()){setTrashRecords(local);setShowTrashSheet(true);return;}
+            let cursor=null,all=[];
+            for(let pageNo=0;pageNo<100;pageNo++){
+                let q=recordsRef().orderBy("createdAt","desc").limit(200);
+                if(cursor)q=q.startAfter(cursor);
+                const snap=await q.get();
+                all.push(...snap.docs.map(d=>normalizeRecord({...d.data(),recordId:d.id})).filter(r=>r.deletedAt));
+                if(snap.docs.length<200)break;
+                cursor=snap.docs[snap.docs.length-1];
+            }
+            mergeTrashRecords([...local,...all]);
+            setShowTrashSheet(true);
+        } catch(e){
+            setTrashRecords(readLocalTrash());
+            setShowTrashSheet(true);
+            showToast('回收區雲端讀取失敗：'+e.message);
+        } finally { setLoadingTrash(false); }
+    };
+    const restoreTrashRecord = async item => {
+        if(!item?.recordId)return;
+        const restored=normalizeRecord({...item,deletedAt:null});
+        const nextHistory=replaceSameDayHistory(data.history,restored);
+        const nextTrash=trashRecords.filter(r=>r.recordId!==item.recordId);
+        setData(prev=>({...prev,history:nextHistory}));
+        setCommittedData(prev=>({...prev,history:nextHistory}));
+        writeLocalTrash(nextTrash);setTrashRecords(nextTrash);
+        try{localStorage.setItem(LOCAL_KEY+'_committed',JSON.stringify({...committedData,history:nextHistory}));}catch(e){}
+        if(recordsRef()){
+            try{await recordsRef().doc(item.recordId).set({deletedAt:null,restoredAt:new Date().toISOString(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}
+            catch(e){showToast('已還原本機，雲端還原失敗：'+e.message);return;}
+        }
+        showToast('已還原紀錄');
+    };
+    const restoreAllTrashRecords = async () => {
+        const list=trashRecords.length?trashRecords:readLocalTrash();
+        if(!list.length){showToast('回收區目前是空的');return;}
+        if(!confirm(`確定還原回收區內 ${list.length} 筆紀錄？同一天同類型仍只保留最新一筆。`))return;
+        setLoadingTrash(true);
+        try{
+            if(recordsRef()){
+                for(let i=0;i<list.length;i+=400){
+                    const batch=db.batch();
+                    list.slice(i,i+400).forEach(r=>batch.set(recordsRef().doc(r.recordId),{deletedAt:null,restoredAt:new Date().toISOString(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
+                    await batch.commit();
+                }
+            }
+            const merged=collapseDailyRecords([...data.history,...list.map(r=>({...r,deletedAt:null}))]);
+            setData(prev=>({...prev,history:merged}));setCommittedData(prev=>({...prev,history:merged}));
+            try{localStorage.setItem(LOCAL_KEY+'_committed',JSON.stringify({...committedData,history:merged}));}catch(e){}
+            writeLocalTrash([]);setTrashRecords([]);setShowTrashSheet(false);
+            showToast(`已還原 ${list.length} 筆紀錄`);
+        }catch(e){showToast('全部還原失敗：'+e.message);}finally{setLoadingTrash(false);}
+    };
     const deleteLog = async (target) => {
         const logs = Array.isArray(data.history) ? data.history : [];
         const item = typeof target === "number" ? logs[target] : target;
         if (!item) return;
         if(item.recordType==='cashflow'){alert('入金／出金紀錄不可直接刪除。請新增一筆相反方向、相同金額的資金流作為沖銷，才能保留完整稽核軌跡。');return;}
-        if (!confirm(`確定隱藏這筆紀錄？\n${item.timeText || ""}\n${item.signal || ""}\n${item.totalDisplay || ("$"+money(item.totalUsd,0))}`)) return;
+        if (!confirm(`確定把這筆紀錄移到回收區？\n${item.timeText || ""}\n${item.signal || ""}\n${item.totalDisplay || ("$"+money(item.totalUsd,0))}\n\n之後可從「回收區」還原。`)) return;
+        const deletedAt=new Date().toISOString();
+        const hiddenItem=normalizeRecord({...item,deletedAt});
+        mergeTrashRecords([hiddenItem]);
         const nextHistory=logs.filter(x => x.recordId !== item.recordId);
         setData(prev=>({...prev,history:nextHistory})); setCommittedData(prev=>({...prev,history:nextHistory}));
         try{localStorage.setItem(LOCAL_KEY+'_committed',JSON.stringify({...committedData,history:nextHistory}));}catch(e){}
         if(recordsRef()) { try {
-            await recordsRef().doc(item.recordId).set({deletedAt:new Date().toISOString(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+            await recordsRef().doc(item.recordId).set({deletedAt,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
             if(docRef()) await docRef().set({history:firebase.firestore.FieldValue.delete()},{merge:true});
-        } catch(e){ showToast('本機已隱藏，雲端標記失敗'); return; } }
-        showToast('已隱藏紀錄（舊內嵌紀錄也已清理）');
+        } catch(e){ showToast('已移到本機回收區，但雲端標記失敗'); return; } }
+        showToast('已移到回收區，可隨時還原');
     };
     const nextCheckText = () => "每日美股收盤後檢查，下一交易日執行";
     const confirmExecution = async () => {
@@ -1364,6 +1453,12 @@ const App = () => {
                 React.createElement(Pill, { tone:data.autoSnapshotLastError?'amber':data.autoSnapshotMarketDate?'green':'slate' }, data.autoSnapshotLastError?'最近一次失敗':data.autoSnapshotMarketDate?'已自動記錄':'待設定'),
                 React.createElement("div", { className:"text-[10px] font-bold text-slate-500 mt-2 leading-relaxed" }, data.autoSnapshotUpdatedAt?`更新：${new Date(data.autoSnapshotUpdatedAt).toLocaleString('zh-TW')}｜FT 使用最後手動淨值`:'需完成 GitHub Actions 一次性設定；登入後手動更新會覆蓋同一美股交易日。'),
                 data.autoSnapshotLastError&&React.createElement("div", { className:"text-[10px] font-bold text-amber-700 mt-2" }, data.autoSnapshotLastError)),
+            React.createElement("div", { className:"rounded-2xl bg-sky-50 border border-sky-100 p-3" },
+                React.createElement("div", { className:"text-[10px] font-black text-sky-700" }, "自動寫入安全測試"),
+                React.createElement("div", { className:"font-black text-sm text-slate-900 mt-1" }, data.autoSnapshotTestAt?"已成功寫入 Firebase":"尚未執行安全測試"),
+                React.createElement(Pill, { tone:data.autoSnapshotTestAt?'green':'slate' }, data.autoSnapshotTestAt?'測試通過':'待測試'),
+                React.createElement("div", { className:"text-[10px] font-bold text-slate-500 mt-2 leading-relaxed" }, data.autoSnapshotTestAt?`${new Date(data.autoSnapshotTestAt).toLocaleString('zh-TW')}｜交易日 ${data.autoSnapshotTestMarketDate||'-'}｜測試資產 NT$ ${money(data.autoSnapshotTestTotalTwd,0)}`:'到 GitHub Actions 手動執行，模式選「安全測試寫入」；不會改正式歷史曲線。'),
+                data.autoSnapshotTestStatus&&React.createElement("div", { className:"text-[10px] font-bold text-sky-700 mt-2" }, data.autoSnapshotTestStatus)),
             React.createElement("div", { className:"bg-slate-50 border border-slate-100 rounded-2xl p-3" }, React.createElement("div", { className:"text-[10px] font-black text-slate-500" }, "正式資料"), React.createElement("div", { className:"font-black text-sm text-slate-900 mt-1" }, hasDraftChanges ? '草稿尚未儲存' : '已正式儲存'), React.createElement(Pill, { tone:hasDraftChanges?'amber':'green' }, hasDraftChanges?'待執行':'正常')),
             React.createElement("div", { className:"bg-slate-50 border border-slate-100 rounded-2xl p-3 sm:col-span-2 lg:col-span-4" }, React.createElement("div", { className:"text-[10px] font-black text-slate-500 mb-1" }, "資料來源"), React.createElement("div", { className:"text-xs font-bold text-slate-700 leading-relaxed" }, `SPY：${data.priceSources?.SPY || '-'}｜QQQ：${data.priceSources?.QQQ || '-'}｜TQQQ：${data.priceSources?.TQQQ || '-'}｜${data.hotAsset||'QQQ'}：${data.priceSources?.[data.hotAsset||'QQQ'] || '-'}`), React.createElement("div", { className:"text-xs font-black text-brand-700 mt-2" }, "SPY／QQQ 200SMA 採手動輸入；匯率更新只影響資產顯示，不參與 IB 策略訊號。"))));
     const renderDraftNumInput = (field, label, suffix="", hint="") => {
@@ -1814,11 +1909,14 @@ const App = () => {
     const clearAllLogs = async () => {
         const logs=Array.isArray(data.history)?data.history:[];
         if(!logs.length){showToast('目前沒有紀錄');return;}
-        if(!confirm(`確定隱藏全部 ${logs.length} 筆紀錄？雲端會保留刪除標記。`))return;
+        if(!confirm(`確定把全部 ${logs.length} 筆紀錄移到回收區？\n\n資料不會永久刪除，可從「回收區」全部還原。`))return;
+        const deletedAt=new Date().toISOString();
+        const hidden=logs.map(r=>normalizeRecord({...r,deletedAt}));
+        mergeTrashRecords(hidden);
         setData(prev=>({...prev,history:[]})); setCommittedData(prev=>({...prev,history:[]}));
         try{localStorage.setItem(LOCAL_KEY+'_committed',JSON.stringify({...committedData,history:[]}));}catch(e){}
-        if(recordsRef()) { try { for(let i=0;i<logs.length;i+=400){const batch=db.batch();logs.slice(i,i+400).forEach(r=>batch.set(recordsRef().doc(r.recordId),{deletedAt:new Date().toISOString(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));await batch.commit();} } catch(e){showToast('本機已清空，部分雲端標記失敗');return;} }
-        showToast('已隱藏全部紀錄');
+        if(recordsRef()) { try { for(let i=0;i<hidden.length;i+=400){const batch=db.batch();hidden.slice(i,i+400).forEach(r=>batch.set(recordsRef().doc(r.recordId),{deletedAt,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));await batch.commit();} } catch(e){showToast('已移到本機回收區，部分雲端標記失敗');return;} }
+        showToast(`已把 ${hidden.length} 筆紀錄移到回收區`);
     };
     const recordDateText = h => h.executionDate || h.signalDate || h.marketDate || String(h.createdAt || h.time || '').slice(0,10) || '';
     const recordYear = h => String(recordDateText(h)).slice(0,4) || '未分類';
@@ -1967,9 +2065,11 @@ const App = () => {
                 React.createElement("select", { value:logKindFilter, onChange:e=>setLogKindFilter(e.target.value), className:"bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black" }, React.createElement("option", { value:"all" }, "全部類型"), React.createElement("option", { value:"execution" }, "已執行"), React.createElement("option", { value:"snapshot" }, "僅記錄"), React.createElement("option", { value:"cashflow" }, "入金／出金")),
                 React.createElement("select", { value:logSignalFilter, onChange:e=>setLogSignalFilter(e.target.value), className:"bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black" }, React.createElement("option", { value:"all" }, "全部訊號"), React.createElement("option", { value:"Risk-On" }, "Risk-On"), React.createElement("option", { value:"Risk-Off" }, "Risk-Off"), React.createElement("option", { value:"過熱" }, "過熱"), React.createElement("option", { value:"中間區" }, "中間區")),
                 React.createElement("input", { value:logSearch, onChange:e=>setLogSearch(e.target.value), placeholder:"搜尋備註／動作", className:"col-span-2 sm:col-span-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold", style:{fontSize:'16px'} })),
-            React.createElement("div", {className:"flex justify-between items-center mb-3 text-xs font-bold text-slate-500"},
+            React.createElement("div", {className:"flex justify-between items-center gap-3 mb-3 text-xs font-bold text-slate-500"},
                 React.createElement("span",null,`顯示 ${filteredLogs.length} 筆，共 ${logGroups.length} 個月份`),
-                React.createElement("button",{onClick:clearAllLogs,className:"text-red-600 font-black"},"隱藏全部")),
+                React.createElement("div",{className:"flex items-center gap-3"},
+                    React.createElement("button",{onClick:loadTrashRecords,disabled:loadingTrash,className:"text-blue-700 font-black disabled:opacity-50"},loadingTrash?"讀取中…":`回收區${trashRecords.length?`（${trashRecords.length}）`:''}`),
+                    React.createElement("button",{onClick:clearAllLogs,className:"text-red-600 font-black"},"移到回收區"))),
             filteredLogs.length === 0 && React.createElement("div", { className: "text-sm text-slate-600 font-bold text-center py-8" }, "沒有符合條件的紀錄"),
             React.createElement("div", {className:"space-y-3"}, logGroups.map((g,gi)=>{
                 const open=isLogGroupOpen(g.key,gi); const monthTotal=g.logs.length;
@@ -2048,7 +2148,7 @@ const App = () => {
                 deleted+=snap.docs.length; if(snap.docs.length<400)break;
             }
             await docRef().delete();
-            localStorage.removeItem(LOCAL_KEY); localStorage.removeItem(LOCAL_KEY+'_committed');
+            localStorage.removeItem(LOCAL_KEY); localStorage.removeItem(LOCAL_KEY+'_committed'); localStorage.removeItem(TRASH_KEY);
             const fresh=normalizeData(DEFAULT); setData(fresh); setCommittedData(fresh);
             setRecordsCursor(null); setRecordsHasMore(false); setHasDraftChanges(false); draftChangesRef.current=false;
             setSyncText(`雲端已全部重置，共刪除 ${deleted} 筆歷史紀錄`); showToast('雲端與本機資料已全部重置'); setPage('home');
@@ -2289,6 +2389,17 @@ const App = () => {
                     React.createElement("button",{onClick:()=>{setShowAccountSheet(false);openQuickUpdateSheet();},className:"action-blue-button py-4 rounded-[22px] bg-blue-600 text-white font-black"},"快速更新"),
                     React.createElement("button",{onClick:()=>{setShowAccountSheet(false);openSettingsView("accounts");setPage("settings");},className:"py-4 rounded-[22px] bg-slate-950 text-white font-black"},"完整設定"))));
     };
+    const TrashSheet = () => !showTrashSheet ? null : React.createElement("div",{className:"fixed inset-0 z-[80] sheet-backdrop sheet-animate-backdrop flex items-end sm:items-center justify-center p-3",onClick:()=>setShowTrashSheet(false)},
+        React.createElement("div",{className:"sheet-panel w-full max-w-lg max-h-[86vh] overflow-auto rounded-[34px] bg-white p-5 safe-bottom shadow-2xl",onClick:e=>e.stopPropagation()},
+            React.createElement("div",{className:"mx-auto w-12 h-1.5 rounded-full bg-slate-200 mb-5"}),
+            React.createElement("div",{className:"flex items-start justify-between gap-3"},
+                React.createElement("div",null,React.createElement("div",{className:"text-[10px] font-black tracking-[.18em] text-blue-600"},"紀錄回收區"),React.createElement("div",{className:"text-2xl font-black text-slate-950 mt-1"},`${trashRecords.length} 筆可還原`),React.createElement("div",{className:"text-xs font-bold text-slate-500 mt-1"},"這裡的資料尚未永久刪除。還原後，同一天同類型仍只保留最新一筆。")),
+                React.createElement("button",{onClick:()=>setShowTrashSheet(false),className:"w-11 h-11 rounded-full bg-slate-100 text-xl text-slate-500"},"×")),
+            React.createElement("div",{className:"grid grid-cols-2 gap-2 mt-5"},
+                React.createElement("button",{onClick:loadTrashRecords,disabled:loadingTrash,className:"py-3 rounded-2xl bg-slate-100 text-slate-700 font-black disabled:opacity-50"},loadingTrash?"重新讀取中…":"重新讀取"),
+                React.createElement("button",{onClick:restoreAllTrashRecords,disabled:loadingTrash||!trashRecords.length,className:"py-3 rounded-2xl bg-blue-600 text-white font-black disabled:opacity-40"},"全部還原")),
+            React.createElement("div",{className:"space-y-3 mt-5"},trashRecords.length?trashRecords.map((r,i)=>React.createElement("div",{key:r.recordId||i,className:"rounded-[24px] border border-slate-200 bg-slate-50 p-4"},
+                React.createElement("div",{className:"flex items-start justify-between gap-3"},React.createElement("div",{className:"min-w-0"},React.createElement("div",{className:"font-black text-slate-950 truncate"},r.signal||r.todayAction||r.recordType||"策略紀錄"),React.createElement("div",{className:"text-xs font-bold text-slate-500 mt-1"},`${recordDateText(r)||'-'}｜${r.totalDisplay||`US$ ${money(r.totalUsd,0)}`}`),React.createElement("div",{className:"text-[10px] font-bold text-slate-400 mt-1"},r.deletedAt?`移入：${new Date(r.deletedAt).toLocaleString('zh-TW')}`:"可還原紀錄")),React.createElement("button",{onClick:()=>restoreTrashRecord(r),disabled:loadingTrash,className:"shrink-0 px-4 py-2.5 rounded-2xl bg-white border border-blue-200 text-blue-700 text-xs font-black disabled:opacity-50"},"還原")))):React.createElement("div",{className:"rounded-[24px] bg-slate-50 p-8 text-center text-sm font-bold text-slate-400"},"回收區目前是空的"))));
     const ExecutionModal = () => !pendingExecution ? null : React.createElement("div", { className: "fixed inset-0 z-50 sheet-backdrop sheet-animate-backdrop flex items-end sm:items-center justify-center p-4" },
         React.createElement("div", { className: "sheet-panel bg-white rounded-3xl shadow-2xl w-full max-w-md p-5" },
             React.createElement("div", { className: "flex items-start justify-between gap-3 mb-3" },
@@ -2331,6 +2442,7 @@ const App = () => {
         CalendarDaySheet(),
         AccountSheet(),
         QuickUpdateSheet(),
+        TrashSheet(),
         ExecutionModal(),
         toast && React.createElement("div", { className: "fixed left-1/2 -translate-x-1/2 bottom-40 z-50 bg-slate-900/90 backdrop-blur text-white rounded-2xl px-4 py-3 text-sm font-black shadow-2xl" }, toast));
 };

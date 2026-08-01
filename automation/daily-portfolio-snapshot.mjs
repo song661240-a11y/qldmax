@@ -5,6 +5,7 @@ const DASHBOARD_ID = process.env.TARGET_DASHBOARD_ID || "tqqq-qqq200-main";
 const FIREBASE_SERVICE_ACCOUNT = process.env.FIREBASE_SERVICE_ACCOUNT || "";
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
 const FORCE = String(process.env.FORCE || "").toLowerCase() === "true";
+const RUN_MODE = String(process.env.RUN_MODE || "normal_snapshot").toLowerCase();
 const FX_ENDPOINT = "https://open.er-api.com/v6/latest/USD";
 
 function fail(message) {
@@ -183,6 +184,39 @@ function isManualSnapshot(snapshot) {
   return String(snapshot.reason||"") !== "auto_market_close" && snapshot.auto !== true;
 }
 
+async function processTestDashboard(db, ref, targetDate, fx) {
+  const snap=await ref.get();
+  if(!snap.exists) return {status:"missing",path:ref.path};
+  const data=snap.data()||{};
+  const resolved=await resolvePrices(data);
+  const prices={...resolved.prices};
+  const rate=fx?.rate>0?fx.rate:(number(data.usdtwd)||32);
+  const sub=subValue(data,prices);
+  const strategyUsd=strategyValue(data,prices);
+  const ftUsd=Math.max(0,number(data.ftUsd));
+  const twStockTwd=Math.max(0,number(data.twStockTwd));
+  const otherTotalTwd=Math.max(0,number(data.otherTotalTwd));
+  const totalTwd=(strategyUsd+ftUsd+sub.value)*rate+twStockTwd+otherTotalTwd;
+  const nowIso=new Date().toISOString();
+  const testId=`test-${nowIso.replace(/[^0-9]/g,"").slice(0,14)}`;
+  const payload={
+    createdAt:nowIso, marketDate:targetDate, strategyUsd, totalTwd, rate,
+    ftUsd, subUsd:sub.value, twStockTwd, otherTotalTwd,
+    staleSymbols:[...new Set(resolved.stale||[])], source:"github-actions-safe-test",
+    status:"success"
+  };
+  await ref.collection("automationTests").doc(testId).set(payload,{merge:true});
+  await ref.set({
+    autoSnapshotTestAt:nowIso,
+    autoSnapshotTestStatus:"安全測試已成功寫入 Firebase；正式歷史未修改",
+    autoSnapshotTestMarketDate:targetDate,
+    autoSnapshotTestTotalTwd:totalTwd,
+    autoSnapshotSource:"GitHub Actions",
+    autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()
+  },{merge:true});
+  return {status:"test_written",path:ref.path,date:targetDate,totalTwd,rate,stale:payload.staleSymbols};
+}
+
 async function processDashboard(db, ref, targetDate, fx) {
   const initial=await ref.get();
   if(!initial.exists) return {status:"missing",path:ref.path};
@@ -267,8 +301,10 @@ async function main() {
   if(!refs.length){ console.log(`找不到 dashboard id=${DASHBOARD_ID}；請至少用 Google 登入 App 並同步一次。`); return; }
 
   const results=[];
+  const safeTest=RUN_MODE==="safe_test";
+  console.log(`執行模式：${safeTest?"安全測試寫入（不修改正式歷史）":"正式盤後快照"}`);
   for(const ref of refs){
-    try { results.push(await processDashboard(db,ref,targetDate,fx)); }
+    try { results.push(safeTest?await processTestDashboard(db,ref,targetDate,fx):await processDashboard(db,ref,targetDate,fx)); }
     catch(error){
       console.error(`${ref.path} 更新失敗：${error.stack||error.message}`);
       try { await ref.set({autoSnapshotLastError:String(error.message||error).slice(0,240),autoSnapshotUpdatedAt:new Date().toISOString(),autoSnapshotSource:"GitHub Actions"},{merge:true}); } catch(_) {}

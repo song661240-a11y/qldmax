@@ -47,7 +47,7 @@
     banner.innerHTML = `
       <div class="pwa-update-copy">
         <strong>股票資產已有新版</strong>
-        <span>v5.1 已更新 GitHub Actions 至 Node.js 24；全站幣別與盤後自動快照功能維持不變。</span>
+        <span>v5.2 新增安全測試寫入與紀錄回收區；被隱藏的紀錄可全部或單筆還原。</span>
       </div>
       <button type="button">套用新版</button>
     `;
