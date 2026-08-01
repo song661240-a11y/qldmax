@@ -47,7 +47,7 @@
     banner.innerHTML = `
       <div class="pwa-update-copy">
         <strong>股票資產已有新版</strong>
-        <span>v5.0 已加入全站 US$／NT$ 切換，以及每日盤後雲端自動資產快照支援。</span>
+        <span>v5.1 已更新 GitHub Actions 至 Node.js 24；全站幣別與盤後自動快照功能維持不變。</span>
       </div>
       <button type="button">套用新版</button>
     `;

@@ -3,9 +3,13 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "dependencies": {
     "firebase-admin": "^13.4.0"
+  },
+  "scripts": {
+    "check": "node --check daily-portfolio-snapshot.mjs",
+    "snapshot": "node daily-portfolio-snapshot.mjs"
   }
 }

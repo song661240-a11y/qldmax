@@ -14,7 +14,7 @@ if (HAS_FIREBASE && !firebase.apps.length)
 const auth = HAS_FIREBASE ? firebase.auth() : null;
 const db = HAS_FIREBASE ? firebase.firestore() : null;
 const DOC_PATH = ["strategyDashboards", "tqqq-qqq200-main"];
-const APP_VERSION = "股票資產 PWA v5.0｜全站幣別＋盤後自動快照";
+const APP_VERSION = "股票資產 PWA v5.1｜全站幣別＋盤後自動快照＋Node.js 24";
 const STRATEGY_ID = "tqqq-spy200";
 const STRATEGY_VERSION = "SPY200-4-3-HOT-19-24-28";
 const RECORD_SCHEMA_VERSION = 2;
