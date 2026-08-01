@@ -2,8 +2,11 @@ name: "每日盤後股票資產快照"
 run-name: "每日盤後股票資產快照"
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+
   schedule:
+    # UTC 週一至週五 22:35
+    # 台灣時間為週二至週六 06:35
     - cron: "35 22 * * 1-5"
 
 permissions:
@@ -17,18 +20,52 @@ jobs:
 
     steps:
       - name: "下載程式碼"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: "安裝 Node.js"
-        uses: actions/setup-node@v4
+      - name: "安裝 Node.js 24"
+        uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: "檢查自動快照檔案"
+        shell: bash
+        run: |
+          if [ ! -f "automation/package.json" ]; then
+            echo "::error::找不到 automation/package.json"
+            exit 1
+          fi
+
+          if [ ! -f "automation/daily-portfolio-snapshot.mjs" ]; then
+            echo "::error::找不到 automation/daily-portfolio-snapshot.mjs"
+            exit 1
+          fi
+
+          echo "自動快照必要檔案存在"
+
+      - name: "檢查必要金鑰"
+        shell: bash
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::缺少 GitHub Secret：FIREBASE_SERVICE_ACCOUNT"
+            exit 1
+          fi
+
+          if [ -z "$FINNHUB_API_KEY" ]; then
+            echo "::error::缺少 GitHub Secret：FINNHUB_API_KEY"
+            exit 1
+          fi
+
+          echo "必要金鑰已設定"
 
       - name: "安裝自動快照套件"
         working-directory: automation
         run: npm install --no-audit --no-fund
 
-      - name: "更新盤後價格與今日資產快照"
+      - name: "更新盤後價格與資產快照"
         working-directory: automation
         run: node daily-portfolio-snapshot.mjs
         env:
