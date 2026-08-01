@@ -1,0 +1,75 @@
+name: "每日盤後股票資產快照"
+run-name: "每日盤後股票資產快照｜${{ github.event_name == 'workflow_dispatch' && inputs.run_mode || 'normal_snapshot' }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_mode:
+        description: "safe_test＝安全測試寫入（不改正式歷史）；normal_snapshot＝正式快照"
+        required: true
+        default: "safe_test"
+        type: choice
+        options:
+          - "safe_test"
+          - "normal_snapshot"
+  schedule:
+    # UTC 22:35；台灣時間約週二至週六 06:35。排程永遠執行正式快照。
+    - cron: "35 22 * * 1-5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-portfolio-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    name: "更新盤後價格與資產快照"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: "下載程式碼"
+        uses: actions/checkout@v5
+
+      - name: "安裝 Node.js 24"
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: "檢查自動快照檔案"
+        run: |
+          set -euo pipefail
+          test -f automation/daily-portfolio-snapshot.mjs
+          test -f automation/package.json
+          node --version
+          npm --version
+
+      - name: "檢查必要金鑰"
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::缺少 GitHub Secret：FIREBASE_SERVICE_ACCOUNT"
+            exit 1
+          fi
+          if [ -z "$FINNHUB_API_KEY" ]; then
+            echo "::error::缺少 GitHub Secret：FINNHUB_API_KEY"
+            exit 1
+          fi
+
+      - name: "安裝自動快照套件"
+        working-directory: automation
+        run: npm install --omit=dev --no-audit --no-fund
+
+      - name: "更新盤後價格與資產快照"
+        working-directory: automation
+        run: node daily-portfolio-snapshot.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          TARGET_DASHBOARD_ID: "tqqq-qqq200-main"
+          RUN_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.run_mode || 'normal_snapshot' }}

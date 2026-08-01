@@ -1,0 +1,15 @@
+{
+  "name": "stock-assets-daily-snapshot",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.4.0"
+  },
+  "scripts": {
+    "check": "node --check daily-portfolio-snapshot.mjs",
+    "snapshot": "node daily-portfolio-snapshot.mjs"
+  }
+}
