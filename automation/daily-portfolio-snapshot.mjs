@@ -3,7 +3,7 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
 const DASHBOARD_ID = process.env.TARGET_DASHBOARD_ID || "tqqq-qqq200-main";
 const FIREBASE_SERVICE_ACCOUNT = process.env.FIREBASE_SERVICE_ACCOUNT || "";
-const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
+const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || "";
 const FORCE = String(process.env.FORCE || "").toLowerCase() === "true";
 const RUN_MODE = String(process.env.RUN_MODE || "normal_snapshot").toLowerCase();
 const FX_ENDPOINT = "https://open.er-api.com/v6/latest/USD";
@@ -186,7 +186,7 @@ function isManualSnapshot(snapshot) {
 
 async function processTestDashboard(db, ref, targetDate, fx) {
   const snap=await ref.get();
-  if(!snap.exists) return {status:"missing",path:ref.path};
+  if(!snap.exists) return {status:"missing"};
   const data=snap.data()||{};
   const resolved=await resolvePrices(data);
   const prices={...resolved.prices};
@@ -214,25 +214,25 @@ async function processTestDashboard(db, ref, targetDate, fx) {
     autoSnapshotSource:"GitHub Actions",
     autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()
   },{merge:true});
-  return {status:"test_written",path:ref.path,date:targetDate,totalTwd,rate,stale:payload.staleSymbols};
+  return {status:"test_written",date:targetDate,stale:payload.staleSymbols};
 }
 
 async function processDashboard(db, ref, targetDate, fx) {
   const initial=await ref.get();
-  if(!initial.exists) return {status:"missing",path:ref.path};
+  if(!initial.exists) return {status:"missing"};
   const initialData=initial.data()||{};
   const resolved=await resolvePrices(initialData);
   const nowIso=new Date().toISOString();
-  let outcome={status:"unknown",path:ref.path};
+  let outcome={status:"unknown"};
 
   await db.runTransaction(async tx=>{
     const currentSnap=await tx.get(ref);
-    if(!currentSnap.exists){outcome={status:"missing",path:ref.path};return;}
+    if(!currentSnap.exists){outcome={status:"missing"};return;}
     const data=currentSnap.data()||{};
     const history=Array.isArray(data.portfolioHistory)?data.portfolioHistory.filter(Boolean):[];
     const existing=history.find(x=>String(x?.date||"").slice(0,10)===targetDate);
     if(existing && isManualSnapshot(existing) && !FORCE){
-      outcome={status:"manual_kept",path:ref.path,date:targetDate};
+      outcome={status:"manual_kept",date:targetDate};
       return;
     }
 
@@ -280,12 +280,13 @@ async function processDashboard(db, ref, targetDate, fx) {
       autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()
     };
     tx.set(ref,patch,{merge:true});
-    outcome={status:"updated",path:ref.path,date:targetDate,strategyUsd,totalTwd,rate,stale};
+    outcome={status:"updated",date:targetDate,stale};
   });
   return outcome;
 }
 
 async function main() {
+  if (!FINNHUB_API_KEY) throw new Error("缺少 FINNHUB_API_KEY GitHub Secret");
   const serviceAccount=parseServiceAccount(FIREBASE_SERVICE_ACCOUNT);
   initializeApp({credential:cert(serviceAccount)});
   const db=getFirestore();
@@ -293,7 +294,7 @@ async function main() {
   console.log(`目標美股交易日：${targetDate}`);
 
   let fx=null;
-  try { fx=await fxRate(); console.log(`USD/TWD：${fx.rate}`); }
+  try { fx=await fxRate(); console.log("USD/TWD 匯率更新成功"); }
   catch(error){ console.warn(`匯率更新失敗，將沿用各帳戶現有匯率：${error.message}`); }
 
   const group=await db.collectionGroup("strategyDashboards").get();
@@ -306,9 +307,9 @@ async function main() {
   for(const ref of refs){
     try { results.push(safeTest?await processTestDashboard(db,ref,targetDate,fx):await processDashboard(db,ref,targetDate,fx)); }
     catch(error){
-      console.error(`${ref.path} 更新失敗：${error.stack||error.message}`);
+      console.error(`資產快照更新失敗：${String(error.message||error).slice(0,240)}`);
       try { await ref.set({autoSnapshotLastError:String(error.message||error).slice(0,240),autoSnapshotUpdatedAt:new Date().toISOString(),autoSnapshotSource:"GitHub Actions"},{merge:true}); } catch(_) {}
-      results.push({status:"error",path:ref.path,error:error.message});
+      results.push({status:"error",error:String(error.message||error).slice(0,160)});
     }
   }
   console.log(JSON.stringify(results,null,2));

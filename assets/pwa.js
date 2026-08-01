@@ -47,7 +47,7 @@
     banner.innerHTML = `
       <div class="pwa-update-copy">
         <strong>股票資產已有新版</strong>
-        <span>v5.2 新增安全測試寫入與紀錄回收區；被隱藏的紀錄可全部或單筆還原。</span>
+        <span>v5.3.1 已修正 PWA 快取誤把圖片當首頁的問題，並保留安全強化設定。</span>
       </div>
       <button type="button">套用新版</button>
     `;

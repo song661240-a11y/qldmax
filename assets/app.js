@@ -1,4 +1,4 @@
-window.addEventListener('error', function(e){var root=document.getElementById('root'); if(root && !root.innerHTML){root.innerHTML='<div style="padding:20px;font-family:sans-serif;color:#b91c1c;background:#fff1f2;min-height:100vh"><h2>網頁載入錯誤</h2><p>'+ (e.message||'未知錯誤') +'</p><p>請重新上傳最新版 index.html。</p></div>';}});
+window.addEventListener('error', function(e){var root=document.getElementById('root');if(root&&!root.hasChildNodes()){var box=document.createElement('div');box.style.cssText='padding:20px;font-family:sans-serif;color:#b91c1c;background:#fff1f2;min-height:100vh';var h=document.createElement('h2');h.textContent='網頁載入錯誤';var m=document.createElement('p');m.textContent=e.message||'未知錯誤';var tip=document.createElement('p');tip.textContent='請重新上傳最新版 index.html。';box.append(h,m,tip);root.appendChild(box);}});
 const { useCallback, useEffect, useMemo, useRef, useState } = React;
 const firebaseConfig = {
     apiKey: "AIzaSyBpax3wlTwHTe6G3niZajtTxpoUWbgvX80",
@@ -14,7 +14,7 @@ if (HAS_FIREBASE && !firebase.apps.length)
 const auth = HAS_FIREBASE ? firebase.auth() : null;
 const db = HAS_FIREBASE ? firebase.firestore() : null;
 const DOC_PATH = ["strategyDashboards", "tqqq-qqq200-main"];
-const APP_VERSION = "股票資產 PWA v5.2｜安全測試寫入＋紀錄回收區";
+const APP_VERSION = "股票資產 PWA v5.3｜安全強化版";
 const STRATEGY_ID = "tqqq-spy200";
 const STRATEGY_VERSION = "SPY200-4-3-HOT-19-24-28";
 const RECORD_SCHEMA_VERSION = 2;
@@ -54,7 +54,17 @@ const writeUiPreference = (key,value) => {
 const writeBackupCards = list => {
     localStorage.setItem(BACKUP_KEY, JSON.stringify((Array.isArray(list)?list:[]).slice(0,5)));
 };
-const FINNHUB_KEY = "d4q36b9r01qha6q0jclgd4q36b9r01qha6q0jcm0";
+const FINNHUB_SESSION_KEY = "stockAssetsFinnhubSessionKey";
+function getFinnhubSessionKey() {
+    let key = "";
+    try { key = sessionStorage.getItem(FINNHUB_SESSION_KEY) || ""; } catch(e) {}
+    if (!key) {
+        key = String(prompt("為避免 API Key 公開在 GitHub，請輸入 Finnhub API Key。只保存在這個瀏覽器分頁，關閉後自動清除。") || "").trim();
+        if (key) { try { sessionStorage.setItem(FINNHUB_SESSION_KEY, key); } catch(e) {} }
+    }
+    if (!/^[A-Za-z0-9_-]{20,100}$/.test(key)) throw new Error("未提供有效的 Finnhub API Key；也可等待 GitHub Actions 每日盤後自動更新，或手動輸入價格");
+    return key;
+}
 const EXCHANGE_RATE_ENDPOINT = "https://open.er-api.com/v6/latest/USD";
 const EXCHANGE_RATE_PROVIDER = "ExchangeRate-API";
 const isExchangeRateDue = (source, force = false, date = todayStr()) => force || String(source?.exchangeRateLastAttemptDate || "") !== date;
@@ -405,7 +415,8 @@ const SectionTitle = ({ title, desc, right }) => React.createElement("div", { cl
         desc && React.createElement("p", { className: "text-xs text-slate-500 mt-1 leading-relaxed" }, desc)),
     right);
 async function fetchFinnhubQuote(symbol) {
-    const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_KEY}`, { cache: "no-store" });
+    const key = getFinnhubSessionKey();
+    const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(key)}`, { cache: "no-store", referrerPolicy:"no-referrer" });
     if (r.status === 429) throw new Error("Finnhub API 額度暫時用完（HTTP 429）");
     if (!r.ok) throw new Error(`Finnhub HTTP ${r.status}`);
     const d = await r.json();
