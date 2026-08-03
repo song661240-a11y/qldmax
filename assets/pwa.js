@@ -47,7 +47,7 @@
     banner.innerHTML = `
       <div class="pwa-update-copy">
         <strong>股票資產已有新版</strong>
-        <span>v5.3.2 已讓 Finnhub API Key 安全保存在這台裝置，重開分頁不用再輸入；並保留 PWA 快取修復。</span>
+        <span>v5.4 已新增首次導入標的 QQQ／QQQI 切換，預設 QQQI；Risk-Off 後 DCA 仍固定買 QQQ。</span>
       </div>
       <button type="button">套用新版</button>
     `;

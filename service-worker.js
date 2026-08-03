@@ -1,19 +1,19 @@
-const CACHE_VERSION = "stock-assets-pwa-v5.3.2-cachefix-20260801";
+const CACHE_VERSION = "stock-assets-pwa-v5.4-introasset-20260803";
 const APP_CACHE = `${CACHE_VERSION}-app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./manifest.webmanifest?v=5.3.2",
-  "./assets/tailwind.css?v=5.3.2",
-  "./assets/app.css?v=5.3.2",
-  "./assets/app.js?v=5.3.2",
-  "./assets/pwa.js?v=5.3.2",
-  "./icons/icon-192.png?v=5.3.2",
-  "./icons/icon-512.png?v=5.3.2",
-  "./icons/icon-maskable-512.png?v=5.3.2",
-  "./icons/favicon-64.png?v=5.3.2"
+  "./manifest.webmanifest?v=5.4.0",
+  "./assets/tailwind.css?v=5.4.0",
+  "./assets/app.css?v=5.4.0",
+  "./assets/app.js?v=5.4.0",
+  "./assets/pwa.js?v=5.4.0",
+  "./icons/icon-192.png?v=5.4.0",
+  "./icons/icon-512.png?v=5.4.0",
+  "./icons/icon-maskable-512.png?v=5.4.0",
+  "./icons/favicon-64.png?v=5.4.0"
 ];
 
 self.addEventListener("install", event => {

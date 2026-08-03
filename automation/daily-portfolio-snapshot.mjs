@@ -139,6 +139,8 @@ function heldSymbols(data) {
   for(const [symbol,shares] of pairs) if(number(shares)>0) symbols.add(symbol);
   const hot=String(data.hotAsset||"").toUpperCase();
   if(["SPYI","QQQI"].includes(hot)) symbols.add(hot);
+  const intro=String(data.introAsset||"QQQI").toUpperCase();
+  if(["QQQI"].includes(intro)) symbols.add(intro);
   const sub=String(data.subSymbol||"").toUpperCase();
   if(sub && number(data.subShares)>0) symbols.add(sub);
   return [...symbols];
