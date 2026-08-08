@@ -47,7 +47,7 @@
     banner.innerHTML = `
       <div class="pwa-update-copy">
         <strong>股票資產已有新版</strong>
-        <span>v5.4 已新增首次導入標的 QQQ／QQQI 切換，預設 QQQI；Risk-Off 後 DCA 仍固定買 QQQ。</span>
+        <span>v5.5 已新增槓桿股票換算器，可用 Finnhub 查兩檔現價並雙向換算未來價格與漲跌幅；完全不影響 IB 主策略。</span>
       </div>
       <button type="button">套用新版</button>
     `;

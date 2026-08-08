@@ -14,7 +14,7 @@ if (HAS_FIREBASE && !firebase.apps.length)
 const auth = HAS_FIREBASE ? firebase.auth() : null;
 const db = HAS_FIREBASE ? firebase.firestore() : null;
 const DOC_PATH = ["strategyDashboards", "tqqq-qqq200-main"];
-const APP_VERSION = "股票資產 PWA v5.4｜首次導入可選版";
+const APP_VERSION = "股票資產 PWA v5.5｜槓桿股票換算器";
 const STRATEGY_ID = "tqqq-spy200";
 const STRATEGY_VERSION = "SPY200-4-3-HOT-19-24-28-INTRO-v1.2";
 const RECORD_SCHEMA_VERSION = 2;
@@ -465,6 +465,103 @@ async function fetchSymbol(symbol) {
     return await fetchFinnhubQuote(symbol);
 }
 
+const LEVERAGE_CALC_LOCAL_KEY = "stockAssetsLeverageCalcV1";
+const DEFAULT_LEVERAGE_CALC = {
+    baseSymbol: "TSLA",
+    baseNow: "",
+    baseFuture: "",
+    basePct: "",
+    leverage: "2",
+    levSymbol: "TSLL",
+    levNow: "",
+    levFuture: "",
+    levPct: "",
+    driver: "basePct",
+    updatedAt: ""
+};
+function readLeverageCalcState() {
+    try {
+        const raw = localStorage.getItem(LEVERAGE_CALC_LOCAL_KEY);
+        const saved = raw ? JSON.parse(raw) : {};
+        return { ...DEFAULT_LEVERAGE_CALC, ...(saved && typeof saved === "object" ? saved : {}) };
+    } catch(e) { return { ...DEFAULT_LEVERAGE_CALC }; }
+}
+function writeLeverageCalcState(state) {
+    try { localStorage.setItem(LEVERAGE_CALC_LOCAL_KEY, JSON.stringify(state)); } catch(e) {}
+}
+function sanitizeUnsignedDecimal(value) {
+    let s=String(value??"").replace(/[^0-9.]/g,"");
+    const dot=s.indexOf(".");
+    if(dot>=0) s=s.slice(0,dot+1)+s.slice(dot+1).replace(/\./g,"");
+    return s;
+}
+function sanitizeSignedDecimal(value) {
+    let s=String(value??"").replace(/[^0-9.\-]/g,"");
+    const neg=s.startsWith("-");
+    s=s.replace(/-/g,"");
+    const dot=s.indexOf(".");
+    if(dot>=0) s=s.slice(0,dot+1)+s.slice(dot+1).replace(/\./g,"");
+    return (neg?"-":"")+s;
+}
+function sanitizeTicker(value) {
+    return String(value??"").toUpperCase().replace(/[^A-Z0-9.\-]/g,"").slice(0,12);
+}
+function calcNum(value) {
+    const n=parseFloat(value);
+    return Number.isFinite(n)?n:NaN;
+}
+function calcFmt(value, digits=4) {
+    if(!Number.isFinite(value)) return "";
+    const rounded=Number(value.toFixed(digits));
+    return String(Object.is(rounded,-0)?0:rounded);
+}
+function clearLeverageTargets(source) {
+    return {...source,baseFuture:"",basePct:"",levFuture:"",levPct:""};
+}
+function recalcLeverageCalcState(source, driver=source?.driver||"basePct") {
+    let next={...source,driver};
+    if(!["baseFuture","basePct","levFuture","levPct"].includes(driver)) driver="basePct";
+    next.driver=driver;
+    if(String(next[driver]??"").trim()==="") return clearLeverageTargets(next);
+    const baseNow=calcNum(next.baseNow), levNow=calcNum(next.levNow), leverage=calcNum(next.leverage);
+    if(!(baseNow>0) || !(levNow>0) || !Number.isFinite(leverage) || leverage===0) return next;
+    const input=calcNum(next[driver]);
+    if(!Number.isFinite(input)) return next;
+    let baseFuture,basePct,levFuture,levPct;
+    if(driver==="baseFuture") {
+        baseFuture=input;
+        basePct=(baseFuture/baseNow-1)*100;
+        levPct=basePct*leverage;
+        levFuture=levNow*(1+levPct/100);
+    } else if(driver==="basePct") {
+        basePct=input;
+        baseFuture=baseNow*(1+basePct/100);
+        levPct=basePct*leverage;
+        levFuture=levNow*(1+levPct/100);
+    } else if(driver==="levFuture") {
+        levFuture=input;
+        levPct=(levFuture/levNow-1)*100;
+        basePct=levPct/leverage;
+        baseFuture=baseNow*(1+basePct/100);
+    } else {
+        levPct=input;
+        basePct=levPct/leverage;
+        baseFuture=baseNow*(1+basePct/100);
+        levFuture=levNow*(1+levPct/100);
+    }
+    return {
+        ...next,
+        baseFuture:calcFmt(baseFuture,4),
+        basePct:calcFmt(basePct,4),
+        levFuture:calcFmt(levFuture,4),
+        levPct:calcFmt(levPct,4)
+    };
+}
+function leverageCalcHasPhysicalWarning(state) {
+    const basePct=calcNum(state?.basePct), levPct=calcNum(state?.levPct), baseFuture=calcNum(state?.baseFuture), levFuture=calcNum(state?.levFuture);
+    return (Number.isFinite(basePct)&&basePct<-100) || (Number.isFinite(levPct)&&levPct<-100) || (Number.isFinite(baseFuture)&&baseFuture<0) || (Number.isFinite(levFuture)&&levFuture<0);
+}
+
 function evaluateStrategy(data) {
         const spy=getNum(data.spy), spySma=getNum(data.spySma), qqq=getNum(data.qqq), qqqSma=getNum(data.qqqSma), tqqq=getNum(data.tqqq), spyi=getNum(data.spyi), qqqi=getNum(data.qqqi);
         const hotAsset=['QQQ','SPY','SPYI','QQQI'].includes(String(data.hotAsset||'QQQ').toUpperCase())?String(data.hotAsset||'QQQ').toUpperCase():'QQQ';
@@ -737,6 +834,10 @@ const App = () => {
     const [loadingSubPrice, setLoadingSubPrice] = useState(false);
     const [priceError, setPriceError] = useState("");
     const [finnhubKeySaved, setFinnhubKeySaved] = useState(() => Boolean(readSavedFinnhubKey()));
+    const [leverageCalc, setLeverageCalc] = useState(() => readLeverageCalcState());
+    const [loadingLeveragePrices, setLoadingLeveragePrices] = useState(false);
+    const [leveragePriceError, setLeveragePriceError] = useState("");
+    const leverageAutoFetchRef = useRef(false);
     const [pendingExecution, setPendingExecution] = useState(false);
     const [executionPreparing, setExecutionPreparing] = useState(false);
     const [previewScenario, setPreviewScenario] = useState("LIVE");
@@ -805,6 +906,61 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         clearFinnhubKey();
         showToast("已清除這台裝置的 Finnhub API Key");
     }, [showToast]);
+    useEffect(() => { writeLeverageCalcState(leverageCalc); }, [leverageCalc]);
+    const updateLeverageCalcField = useCallback((field,value,{signed=false,driver=false}={}) => {
+        const cleaned=signed?sanitizeSignedDecimal(value):sanitizeUnsignedDecimal(value);
+        setLeverageCalc(prev => {
+            const next={...prev,[field]:cleaned};
+            return recalcLeverageCalcState(next,driver?field:next.driver);
+        });
+    }, []);
+    const updateLeverageSymbol = useCallback((field,value) => {
+        const cleaned=sanitizeTicker(value);
+        setLeverageCalc(prev => clearLeverageTargets({...prev,[field]:cleaned,[field==="baseSymbol"?"baseNow":"levNow"]:"",updatedAt:""}));
+        setLeveragePriceError("");
+    }, []);
+    const clearLeverageCalcTargets = useCallback(() => {
+        setLeverageCalc(prev => clearLeverageTargets({...prev,driver:"basePct"}));
+        showToast("已清除未來價格與漲跌幅");
+    }, [showToast]);
+    const refreshLeveragePrices = useCallback(async () => {
+        const baseSymbol=sanitizeTicker(leverageCalc.baseSymbol), levSymbol=sanitizeTicker(leverageCalc.levSymbol);
+        if(!baseSymbol || !levSymbol) { showToast("請先輸入原型股票與槓桿股票代號"); return; }
+        setLoadingLeveragePrices(true);
+        setLeveragePriceError("");
+        try {
+            const results=await Promise.allSettled([fetchSymbol(baseSymbol),fetchSymbol(levSymbol)]);
+            const failed=[];
+            if(results[0].status!=="fulfilled") failed.push(`${baseSymbol}：${results[0].reason?.message||"抓價失敗"}`);
+            if(results[1].status!=="fulfilled") failed.push(`${levSymbol}：${results[1].reason?.message||"抓價失敗"}`);
+            const successCount=results.filter(x=>x.status==="fulfilled").length;
+            const updatedAt=successCount?new Date().toISOString():"";
+            setLeverageCalc(prev => {
+                let next={...prev,baseSymbol,levSymbol};
+                if(results[0].status==="fulfilled") next.baseNow=calcFmt(getNum(results[0].value.close),4);
+                if(results[1].status==="fulfilled") next.levNow=calcFmt(getNum(results[1].value.close),4);
+                if(updatedAt) next.updatedAt=updatedAt;
+                return recalcLeverageCalcState(next,next.driver);
+            });
+            if(failed.length) {
+                const msg=failed.join("；");
+                setLeveragePriceError(msg);
+                showToast(successCount?"部分股價更新成功":"股價更新失敗");
+            } else showToast(`${baseSymbol}／${levSymbol} 現價已更新`);
+        } catch(e) {
+            const msg=e?.message||"股價更新失敗";
+            setLeveragePriceError(msg);
+            showToast(msg);
+        } finally { setLoadingLeveragePrices(false); }
+    }, [leverageCalc.baseSymbol,leverageCalc.levSymbol,showToast]);
+    useEffect(() => {
+        if(settingsView!=="leverage") { leverageAutoFetchRef.current=false; return; }
+        if(leverageAutoFetchRef.current) return;
+        leverageAutoFetchRef.current=true;
+        const lastMs=Date.parse(leverageCalc.updatedAt||"");
+        const stale=!Number.isFinite(lastMs) || (Date.now()-lastMs)>60000;
+        if(stale && readSavedFinnhubKey()) refreshLeveragePrices();
+    }, [settingsView,leverageCalc.updatedAt,refreshLeveragePrices]);
     const openSettingsView = useCallback(id => { setSettingsMotion("forward"); setSettingsView(id); }, []);
     const backToSettings = useCallback(() => { setSettingsMotion("back"); setSettingsView("menu"); }, []);
     const flashUpdateSuccess = useCallback(() => { setUpdateSuccess(true); setTimeout(() => setUpdateSuccess(false), 1400); }, []);
@@ -2400,6 +2556,59 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
                 React.createElement("input",{value:cashflowNote,onChange:e=>setCashflowNote(e.target.value),placeholder:"備註",className:"rounded-2xl px-4 py-3 text-sm font-bold",style:{fontSize:'16px'}})),
             React.createElement("div",{className:"mt-4 rounded-[24px] bg-slate-50 border border-slate-100 p-4"},React.createElement("div",{className:"text-[10px] font-black text-slate-500"},"目前 IB 現金"),React.createElement("div",{className:"mt-2 text-2xl font-black privacy-value"},`US$ ${money(data.cashUsd,2)}`)),
             React.createElement("button",{onClick:addCashflowRecord,className:"w-full mt-4 rounded-[22px] bg-brand-600 text-white font-black px-4 py-4"},"記錄並調整 IB 現金")));
+    const LeverageCalculatorSettingsPage = () => {
+        const c=leverageCalc;
+        const baseNow=calcNum(c.baseNow), baseFuture=calcNum(c.baseFuture), basePct=calcNum(c.basePct);
+        const levNow=calcNum(c.levNow), levFuture=calcNum(c.levFuture), levPct=calcNum(c.levPct), leverage=calcNum(c.leverage);
+        const ready=baseNow>0 && levNow>0 && Number.isFinite(leverage) && leverage!==0;
+        const hasResult=ready && Number.isFinite(basePct) && Number.isFinite(levPct) && Number.isFinite(baseFuture) && Number.isFinite(levFuture);
+        const fromBase=c.driver==="baseFuture"||c.driver==="basePct";
+        const fmtPct=v=>`${v>=0?"+":""}${money(v,2)}%`;
+        const summary=hasResult?(fromBase
+            ?`${c.baseSymbol||"原型"} ${fmtPct(basePct)} → ${c.levSymbol||"槓桿股"} 約 ${fmtPct(levPct)}；${c.levSymbol||"槓桿股"} US$ ${money(levNow,2)} → 約 US$ ${money(levFuture,2)}`
+            :`${c.levSymbol||"槓桿股"} ${fmtPct(levPct)} → 反推 ${c.baseSymbol||"原型"} 約 ${fmtPct(basePct)}；${c.baseSymbol||"原型"} US$ ${money(baseNow,2)} → 約 US$ ${money(baseFuture,2)}`):"先取得兩檔目前股價，再輸入任一個「未來股價」或「漲跌幅」。";
+        const calcField=(label,key,suffix,{signed=false,driver=false,hint=""}={})=>React.createElement("label",{className:`block rounded-2xl border p-3 ${driver&&c.driver===key?'border-blue-400 bg-blue-50':'border-slate-200 bg-slate-50'} focus-within:ring-2 focus-within:ring-blue-100`},
+            React.createElement("div",{className:"text-[10px] font-black text-slate-500 mb-1"},label),
+            React.createElement("div",{className:"flex items-center gap-2"},
+                React.createElement("input",{type:"text",inputMode:"decimal",autoComplete:"off",value:c[key]??"",onChange:e=>updateLeverageCalcField(key,e.target.value,{signed,driver}),className:"w-full min-w-0 bg-transparent text-center font-mono font-black text-lg text-slate-950 min-h-[44px]",style:{fontSize:"16px"}}),
+                suffix&&React.createElement("span",{className:"text-xs font-black text-slate-400"},suffix)),
+            hint&&React.createElement("div",{className:"mt-1 text-[10px] font-bold text-slate-400 leading-relaxed"},hint));
+        const symbolField=(label,key)=>React.createElement("label",{className:"block rounded-2xl border border-slate-200 bg-slate-50 p-3 focus-within:ring-2 focus-within:ring-blue-100"},
+            React.createElement("div",{className:"text-[10px] font-black text-slate-500 mb-1"},label),
+            React.createElement("input",{type:"text",autoComplete:"off",autoCapitalize:"characters",spellCheck:false,value:c[key]??"",onChange:e=>updateLeverageSymbol(key,e.target.value),className:"w-full bg-transparent text-center font-black text-lg text-slate-950 min-h-[44px]",style:{fontSize:"16px"}}));
+        return React.createElement(SettingsPage,{eyebrow:"小工具",title:"槓桿股票換算器",desc:"輸入原型股票與槓桿股票，利用單次／單日倍數近似互相換算未來價格與漲跌幅；完全不會修改 IB 策略、持股或歷史紀錄。"},
+            React.createElement("div",{className:"space-y-4"},
+                React.createElement(Card,{className:"p-5"},
+                    React.createElement("div",{className:"grid grid-cols-2 gap-3"},symbolField("原型股票", "baseSymbol"),symbolField("槓桿股票", "levSymbol")),
+                    React.createElement("button",{type:"button",onClick:refreshLeveragePrices,disabled:loadingLeveragePrices,className:"w-full mt-4 rounded-[22px] bg-slate-950 text-white font-black px-4 py-4 disabled:opacity-50"},loadingLeveragePrices?"API 查價中…":"用 Finnhub API 更新兩檔目前股價"),
+                    React.createElement("div",{className:"mt-2 text-xs font-bold text-slate-500"},c.updatedAt?`最後 API 更新：${new Date(c.updatedAt).toLocaleString('zh-TW')}`:"尚未 API 更新；目前股價也可以手動輸入"),
+                    leveragePriceError&&React.createElement("div",{className:"mt-2 rounded-2xl bg-red-50 border border-red-100 px-3 py-2 text-xs font-black text-red-700"},leveragePriceError)),
+                React.createElement(Card,{className:"p-5"},
+                    React.createElement("div",{className:"flex items-center justify-between gap-3 mb-3"},
+                        React.createElement("div",null,React.createElement("div",{className:"font-black text-slate-950"},"槓桿倍率"),React.createElement("div",{className:"text-xs font-bold text-slate-500 mt-1"},"例如 TSLL 可輸入 2；反向 ETF 也可輸入負倍率。")),
+                        React.createElement("div",{className:"w-28"},calcField("倍率","leverage","x",{signed:true}))),
+                    React.createElement("div",{className:"rounded-2xl bg-blue-50 border border-blue-100 px-4 py-3 text-xs font-black text-blue-800"},"換算：槓桿股票漲跌幅 ≈ 原型股票漲跌幅 × 槓桿倍率")),
+                React.createElement("div",{className:"grid grid-cols-1 md:grid-cols-2 gap-4"},
+                    React.createElement(Card,{className:"p-5"},
+                        React.createElement("div",{className:"flex items-center justify-between gap-3 mb-4"},React.createElement("div",null,React.createElement("div",{className:"text-[10px] font-black tracking-[.14em] text-blue-600"},"原型股票"),React.createElement("div",{className:"text-2xl font-black text-slate-950"},c.baseSymbol||"—")),React.createElement("span",{className:"px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 text-xs font-black"},"可反推")),
+                        React.createElement("div",{className:"space-y-3"},
+                            calcField("現在股價","baseNow","USD",{hint:"API 會自動填入，也可手動修改"}),
+                            calcField("未來股價","baseFuture","USD",{driver:true}),
+                            calcField("漲跌幅","basePct","%",{signed:true,driver:true}))),
+                    React.createElement(Card,{className:"p-5"},
+                        React.createElement("div",{className:"flex items-center justify-between gap-3 mb-4"},React.createElement("div",null,React.createElement("div",{className:"text-[10px] font-black tracking-[.14em] text-purple-600"},"槓桿股票"),React.createElement("div",{className:"text-2xl font-black text-slate-950"},c.levSymbol||"—")),React.createElement("span",{className:"px-3 py-1.5 rounded-full bg-purple-50 text-purple-700 text-xs font-black"},Number.isFinite(leverage)?`${leverage}x`:"倍率未填")),
+                        React.createElement("div",{className:"space-y-3"},
+                            calcField("現在股價","levNow","USD",{hint:"API 會自動填入，也可手動修改"}),
+                            calcField("未來股價","levFuture","USD",{driver:true}),
+                            calcField("漲跌幅","levPct","%",{signed:true,driver:true})))),
+                React.createElement("div",{className:"viz-callout rounded-[24px] p-4"},
+                    React.createElement("div",{className:"text-[10px] font-black tracking-[.14em] text-blue-700"},"即時換算結果"),
+                    React.createElement("div",{className:"mt-2 text-lg font-black text-slate-950 leading-relaxed","aria-live":"polite"},summary),
+                    ready&&!hasResult&&React.createElement("div",{className:"mt-2 text-xs font-bold text-slate-500"},"四個目標欄位都可以輸入；最後修改的欄位會成為換算基準。")),
+                leverageCalcHasPhysicalWarning(c)&&React.createElement("div",{className:"rounded-[24px] bg-red-50 border border-red-100 p-4 text-sm font-black text-red-700"},"這組輸入讓簡化模型出現低於 -100% 的報酬或負股價，已超出實際可交易價格範圍；請縮小變動幅度。"),
+                React.createElement("div",{className:"rounded-[24px] bg-amber-50 border border-amber-100 p-4 text-xs font-bold text-amber-900 leading-relaxed"},"重要：槓桿 ETF 多數是『每日』重置倍數。這個工具適合單日或單一價格變動的快速近似；跨多日會受到每日複利、波動耗損、費用與追蹤誤差影響，實際價格不會單純等於原型股票累積報酬 × 倍率。"),
+                React.createElement("button",{type:"button",onClick:clearLeverageCalcTargets,className:"w-full rounded-[22px] bg-white border border-slate-200 text-slate-700 font-black px-4 py-4"},"清除未來價格／漲跌幅")));
+    };
     const BackupsSettingsPage = () => React.createElement(SettingsPage,{eyebrow:"備份與還原",title:"本機備份卡片",desc:"最多保留最近 5 份。備份包含目前狀態、歷史紀錄與全部資產快照。"},
         React.createElement("div",null,
             React.createElement(Card,{className:"p-5 mb-4"},
@@ -2417,6 +2626,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         if(settingsView==="appearance")return AppearanceSettingsPage();
         if(settingsView==="cashflow")return CashflowSettingsPage();
         if(settingsView==="backups")return BackupsSettingsPage();
+        if(settingsView==="leverage")return LeverageCalculatorSettingsPage();
         if(settingsView==="advanced")return React.createElement("div",{className:"page-slide-from-right settings-input-stable"},React.createElement(SettingsBack,{title:"返回設定"}),Inputs());
         if(settingsView==="sync") return React.createElement("div",{className:"page-slide-from-right settings-input-stable"},React.createElement(SettingsBack,{title:"返回設定"}),Sync());
         const menuItems=[
@@ -2427,6 +2637,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
             ['appearance','◉','外觀與隱私','封面主題、金額隱藏'],
             ['cashflow','±','IB 入金與出金','獨立記錄資金流，避免績效失真'],
             ['backups','↓','備份與還原','本機備份卡片、JSON 與 CSV'],
+            ['leverage','2×','槓桿股票換算器','原型股 ↔ 槓桿股未來價格與漲跌幅'],
             ['advanced','⚙','進階策略工具','情境模擬、新一輪 HOT 與完整規則'],
             ['sync','☁','雲端同步與系統',user&&!user.isAnonymous?'Google 雲端已連線':'目前使用本機資料']
         ];
