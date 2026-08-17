@@ -1,12 +1,52 @@
 (() => {
   if (!("serviceWorker" in navigator)) return;
 
+  const PWA_VERSION = "5.8.0";
+  const UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
   let reloading = false;
+  let lastUpdateCheck = 0;
+  let registrationRef = null;
+
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (reloading) return;
     reloading = true;
     window.location.reload();
   });
+
+  function activateWaiting(registration) {
+    const waiting = registration?.waiting;
+    if (waiting) waiting.postMessage({ type: "SKIP_WAITING" });
+    else registration?.update().catch(() => {});
+  }
+
+  function showUpdateBanner(registration) {
+    if (document.getElementById("pwa-update-banner")) return;
+    const banner = document.createElement("div");
+    banner.id = "pwa-update-banner";
+    banner.innerHTML = `
+      <div class="pwa-update-copy">
+        <strong>發現新版 v${PWA_VERSION}</strong>
+        <span>新版加入資料 Revision 鎖、衝突比較、一鍵復原、同步健康狀態與 QQQI 隔離 E2E。建議立即更新後再輸入資料。</span>
+      </div>
+      <button type="button">立即更新</button>
+    `;
+    banner.querySelector("button").addEventListener("click", () => activateWaiting(registration));
+    document.body.appendChild(banner);
+  }
+
+  async function checkForUpdate(force = false) {
+    const registration = registrationRef;
+    if (!registration) return;
+    const now = Date.now();
+    if (!force && now - lastUpdateCheck < UPDATE_CHECK_INTERVAL_MS) return;
+    lastUpdateCheck = now;
+    try {
+      await registration.update();
+      if (registration.waiting) showUpdateBanner(registration);
+    } catch (error) {
+      console.warn("PWA 新版本檢查失敗：", error);
+    }
+  }
 
   window.addEventListener("load", async () => {
     try {
@@ -14,44 +54,26 @@
         scope: "./",
         updateViaCache: "none"
       });
-
-      registration.update().catch(() => {});
-
-      if (registration.waiting) showUpdateBanner(() => activateWaiting(registration));
-
+      registrationRef = registration;
+      if (registration.waiting) showUpdateBanner(registration);
       registration.addEventListener("updatefound", () => {
         const worker = registration.installing;
         if (!worker) return;
         worker.addEventListener("statechange", () => {
-          if (worker.state !== "installed" || !navigator.serviceWorker.controller) return;
-          showUpdateBanner(() => activateWaiting(registration));
+          if (worker.state === "installed" && navigator.serviceWorker.controller) showUpdateBanner(registration);
         });
       });
+      checkForUpdate(true);
     } catch (error) {
       console.error("PWA Service Worker 註冊失敗：", error);
     }
   });
 
-  function activateWaiting(registration) {
-    const waiting = registration.waiting;
-    if (waiting) waiting.postMessage({ type: "SKIP_WAITING" });
-    else {
-      registration.update().finally(() => window.location.reload());
-    }
-  }
-
-  function showUpdateBanner(onReload) {
-    if (document.getElementById("pwa-update-banner")) return;
-    const banner = document.createElement("div");
-    banner.id = "pwa-update-banner";
-    banner.innerHTML = `
-      <div class="pwa-update-copy">
-        <strong>股票資產已有新版</strong>
-        <span>v5.5 已新增槓桿股票換算器，可用 Finnhub 查兩檔現價並雙向換算未來價格與漲跌幅；完全不影響 IB 主策略。</span>
-      </div>
-      <button type="button">套用新版</button>
-    `;
-    banner.querySelector("button").addEventListener("click", onReload);
-    document.body.appendChild(banner);
-  }
+  const foregroundCheck = () => {
+    if (document.visibilityState && document.visibilityState !== "visible") return;
+    checkForUpdate(false);
+  };
+  document.addEventListener("visibilitychange", foregroundCheck);
+  window.addEventListener("pageshow", foregroundCheck);
+  window.addEventListener("focus", foregroundCheck);
 })();

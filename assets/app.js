@@ -14,13 +14,27 @@ if (HAS_FIREBASE && !firebase.apps.length)
 const auth = HAS_FIREBASE ? firebase.auth() : null;
 const db = HAS_FIREBASE ? firebase.firestore() : null;
 const DOC_PATH = ["strategyDashboards", "tqqq-qqq200-main"];
-const APP_VERSION = "股票資產 PWA v5.5｜槓桿股票換算器";
+const APP_VERSION = "股票資產 PWA v5.8｜版本鎖＋衝突處理＋一鍵復原";
 const STRATEGY_ID = "tqqq-spy200";
 const STRATEGY_VERSION = "SPY200-4-3-HOT-19-24-28-INTRO-v1.2";
 const RECORD_SCHEMA_VERSION = 2;
 const LOCAL_KEY = "tqqqSpy200PermanentV7";
 const BACKUP_KEY = LOCAL_KEY + "_backupCardsV1";
 const TRASH_KEY = LOCAL_KEY + "_recordTrashV1";
+const UNDO_KEY = LOCAL_KEY + "_lastFormalUndoV1";
+const LAST_SYNC_KEY = LOCAL_KEY + "_lastCloudSyncV1";
+const readUndoCheckpoint = () => {
+    try { const raw=localStorage.getItem(UNDO_KEY); return raw?JSON.parse(raw):null; } catch(e){ return null; }
+};
+const writeUndoCheckpoint = checkpoint => {
+    try { checkpoint?localStorage.setItem(UNDO_KEY,JSON.stringify(checkpoint)):localStorage.removeItem(UNDO_KEY); } catch(e) {}
+};
+const readLastSyncMeta = () => {
+    try { const raw=localStorage.getItem(LAST_SYNC_KEY); return raw?JSON.parse(raw):{lastAt:"",reason:"",conflicts:[],revision:0}; } catch(e){ return {lastAt:"",reason:"",conflicts:[],revision:0}; }
+};
+const writeLastSyncMeta = meta => {
+    try { localStorage.setItem(LAST_SYNC_KEY,JSON.stringify(meta||{})); } catch(e) {}
+};
 const readLocalTrash = () => {
     try {
         const raw=localStorage.getItem(TRASH_KEY);
@@ -158,6 +172,7 @@ const tradingDayDistance = (fromText, toText=todayStr()) => { const from=parseDa
 const latestCompletedUsTradingDay = (now=new Date()) => { const d=new Date(now); d.setHours(12,0,0,0); const today=formatDateLocal(d); const nyParts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(now); const hh=Number(nyParts.find(x=>x.type==='hour')?.value||0), mm=Number(nyParts.find(x=>x.type==='minute')?.value||0); if(!isUsTradingDay(d) || hh<16 || (hh===16&&mm<15)){ do{d.setDate(d.getDate()-1);}while(!isUsTradingDay(d)); return formatDateLocal(d); } return today; };
 const DEFAULT = {
     schemaVersion: 2,
+    dataRevision: 0, lastWriteId: "", lastWriteSource: "", lastWriteAt: "",
     spy: "", spySma: "", qqq: "", qqqSma: "", tqqq: "", spyi: "", qqqi: "", marketDate: "", marketCloseDate: "", signalDate: "", executionDate: "",
     entryBuffer: 4, exitBuffer: 3, hot1: 19, hot2: 24, hot3: 28, hotAsset: "QQQ", introAsset: "QQQI",
     // 正式策略狀態：市場、過熱與 DCA 分開保存，避免中間區覆蓋狀態。
@@ -169,13 +184,16 @@ const DEFAULT = {
     sharesTqqq: 0, sharesQqq: 0, sharesSpy: 0, sharesSpyi: 0, sharesQqqi: 0, cashUsd: 0, otherUsd: 0, usdtwd: 32, currency: "USD",
     exchangeRateUpdatedDate: "", exchangeRateUpdatedAt: "", exchangeRateSourceUpdatedAt: "", exchangeRateNextUpdateAt: "", exchangeRateLastAttemptDate: "", exchangeRateLastError: "", exchangeRateProvider: "",
     autoSnapshotMarketDate: "", autoSnapshotUpdatedAt: "", autoSnapshotLastError: "", autoSnapshotSource: "",
+    autoSnapshotQuality: "", autoSnapshotQualityNote: "", autoSnapshotFreshPrices: 0, autoSnapshotExpectedPrices: 0, autoSnapshotStaleSymbols: [], autoSnapshotFtAgeDays: 0,
     autoSnapshotTestAt: "", autoSnapshotTestStatus: "", autoSnapshotTestMarketDate: "", autoSnapshotTestTotalTwd: 0,
+    qqqiE2eTestAt: "", qqqiE2eTestStatus: "", qqqiE2eTestId: "", qqqiE2eTestBeforeCashUsd: 0, qqqiE2eTestNetUsd: 0, qqqiE2eTestAfterCashUsd: 0, qqqiE2eTestSecondPassNetUsd: 0,
     ftUsd: 0, ftUpdatedAt: "", subUsd: 0, twStockTwd: 0, otherTotalTwd: 0,
     subSymbol: "", subShares: 0, subCashUsd: 0, subAvgCostUsd: 0, subPriceUsd: 0, subPriceUpdatedAt: "",
     externalCashflows: [],
     assetHighUsd: 0, lastExecutedAt: "", lastExecutionSummary: "",
     scenarioSign: -1, scenarioAbsPct: 10,
-    priceUpdatedAt: "", smaUpdatedAt: "", lastFetchAttemptAt: "",
+    priceUpdatedAt: "", smaUpdatedAt: "", spySmaUpdatedDate: "", qqqSmaUpdatedDate: "", lastFetchAttemptAt: "",
+    qqqiDividendAutomationEnabled: true, qqqiDividendTaxRate: 30, qqqiDividendStartDate: "", qqqiDividendLedger: [], qqqiDividendLastCheckAt: "", qqqiDividendLastProcessedAt: "", qqqiDividendLastError: "",
     privacyMode: false, coverTheme: "aurora",
     priceSources: {}, portfolioHistory: [], history: []
 }
@@ -280,7 +298,13 @@ const normalizeData = raw => {
         auto:x?.auto===true,
         staleSymbols:Array.isArray(x?.staleSymbols)?x.staleSymbols.map(String).slice(0,10):[],
         ftUpdatedAt:String(x?.ftUpdatedAt||''),
-        source:String(x?.source||'')
+        source:String(x?.source||''),
+        quality:String(x?.quality||''), qualityNote:String(x?.qualityNote||''),
+        expectedPriceCount:getNum(x?.expectedPriceCount), freshPriceCount:getNum(x?.freshPriceCount),
+        priceMeta:(x?.priceMeta&&typeof x.priceMeta==='object')?x.priceMeta:{}, fxFresh:x?.fxFresh===true,
+        ftAgeDays:Number.isFinite(Number(x?.ftAgeDays))?Number(x.ftAgeDays):null, ftStale:x?.ftStale===true,
+        sharesTqqq:getNum(x?.sharesTqqq), sharesQqq:getNum(x?.sharesQqq), sharesSpy:getNum(x?.sharesSpy), sharesSpyi:getNum(x?.sharesSpyi), sharesQqqi:getNum(x?.sharesQqqi),
+        cashUsd:getNum(x?.cashUsd), otherUsd:getNum(x?.otherUsd), dividendNetAddedUsd:getNum(x?.dividendNetAddedUsd), dividendIds:Array.isArray(x?.dividendIds)?x.dividendIds.map(String).slice(0,12):[]
     })).filter(x=>x.date&&x.totalTwd>=0).sort((a,b)=>a.date.localeCompare(b.date)).slice(-1200);
     clean.externalCashflows=(Array.isArray(src.externalCashflows)?src.externalCashflows:[]).map(x=>({
         id:String(x?.id||makeRecordId()),
@@ -308,11 +332,42 @@ const normalizeData = raw => {
     clean.autoSnapshotUpdatedAt=String(clean.autoSnapshotUpdatedAt||"");
     clean.autoSnapshotLastError=String(clean.autoSnapshotLastError||"").slice(0,240);
     clean.autoSnapshotSource=String(clean.autoSnapshotSource||"").slice(0,80);
+    clean.autoSnapshotQuality=['complete','estimated','incomplete'].includes(String(clean.autoSnapshotQuality||''))?String(clean.autoSnapshotQuality):'';
+    clean.autoSnapshotQualityNote=String(clean.autoSnapshotQualityNote||'').slice(0,300);
+    clean.autoSnapshotFreshPrices=Math.max(0,getNum(clean.autoSnapshotFreshPrices));
+    clean.autoSnapshotExpectedPrices=Math.max(0,getNum(clean.autoSnapshotExpectedPrices));
+    clean.autoSnapshotStaleSymbols=Array.isArray(clean.autoSnapshotStaleSymbols)?clean.autoSnapshotStaleSymbols.map(String).slice(0,20):[];
+    clean.autoSnapshotFtAgeDays=Math.max(0,getNum(clean.autoSnapshotFtAgeDays));
     clean.autoSnapshotTestAt=String(clean.autoSnapshotTestAt||"");
     clean.autoSnapshotTestStatus=String(clean.autoSnapshotTestStatus||"").slice(0,120);
     clean.autoSnapshotTestMarketDate=String(clean.autoSnapshotTestMarketDate||"").slice(0,10);
     clean.autoSnapshotTestTotalTwd=Math.max(0,getNum(clean.autoSnapshotTestTotalTwd));
+    clean.qqqiE2eTestAt=String(clean.qqqiE2eTestAt||"");
+    clean.qqqiE2eTestStatus=String(clean.qqqiE2eTestStatus||"").slice(0,180);
+    clean.qqqiE2eTestId=String(clean.qqqiE2eTestId||"").slice(0,100);
+    clean.qqqiE2eTestBeforeCashUsd=Math.max(0,getNum(clean.qqqiE2eTestBeforeCashUsd));
+    clean.qqqiE2eTestNetUsd=Math.max(0,getNum(clean.qqqiE2eTestNetUsd));
+    clean.qqqiE2eTestAfterCashUsd=Math.max(0,getNum(clean.qqqiE2eTestAfterCashUsd));
+    clean.qqqiE2eTestSecondPassNetUsd=Math.max(0,getNum(clean.qqqiE2eTestSecondPassNetUsd));
+    clean.dataRevision=Math.max(0,Math.floor(getNum(clean.dataRevision)));
+    clean.lastWriteId=String(clean.lastWriteId||"").slice(0,100);
+    clean.lastWriteSource=String(clean.lastWriteSource||"").slice(0,80);
+    clean.lastWriteAt=String(clean.lastWriteAt||"");
     clean.ftUpdatedAt=String(clean.ftUpdatedAt||"");
+    clean.spySmaUpdatedDate=String(clean.spySmaUpdatedDate||'').slice(0,10);
+    clean.qqqSmaUpdatedDate=String(clean.qqqSmaUpdatedDate||'').slice(0,10);
+    clean.qqqiDividendAutomationEnabled=clean.qqqiDividendAutomationEnabled!==false;
+    clean.qqqiDividendTaxRate=Math.max(0,Math.min(100,getNum(clean.qqqiDividendTaxRate===undefined?30:clean.qqqiDividendTaxRate)));
+    clean.qqqiDividendStartDate=String(clean.qqqiDividendStartDate||'').slice(0,10);
+    clean.qqqiDividendLastCheckAt=String(clean.qqqiDividendLastCheckAt||'');
+    clean.qqqiDividendLastProcessedAt=String(clean.qqqiDividendLastProcessedAt||'');
+    clean.qqqiDividendLastError=String(clean.qqqiDividendLastError||'').slice(0,240);
+    clean.qqqiDividendLedger=(Array.isArray(clean.qqqiDividendLedger)?clean.qqqiDividendLedger:[]).map(x=>({
+        id:String(x?.id||''),symbol:'QQQI',declarationDate:String(x?.declarationDate||'').slice(0,10),exDate:String(x?.exDate||'').slice(0,10),recordDate:String(x?.recordDate||'').slice(0,10),payableDate:String(x?.payableDate||'').slice(0,10),
+        amountPerShare:getNum(x?.amountPerShare),eligibleShares:getNum(x?.eligibleShares),shareSource:String(x?.shareSource||''),shareSourceDate:String(x?.shareSourceDate||'').slice(0,10),entitlementDate:String(x?.entitlementDate||'').slice(0,10),estimatedShares:x?.estimatedShares===true,
+        taxRate:getNum(x?.taxRate),grossUsd:getNum(x?.grossUsd),taxUsd:getNum(x?.taxUsd),netUsd:getNum(x?.netUsd),actualNetUsd:x?.actualNetUsd===null||x?.actualNetUsd===undefined?null:getNum(x.actualNetUsd),adjustmentUsd:getNum(x?.adjustmentUsd),
+        postedAt:String(x?.postedAt||''),adjustedAt:String(x?.adjustedAt||''),source:String(x?.source||''),sourceUrl:String(x?.sourceUrl||'')
+    })).filter(x=>x.id&&x.payableDate).sort((a,b)=>String(b.payableDate).localeCompare(String(a.payableDate))).slice(0,120);
     clean.schemaVersion=2;
     clean.hotRank=Math.max(0,Math.min(3,parseInt(clean.hotRank)||0));
     clean.dcaCompleted=Math.max(0,Math.min(6,parseInt(clean.dcaCompleted)||0));
@@ -329,7 +384,43 @@ const normalizeData = raw => {
 };
 const EXTERNAL_ACCOUNT_FIELDS=["ftUsd","ftUpdatedAt","subUsd","subSymbol","subShares","subCashUsd","subAvgCostUsd","subPriceUsd","subPriceUpdatedAt","twStockTwd","otherTotalTwd","externalCashflows"];
 const EXTERNAL_ACCOUNT_KEYS=new Set(EXTERNAL_ACCOUNT_FIELDS);
-const PERSONAL_KEYS = new Set(["sharesTqqq","sharesQqq","sharesSpy","sharesSpyi","sharesQqqi","cashUsd","otherUsd","usdtwd","currency","exchangeRateUpdatedDate","exchangeRateUpdatedAt","exchangeRateSourceUpdatedAt","exchangeRateNextUpdateAt","exchangeRateLastAttemptDate","exchangeRateLastError","exchangeRateProvider","autoSnapshotMarketDate","autoSnapshotUpdatedAt","autoSnapshotLastError","autoSnapshotSource","autoSnapshotTestAt","autoSnapshotTestStatus","autoSnapshotTestMarketDate","autoSnapshotTestTotalTwd","ftUsd","ftUpdatedAt","subUsd","subSymbol","subShares","subCashUsd","subAvgCostUsd","subPriceUsd","subPriceUpdatedAt","twStockTwd","otherTotalTwd","externalCashflows","privacyMode","coverTheme","notes","marketState","hotRank","dcaActive","dcaCompleted","dcaPoolUsd","dcaLastDate","dcaNextDueDate","riskOffCycleId","riskOnCycleId","strategyPhase","parametersLocked","hotAsset"]);
+const PERSONAL_KEYS = new Set(["sharesTqqq","sharesQqq","sharesSpy","sharesSpyi","sharesQqqi","cashUsd","otherUsd","usdtwd","currency","exchangeRateUpdatedDate","exchangeRateUpdatedAt","exchangeRateSourceUpdatedAt","exchangeRateNextUpdateAt","exchangeRateLastAttemptDate","exchangeRateLastError","exchangeRateProvider","autoSnapshotMarketDate","autoSnapshotUpdatedAt","autoSnapshotLastError","autoSnapshotSource","autoSnapshotQuality","autoSnapshotQualityNote","autoSnapshotFreshPrices","autoSnapshotExpectedPrices","autoSnapshotStaleSymbols","autoSnapshotFtAgeDays","autoSnapshotTestAt","autoSnapshotTestStatus","autoSnapshotTestMarketDate","autoSnapshotTestTotalTwd","ftUsd","ftUpdatedAt","subUsd","subSymbol","subShares","subCashUsd","subAvgCostUsd","subPriceUsd","subPriceUpdatedAt","twStockTwd","otherTotalTwd","externalCashflows","privacyMode","coverTheme","notes","marketState","hotRank","dcaActive","dcaCompleted","dcaPoolUsd","dcaLastDate","dcaNextDueDate","riskOffCycleId","riskOnCycleId","strategyPhase","parametersLocked","hotAsset","introAsset","spySmaUpdatedDate","qqqSmaUpdatedDate","qqqiDividendAutomationEnabled","qqqiDividendTaxRate","qqqiDividendStartDate","qqqiDividendLedger","qqqiDividendLastCheckAt","qqqiDividendLastProcessedAt","qqqiDividendLastError"]);
+// v5.7：手機回到前景時重新讀取雲端；正式儲存前做三方比對，避免舊畫面覆蓋 GitHub Actions 新資料。
+const SYNC_EXCLUDED_KEYS=new Set([
+    "history","portfolioHistory","autoSnapshotMarketDate","autoSnapshotUpdatedAt","autoSnapshotLastError","autoSnapshotSource",
+    "autoSnapshotQuality","autoSnapshotQualityNote","autoSnapshotFreshPrices","autoSnapshotExpectedPrices","autoSnapshotStaleSymbols","autoSnapshotFtAgeDays",
+    "autoSnapshotTestAt","autoSnapshotTestStatus","autoSnapshotTestMarketDate","autoSnapshotTestTotalTwd",
+    "qqqiDividendLastCheckAt","qqqiDividendLastProcessedAt","qqqiDividendLastError","lastFetchAttemptAt","priceSources",
+    "dataRevision","lastWriteId","lastWriteSource","lastWriteAt",
+    "qqqiE2eTestAt","qqqiE2eTestStatus","qqqiE2eTestId","qqqiE2eTestBeforeCashUsd","qqqiE2eTestNetUsd","qqqiE2eTestAfterCashUsd","qqqiE2eTestSecondPassNetUsd"
+]);
+const SYNC_TRACKED_KEYS=Object.keys(DEFAULT).filter(k=>!SYNC_EXCLUDED_KEYS.has(k));
+const syncValueEqual=(a,b)=>{ try{return JSON.stringify(sanitize(a===undefined?null:a))===JSON.stringify(sanitize(b===undefined?null:b));}catch(e){return String(a)===String(b);} };
+const changedSyncKeys=(a,b)=>SYNC_TRACKED_KEYS.filter(k=>!syncValueEqual(a?.[k],b?.[k]));
+const mergeRecordLists=(...lists)=>{
+    const byId=new Map();
+    lists.flat().filter(Boolean).map(normalizeRecord).forEach(r=>{ if(r.deletedAt) byId.delete(r.recordId); else byId.set(r.recordId,r); });
+    return [...byId.values()].sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+};
+const mergeDividendLedgerDraft=(cloudLedger,localLedger,baselineLedger)=>{
+    const base=new Map((Array.isArray(baselineLedger)?baselineLedger:[]).filter(Boolean).map(x=>[String(x.id||''),x]));
+    const local=new Map((Array.isArray(localLedger)?localLedger:[]).filter(Boolean).map(x=>[String(x.id||''),x]));
+    const out=new Map((Array.isArray(cloudLedger)?cloudLedger:[]).filter(Boolean).map(x=>[String(x.id||''),x]));
+    for(const [id,row] of local.entries()){
+        if(!id)continue;
+        if(!syncValueEqual(row,base.get(id))) out.set(id,row);
+    }
+    return [...out.values()].sort((a,b)=>String(b.payableDate||'').localeCompare(String(a.payableDate||''))).slice(0,120);
+};
+const SYNC_KEY_LABELS={cashUsd:'IB 可用現金',sharesTqqq:'TQQQ 股數',sharesQqq:'QQQ 股數',sharesSpy:'SPY 股數',sharesSpyi:'SPYI 股數',sharesQqqi:'QQQI 股數',spy:'SPY 股價',qqq:'QQQ 股價',tqqq:'TQQQ 股價',spyi:'SPYI 股價',qqqi:'QQQI 股價',marketDate:'市場日期',marketCloseDate:'市場收盤日',usdtwd:'USD/TWD',ftUsd:'FT 淨值',subPriceUsd:'複委託股價',qqqiDividendLedger:'QQQI 配息紀錄'};
+const formatConflictValue = value => {
+    if(value===null||value===undefined||value==='') return '—';
+    if(typeof value==='number') return Number.isInteger(value)?money(value,0):money(value,4);
+    if(typeof value==='boolean') return value?'是':'否';
+    if(Array.isArray(value)) return `${value.length} 筆`;
+    if(typeof value==='object'){ try{const text=JSON.stringify(value);return text.length>80?text.slice(0,77)+'…':text;}catch(e){return '[資料]';} }
+    const text=String(value); return text.length>80?text.slice(0,77)+'…':text;
+};
 const pickExternalAccountState = source => EXTERNAL_ACCOUNT_FIELDS.reduce((out,key)=>{out[key]=source?.[key];return out;},{});
 const computeSubAccountValue = data => {
     const symbol=String(data?.subSymbol||'').toUpperCase();
@@ -369,7 +460,7 @@ const withPortfolioSnapshot = (raw, reason='save') => {
     const strategyUsd=getNum(evaluateStrategy(normalized).totalUsd);
     const summary=computePortfolioSummary(normalized,strategyUsd);
     const date=(reason==='price_update'?(normalized.marketCloseDate||normalized.marketDate):latestCompletedUsTradingDay())||todayStr();
-    const snapshot={date:String(date).slice(0,10),createdAt:new Date().toISOString(),strategyUsd,totalTwd:summary.totalTwd,rate:summary.rate,rateUpdatedDate:normalized.exchangeRateUpdatedDate||String(date).slice(0,10),rateProvider:normalized.exchangeRateProvider||"手動",ftUsd:summary.ftUsd,ftUpdatedAt:normalized.ftUpdatedAt||"",subUsd:summary.subUsd,subSymbol:summary.subAccount.symbol,subShares:summary.subAccount.shares,subCashUsd:summary.subAccount.cashUsd,subPriceUsd:summary.subAccount.priceUsd,twStockTwd:summary.twStockTwd,otherTotalTwd:summary.otherTotalTwd,reason,auto:false,source:'app'};
+    const snapshot={date:String(date).slice(0,10),createdAt:new Date().toISOString(),strategyUsd,totalTwd:summary.totalTwd,rate:summary.rate,rateUpdatedDate:normalized.exchangeRateUpdatedDate||String(date).slice(0,10),rateProvider:normalized.exchangeRateProvider||"手動",ftUsd:summary.ftUsd,ftUpdatedAt:normalized.ftUpdatedAt||"",subUsd:summary.subUsd,subSymbol:summary.subAccount.symbol,subShares:summary.subAccount.shares,subCashUsd:summary.subAccount.cashUsd,subPriceUsd:summary.subAccount.priceUsd,twStockTwd:summary.twStockTwd,otherTotalTwd:summary.otherTotalTwd,sharesTqqq:getNum(normalized.sharesTqqq),sharesQqq:getNum(normalized.sharesQqq),sharesSpy:getNum(normalized.sharesSpy),sharesSpyi:getNum(normalized.sharesSpyi),sharesQqqi:getNum(normalized.sharesQqqi),cashUsd:getNum(normalized.cashUsd),otherUsd:getNum(normalized.otherUsd),reason,auto:false,source:'app',quality:'manual',qualityNote:'人工儲存快照'};
     const list=(Array.isArray(normalized.portfolioHistory)?normalized.portfolioHistory:[]).filter(x=>x.date!==String(date).slice(0,10));
     list.push(snapshot);
     list.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
@@ -580,6 +671,11 @@ function evaluateStrategy(data) {
         const entryPx=spySma*(1+entry), exitPx=spySma*(1-exit);
         const qHot1=qqqSma*(1+hot1), qHot2=qqqSma*(1+hot2), qHot3=qqqSma*(1+hot3);
         const marketDate=data.marketDate||todayStr();
+        const smaReferenceDate=marketDate||latestCompletedUsTradingDay();
+        const spySmaAge=data.spySmaUpdatedDate?tradingDayDistance(data.spySmaUpdatedDate,smaReferenceDate):999;
+        const qqqSmaAge=data.qqqSmaUpdatedDate?tradingDayDistance(data.qqqSmaUpdatedDate,smaReferenceDate):999;
+        const smaFreshForExecution=spySmaAge<=2 && qqqSmaAge<=2;
+        const smaFreshnessText=smaFreshForExecution?'兩條 200SMA 均在 2 個交易日內':`SPY SMA ${spySmaAge>=999?'未標記日期':`落後 ${spySmaAge} 日`}｜QQQ SMA ${qqqSmaAge>=999?'未標記日期':`落後 ${qqqSmaAge} 日`}`;
 
         const storedMarket=String(data.marketState||'NEUTRAL').toUpperCase();
         const storedHot=Math.max(0,Math.min(3,parseInt(data.hotRank)||0));
@@ -596,7 +692,10 @@ function evaluateStrategy(data) {
         if(getNum(data.hot1)<=0) paramErrors.push('過熱門檻必須大於 0%');
         const holdingErrors=[];
         [['TQQQ 股數',data.sharesTqqq],['QQQ 股數',data.sharesQqq],['SPY 股數',data.sharesSpy],['SPYI 股數',data.sharesSpyi],['QQQI 股數',data.sharesQqqi],['現金',data.cashUsd],['其他資產',data.otherUsd]].forEach(([name,v])=>{ if(getNum(v)<0) holdingErrors.push(`${name}不可為負數`); });
-        const validationErrors=[...paramErrors,...holdingErrors];
+        const smaErrors=[];
+        if(spySma>0 && spySmaAge>2) smaErrors.push('SPY 200SMA 超過 2 個交易日未確認');
+        if(qqqSma>0 && qqqSmaAge>2) smaErrors.push('QQQ 200SMA 超過 2 個交易日未確認');
+        const validationErrors=[...paramErrors,...holdingErrors,...smaErrors];
 
         const rows=[
             {name:'TQQQ',shares:getNum(data.sharesTqqq),price:tqqq},
@@ -707,6 +806,7 @@ function evaluateStrategy(data) {
         const targetRows=visibleSymbols.map(sym=>calculationRows.find(r=>r.sym===sym)).filter(Boolean);
         const actionLines=[];
         if(!valid) actionLines.push('資料不足，請更新市場資料並輸入兩個 200SMA。');
+        else if(!smaFreshForExecution) actionLines.push(`200SMA 資料需要重新確認：${smaFreshnessText}。已暫停產生正式交易指令。`);
         else if(signal==='OFF'||signal==='DCA'){
             if(tqqqValue>10) actionLines.push(`賣出全部 TQQQ 約 ${money(getNum(data.sharesTqqq),4)} 股。`);
             if(startingNewCycle && qqqValue>10) actionLines.push(`賣出原有 QQQ 約 ${money(getNum(data.sharesQqq),4)} 股，先建立本輪 DCA 現金池。`);
@@ -726,7 +826,9 @@ function evaluateStrategy(data) {
                 ? '維持原狀'
                 : actionLines.length===1 && actionLines[0].startsWith('資料不足')
                     ? '先補資料'
-                    : '需要執行';
+                    : actionLines.length===1 && actionLines[0].startsWith('200SMA')
+                        ? '先確認 SMA'
+                        : '需要執行';
 
         const distanceItems=valid?[
             {key:'riskOff',label:'SPY Risk-Off',value:((exitPx/spy)-1)*100,price:exitPx,current:spy,hint:`SPY 低於 $${money(exitPx,2)} 觸發`},
@@ -750,7 +852,7 @@ function evaluateStrategy(data) {
         const scenarioFlags=[];
         if(valid){if(scenarioQqq>=qHot3)scenarioFlags.push(`QQQ 過熱三階 +${data.hot3}%`);else if(scenarioQqq>=qHot2)scenarioFlags.push(`QQQ 過熱二階 +${data.hot2}%`);else if(scenarioQqq>=qHot1)scenarioFlags.push(`QQQ 過熱一階 +${data.hot1}%`);if(!scenarioFlags.length)scenarioFlags.push('QQQ 未新增過熱觸發');}else scenarioFlags.push('資料不足');
         const scenario={movePct:scenarioMove,qqq:scenarioQqq,tqqq:scenarioTqqq,totalUsd:scenarioTotalUsd,totalTwd:scenarioTotalUsd*rate,pnlUsd:scenarioPnlUsd,pnlPct:scenarioPnlPct,flags:scenarioFlags};
-        return {valid,canExecute:valid && validationErrors.length===0,validationErrors,signal,tone,title,instruction,alloc,spyDev,qqqDev,entryPx,exitPx,qHot1,qHot2,qHot3,rows,totalUsd,totalDisplay,targetRows,assetHighUsd,drawdown,actionLines,distanceItems,scenario,marketState,effectiveRank,storedHot,storedMarket,thresholdRank,thresholdRankLabel,storedHotLabel,effectiveHotLabel,hotPullbackLocked,hotCompareMessage,immediateSignal,formalStateText,todayAction,riskOffNow,riskOnNow,dcaActiveEffective,dcaCyclePresent,dcaActiveBefore,dcaWillStop,dcaDue,dcaPool,dcaInstallment,dcaCompleted:dcaCompletedBefore,plannedCompleted,dcaBuyUsd,dcaBuyShares,dcaTargetQqq,dcaTargetCash,nextDue,startingNewCycle,investableUsd,strategyPhase,introMode,waitingFirstReentry,strategyActive,paramsLocked,positionAsset,introAsset};
+        return {valid,canExecute:valid && validationErrors.length===0,validationErrors,signal,tone,title,instruction,alloc,spyDev,qqqDev,entryPx,exitPx,qHot1,qHot2,qHot3,rows,totalUsd,totalDisplay,targetRows,assetHighUsd,drawdown,actionLines,distanceItems,scenario,marketState,effectiveRank,storedHot,storedMarket,thresholdRank,thresholdRankLabel,storedHotLabel,effectiveHotLabel,hotPullbackLocked,hotCompareMessage,immediateSignal,formalStateText,todayAction,riskOffNow,riskOnNow,dcaActiveEffective,dcaCyclePresent,dcaActiveBefore,dcaWillStop,dcaDue,dcaPool,dcaInstallment,dcaCompleted:dcaCompletedBefore,plannedCompleted,dcaBuyUsd,dcaBuyShares,dcaTargetQqq,dcaTargetCash,nextDue,startingNewCycle,investableUsd,strategyPhase,introMode,waitingFirstReentry,strategyActive,paramsLocked,positionAsset,introAsset,smaFreshForExecution,smaFreshnessText,spySmaAge,qqqSmaAge};
 
 }
 
@@ -828,6 +930,9 @@ const App = () => {
     const [toast, setToast] = useState("");
     const [updateSuccess, setUpdateSuccess] = useState(false);
     const [syncText, setSyncText] = useState("準備中");
+    const [cloudSyncMeta,setCloudSyncMeta]=useState(() => readLastSyncMeta());
+    const [conflictDialog,setConflictDialog]=useState(null);
+    const [undoCheckpoint,setUndoCheckpoint]=useState(() => readUndoCheckpoint());
     const [loadingPrice, setLoadingPrice] = useState(false);
     const [loadingFx, setLoadingFx] = useState(false);
     const [initialDataReady, setInitialDataReady] = useState(!auth);
@@ -881,8 +986,13 @@ const App = () => {
     const committedDataRef = useRef(committedData);
     const fxLoadingRef = useRef(false);
     const draftChangesRef = useRef(false);
+    const cloudSyncInFlightRef=useRef(false);
+    const lastForegroundSyncRef=useRef(0);
+    const saveConflictRef=useRef("");
+    const conflictResolverRef=useRef(null);
+    const externalDraftDirtyRef=useRef(false);
     const externalDraftRef = useRef(pickExternalAccountState(data));
-    const updateExternalDraft = useCallback((key,value) => { externalDraftRef.current={...externalDraftRef.current,[key]:value}; }, []);
+    const updateExternalDraft = useCallback((key,value) => { externalDraftRef.current={...externalDraftRef.current,[key]:value}; externalDraftDirtyRef.current=true; }, []);
     const collectExternalDraft = useCallback(() => normalizeData({...data,...externalDraftRef.current}), [data]);
     const toggleCollapse = useCallback(id => setCollapsed(prev => ({ ...prev, [id]: !prev[id] })), []);
     const showToast = useCallback(txt => { setToast(txt); setTimeout(() => setToast(""), 2600); }, []);
@@ -973,6 +1083,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
     }, []);
     const openQuickUpdateSheet = useCallback(() => {
         externalDraftRef.current = pickExternalAccountState(data);
+        externalDraftDirtyRef.current=false;
         setShowQuickUpdateSheet(true);
     }, [data]);
     const priceFailureText = useCallback(result => {
@@ -1013,6 +1124,166 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
     }, []);
     const docRef = useCallback(() => (db && user && !user.isAnonymous) ? db.collection("users").doc(user.uid).collection(DOC_PATH[0]).doc(DOC_PATH[1]) : null, [user]);
     const recordsRef = useCallback(() => docRef() ? docRef().collection("records") : null, [docRef]);
+    const markSuccessfulSync = useCallback((reason, revision=0, conflicts=[]) => {
+        const meta={lastAt:new Date().toISOString(),reason:String(reason||'雲端同步'),conflicts:Array.isArray(conflicts)?conflicts:[],revision:Math.max(0,Math.floor(getNum(revision)))};
+        setCloudSyncMeta(meta); writeLastSyncMeta(meta); return meta;
+    },[]);
+    const writeCloudPatchWithRevision = useCallback(async (patch,{expectedRevision=null,source='app',raw=false}={}) => {
+        const root=docRef(); if(!root)return {revision:Math.max(0,Math.floor(getNum(dataRef.current?.dataRevision))),writeId:''};
+        const writeId=(typeof crypto!=="undefined"&&crypto.randomUUID)?crypto.randomUUID():`write-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+        const writeAt=new Date().toISOString(); let nextRevision=0;
+        await db.runTransaction(async tx=>{
+            const snap=await tx.get(root); const current=snap.exists?(snap.data()||{}):{};
+            const currentRevision=Math.max(0,Math.floor(getNum(current.dataRevision)));
+            if(expectedRevision!==null && currentRevision!==Math.max(0,Math.floor(getNum(expectedRevision)))){
+                const err=new Error(`雲端版本已由 ${expectedRevision} 更新為 ${currentRevision}`); err.code='revision-mismatch'; err.currentRevision=currentRevision; throw err;
+            }
+            nextRevision=currentRevision+1;
+            const body=raw?patch:sanitize(patch||{});
+            tx.set(root,{...body,dataRevision:nextRevision,lastWriteId:writeId,lastWriteSource:source,lastWriteAt:writeAt,clientAppVersion:APP_VERSION,updatedAtText:new Date().toLocaleString('zh-TW'),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+        });
+        return {revision:nextRevision,writeId,writeAt};
+    },[docRef]);
+    const writeFormalCloudWithRevision = useCallback(async (formal,recordToAppend,{expectedRevision=null,source='app-formal',softDeleteRecordId=''}={}) => {
+        const root=docRef(); if(!root)return {revision:Math.max(0,Math.floor(getNum(formal?.dataRevision))),writeId:'',writeAt:''};
+        const writeId=(typeof crypto!=="undefined"&&crypto.randomUUID)?crypto.randomUUID():`write-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+        const writeAt=new Date().toISOString(); let nextRevision=0;
+        const rec=recordToAppend?normalizeRecord(recordToAppend):null;
+        const replaced=rec?[...new Set(Array.isArray(rec.replacedRecordIds)?rec.replacedRecordIds:[])].filter(id=>id&&id!==rec.recordId):[];
+        await db.runTransaction(async tx=>{
+            const snap=await tx.get(root); const current=snap.exists?(snap.data()||{}):{};
+            const currentRevision=Math.max(0,Math.floor(getNum(current.dataRevision)));
+            if(expectedRevision!==null && currentRevision!==Math.max(0,Math.floor(getNum(expectedRevision)))){
+                const err=new Error(`雲端版本已由 ${expectedRevision} 更新為 ${currentRevision}`); err.code='revision-mismatch'; err.currentRevision=currentRevision; throw err;
+            }
+            nextRevision=currentRevision+1;
+            const { history:_history,updatedAt:_updatedAt,autoSnapshotServerUpdatedAt:_autoSnapshotServerUpdatedAt,dataRevision:_dataRevision,lastWriteId:_lastWriteId,lastWriteSource:_lastWriteSource,lastWriteAt:_lastWriteAt,...currentOnly }=formal;
+            tx.set(root,{...sanitize({...currentOnly,recordSchemaVersion:RECORD_SCHEMA_VERSION}),dataRevision:nextRevision,lastWriteId:writeId,lastWriteSource:source,lastWriteAt:writeAt,clientAppVersion:APP_VERSION,updatedAtText:new Date().toLocaleString('zh-TW'),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+            if(rec&&recordsRef()){
+                tx.set(recordsRef().doc(rec.recordId),sanitize({...rec,createdAt:rec.createdAt,deletedAt:null}),{merge:true});
+                const deletedAt=new Date().toISOString();
+                replaced.forEach(id=>tx.set(recordsRef().doc(id),{deletedAt,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
+            }
+            if(softDeleteRecordId&&recordsRef()){
+                tx.set(recordsRef().doc(String(softDeleteRecordId)),{deletedAt:new Date().toISOString(),undoRestoredAt:new Date().toISOString(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+            }
+        });
+        return {revision:nextRevision,writeId,writeAt};
+    },[docRef,recordsRef]);
+    const askConflictResolution = useCallback((conflicts,local,cloud,rebased) => new Promise(resolve=>{
+        if(conflictResolverRef.current){ try{conflictResolverRef.current('cancel');}catch(e){} }
+        conflictResolverRef.current=resolve;
+        setConflictDialog({conflicts:[...conflicts],local:normalizeData(local),cloud:normalizeData(cloud),rebased:normalizeData(rebased)});
+    }),[]);
+    const resolveConflictDialog = useCallback(choice=>{
+        const resolver=conflictResolverRef.current; conflictResolverRef.current=null; setConflictDialog(null); if(resolver)resolver(choice);
+    },[]);
+    const persistUndoCheckpoint = useCallback((beforeState,reason,recordId='') => {
+        const checkpoint={id:`undo-${Date.now()}`,createdAt:new Date().toISOString(),reason:String(reason||'正式儲存'),recordId:String(recordId||''),state:normalizeData(beforeState||{})};
+        writeUndoCheckpoint(checkpoint); setUndoCheckpoint(checkpoint); return checkpoint;
+    },[]);
+    const loadCloudBundle = useCallback(async ({includeRecords=true}={}) => {
+        const root=docRef();
+        if(!root)return null;
+        const [snap,recordSnap]=await Promise.all([
+            root.get(),
+            includeRecords&&recordsRef()?recordsRef().orderBy("createdAt","desc").limit(200).get().catch(()=>null):Promise.resolve(null)
+        ]);
+        const cloudRaw=snap&&snap.exists?(snap.data()||{}):{};
+        const cached=(Array.isArray(committedDataRef.current?.history)?committedDataRef.current.history:[]).map(normalizeRecord);
+        const embedded=(Array.isArray(cloudRaw.history)?cloudRaw.history:[]).map(normalizeRecord);
+        const permanent=recordSnap?recordSnap.docs.map(d=>normalizeRecord({...d.data(),recordId:d.id})):[];
+        const cloud=normalizeData({...cloudRaw,history:mergeRecordLists(cached,embedded,permanent)});
+        return {cloud,recordSnap};
+    },[docRef,recordsRef]);
+    const buildRebasedDraft = useCallback((current,baseline,cloud) => {
+        const local=normalizeData(current||{}), base=normalizeData(baseline||{}), remote=normalizeData(cloud||{});
+        const localChanged=changedSyncKeys(local,base);
+        const remoteChanged=changedSyncKeys(remote,base);
+        const rebased={...remote};
+        localChanged.forEach(k=>{ if(k!=="qqqiDividendLedger") rebased[k]=local[k]; });
+        rebased.qqqiDividendLedger=mergeDividendLedgerDraft(remote.qqqiDividendLedger,local.qqqiDividendLedger,base.qqqiDividendLedger);
+        rebased.history=mergeRecordLists(remote.history,local.history);
+        rebased.portfolioHistory=Array.isArray(remote.portfolioHistory)?remote.portfolioHistory:[];
+        const conflicts=localChanged.filter(k=>remoteChanged.includes(k)&&k!=="qqqiDividendLedger");
+        return {rebased:normalizeData(rebased),localChanged,remoteChanged,conflicts};
+    },[]);
+    const syncFromCloud = useCallback(async ({reason="前景同步",silent=false,force=false}={}) => {
+        if(!user||user.isAnonymous||!docRef())return false;
+        const now=Date.now();
+        if(!force&&now-lastForegroundSyncRef.current<15000)return true;
+        if(cloudSyncInFlightRef.current)return false;
+        cloudSyncInFlightRef.current=true;
+        lastForegroundSyncRef.current=now;
+        try{
+            if(!silent)setSyncText(reason==="前景同步"?"App 回到前景，正在確認雲端最新資料…":"正在讀取 Google 雲端正式資料…");
+            const bundle=await loadCloudBundle({includeRecords:true});
+            if(!bundle)return false;
+            const oldBase=normalizeData(committedDataRef.current||{});
+            const current=normalizeData(dataRef.current||{});
+            const {rebased,localChanged,conflicts}=buildRebasedDraft(current,oldBase,bundle.cloud);
+            const hasLocalDraft=localChanged.length>0||draftChangesRef.current||externalDraftDirtyRef.current;
+            const nextData=hasLocalDraft?rebased:bundle.cloud;
+            committedDataRef.current=bundle.cloud;
+            dataRef.current=nextData;
+            setCommittedData(bundle.cloud);
+            setData(nextData);
+            try{localStorage.setItem(LOCAL_KEY+"_committed",JSON.stringify(bundle.cloud));localStorage.setItem(LOCAL_KEY,JSON.stringify(nextData));}catch(e){}
+            if(bundle.recordSnap){
+                setRecordsCursor(bundle.recordSnap.docs.length?bundle.recordSnap.docs[bundle.recordSnap.docs.length-1]:null);
+                setRecordsHasMore(bundle.recordSnap.docs.length===200);
+            }
+            if(!externalDraftDirtyRef.current)externalDraftRef.current=pickExternalAccountState(nextData);
+            const draftStill=localChanged.length>0||externalDraftDirtyRef.current;
+            draftChangesRef.current=draftStill;
+            setHasDraftChanges(draftStill);
+            setInitialDataReady(true);
+            markSuccessfulSync(reason,getNum(bundle.cloud.dataRevision),conflicts);
+            if(conflicts.length){
+                setSyncText(`雲端有新資料；已保留你的草稿。衝突欄位：${conflicts.map(k=>SYNC_KEY_LABELS[k]||k).join("、")}`);
+            }else if(draftStill){
+                setSyncText(`已更新雲端正式資料；${localChanged.length||1} 項本機草稿仍保留`);
+            }else{
+                setSyncText(`已同步雲端最新資料 ${new Date().toLocaleTimeString("zh-TW",{hour:"2-digit",minute:"2-digit"})}`);
+            }
+            return true;
+        }catch(err){
+            setInitialDataReady(true);
+            setSyncText("雲端讀取失敗："+(err?.message||"未知錯誤"));
+            return false;
+        }finally{cloudSyncInFlightRef.current=false;}
+    },[user,docRef,loadCloudBundle,buildRebasedDraft,markSuccessfulSync]);
+    const guardPayloadBeforeSave = useCallback(async payload => {
+        saveConflictRef.current="";
+        const root=docRef();
+        if(!root)return {ok:true,payload:normalizeData(payload),cloud:null,expectedRevision:null};
+        const snap=await root.get();
+        if(!snap.exists)return {ok:true,payload:normalizeData(payload),cloud:null,expectedRevision:0};
+        const oldBase=normalizeData(committedDataRef.current||{});
+        const cloud=normalizeData({...snap.data(),history:oldBase.history});
+        const cloudRevision=Math.max(0,Math.floor(getNum(snap.data()?.dataRevision)));
+        const {rebased,conflicts}=buildRebasedDraft(payload,oldBase,cloud);
+        committedDataRef.current=cloud; setCommittedData(cloud);
+        try{localStorage.setItem(LOCAL_KEY+"_committed",JSON.stringify(cloud));}catch(e){}
+        if(conflicts.length){
+            const labels=conflicts.map(k=>SYNC_KEY_LABELS[k]||k);
+            setSyncText(`雲端與本機同時修改：${labels.join("、")}；請選擇要採用哪一份。`);
+            setCloudSyncMeta(prev=>({...prev,conflicts}));
+            const choice=await askConflictResolution(conflicts,payload,cloud,rebased);
+            if(choice==='cancel'){
+                saveConflictRef.current='已取消儲存；本機輸入仍保留。';
+                return {ok:false,payload:normalizeData(payload),cloud,conflicts,expectedRevision:cloudRevision};
+            }
+            const selected=normalizeData(rebased);
+            if(choice==='cloud') conflicts.forEach(k=>{selected[k]=cloud[k];});
+            dataRef.current=selected; setData(selected);
+            try{localStorage.setItem(LOCAL_KEY,JSON.stringify(selected));}catch(e){}
+            draftChangesRef.current=true; setHasDraftChanges(true);
+            saveConflictRef.current=choice==='cloud'?'已採用衝突欄位的雲端值。':'已確認以本機值覆蓋衝突欄位。';
+            return {ok:true,payload:selected,cloud,conflicts,expectedRevision:cloudRevision,resolution:choice};
+        }
+        return {ok:true,payload:rebased,cloud,conflicts:[],expectedRevision:cloudRevision};
+    },[docRef,buildRebasedDraft,askConflictResolution]);
     const updateExchangeRate = useCallback(async ({ force=false, silent=false } = {}) => {
         const current=dataRef.current||{};
         const date=todayStr();
@@ -1047,7 +1318,8 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
             });
             if(docRef()){
                 try{
-                    await docRef().set(sanitize({...patch,updatedAtText:new Date().toLocaleString("zh-TW"),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}),{merge:true});
+                    const wr=await writeCloudPatchWithRevision(patch,{source:'app-fx'});
+                    markSuccessfulSync('匯率更新',wr.revision,[]);
                 }catch(cloudError){ setSyncText("匯率已更新，本次雲端同步失敗："+(cloudError.message||"未知錯誤")); }
             }
             if(!silent){flashUpdateSuccess();showToast(`✓ USD/TWD 已更新為 ${money(result.rate,4)}`);}
@@ -1062,7 +1334,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
                 return next;
             });
             if(docRef()){
-                try{await docRef().set(sanitize(patch),{merge:true});}catch(e){}
+                try{const wr=await writeCloudPatchWithRevision(patch,{source:'app-fx-error'});markSuccessfulSync('匯率狀態更新',wr.revision,[]);}catch(e){}
             }
             if(!silent)showToast(`匯率更新失敗：${message}；沿用 ${money(getNum(current.usdtwd)||32,4)}`);
             return {success:false,updated:false,message,rate:getNum(current.usdtwd)||32};
@@ -1070,7 +1342,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
             fxLoadingRef.current=false;
             setLoadingFx(false);
         }
-    },[docRef,flashUpdateSuccess,showToast]);
+    },[docRef,flashUpdateSuccess,showToast,writeCloudPatchWithRevision,markSuccessfulSync]);
     useEffect(() => {
         const onFocusIn = e => { if (e.target && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) editingRef.current = true; };
         const onFocusOut = e => { if (e.target && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) setTimeout(() => { editingRef.current = false; }, 250); };
@@ -1079,7 +1351,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         return () => { document.removeEventListener('focusin', onFocusIn); document.removeEventListener('focusout', onFocusOut); };
     }, []);
     useEffect(() => {
-        if(settingsView==="accounts") externalDraftRef.current=pickExternalAccountState(data);
+        if(settingsView==="accounts"){ externalDraftRef.current=pickExternalAccountState(dataRef.current||data); externalDraftDirtyRef.current=false; }
     }, [settingsView]);
     useEffect(() => {
         if (!auth) {
@@ -1094,33 +1366,22 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         return () => unsub();
     }, []);
     useEffect(() => {
-        if (!user || user.isAnonymous || !docRef()) return;
-        let cancelled = false;
-        setSyncText("正在讀取 Google 雲端正式資料…");
-        Promise.all([
-            docRef().get(),
-            recordsRef().orderBy("createdAt", "desc").limit(200).get().catch(()=>null)
-        ]).then(([snap,recordSnap]) => {
-            if (cancelled) return;
-            const cloud = snap && snap.exists ? (snap.data() || {}) : {};
-            const embedded=(Array.isArray(cloud.history)?cloud.history:[]).map(normalizeRecord);
-            const localCached=(Array.isArray(readStoredObject('_committed').history)?readStoredObject('_committed').history:[]).map(normalizeRecord);
-            const permanent=recordSnap ? recordSnap.docs.map(d=>normalizeRecord({...d.data(),recordId:d.id})) : [];
-            setRecordsCursor(recordSnap && recordSnap.docs.length ? recordSnap.docs[recordSnap.docs.length-1] : null);
-            setRecordsHasMore(Boolean(recordSnap && recordSnap.docs.length===200));
-            const byId=new Map(); [...embedded,...localCached,...permanent].forEach(r=>{ if(r.deletedAt) byId.delete(r.recordId); else byId.set(r.recordId,r); });
-            const normalized = normalizeData({...cloud,history:[...byId.values()].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))});
-            setCommittedData(normalized);
-            try { localStorage.setItem(LOCAL_KEY + "_committed", JSON.stringify(normalized)); } catch(e) {}
-            const draftNow = draftChangesRef.current;
-            if (!editingRef.current && !draftNow) setData(normalized);
-            setSyncText(draftNow ? "已讀取永久紀錄；目前草稿未覆蓋" : `已讀取 Google 雲端正式資料與 ${normalized.history.length} 筆永久紀錄`);
-            setInitialDataReady(true);
-        }).catch(err => {
-            if (!cancelled) { setSyncText("雲端讀取失敗：" + err.message); setInitialDataReady(true); }
-        });
-        return () => { cancelled = true; };
-    }, [user]);
+        if(!user||user.isAnonymous||!docRef())return;
+        syncFromCloud({reason:"登入同步",silent:false,force:true});
+    },[user,docRef,syncFromCloud]);
+    useEffect(() => {
+        if(!user||user.isAnonymous)return;
+        const tryForegroundSync=()=>{
+            if(document.visibilityState&&document.visibilityState!=="visible")return;
+            if(editingRef.current)return;
+            syncFromCloud({reason:"前景同步",silent:true,force:false});
+        };
+        const onVisibility=()=>{if(document.visibilityState==="visible")tryForegroundSync();};
+        document.addEventListener("visibilitychange",onVisibility);
+        window.addEventListener("pageshow",tryForegroundSync);
+        window.addEventListener("focus",tryForegroundSync);
+        return()=>{document.removeEventListener("visibilitychange",onVisibility);window.removeEventListener("pageshow",tryForegroundSync);window.removeEventListener("focus",tryForegroundSync);};
+    },[user,syncFromCloud]);
     useEffect(() => {
         dataRef.current=data;
         try { localStorage.setItem(LOCAL_KEY, JSON.stringify(data)); } catch(e) {}
@@ -1131,67 +1392,91 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         const timer=setTimeout(()=>{ if(!editingRef.current) updateExchangeRate({force:false,silent:true}); },900);
         return ()=>clearTimeout(timer);
     },[initialDataReady,data.exchangeRateLastAttemptDate,updateExchangeRate]);
-    const saveFormalData = async (payload, successText = "已同步正式資料", recordToAppend = null) => {
-        const formal = withPortfolioSnapshot(payload, recordToAppend ? (recordToAppend.recordType||'execution') : 'manual_save');
+    const saveFormalData = async (payload, successText = "已同步正式資料", recordToAppend = null, options = {}) => {
+        saveConflictRef.current="";
+        let beforeState=normalizeData(committedDataRef.current||{});
         try {
-            localStorage.setItem(LOCAL_KEY + "_committed", JSON.stringify(formal));
-            setCommittedData(formal);
-            setData(formal);
-            draftChangesRef.current = false;
-            setHasDraftChanges(false);
-            if (!docRef()) { setSyncText("正式資料已存本機；Google 登入後才跨裝置同步"); return true; }
-            ignoreCloud.current = true;
-            const { history: _history, ...currentOnly } = formal;
-            await docRef().set(sanitize({ ...currentOnly, recordSchemaVersion:RECORD_SCHEMA_VERSION, updatedAtText: new Date().toLocaleString("zh-TW"), updatedAt: firebase.firestore.FieldValue.serverTimestamp() }), { merge: true });
-            if(recordsRef() && recordToAppend) {
-                const rec=normalizeRecord(recordToAppend);
-                await recordsRef().doc(rec.recordId).set(sanitize({...rec,createdAt:rec.createdAt,deletedAt:null}),{merge:true});
-                const replaced=[...new Set(Array.isArray(rec.replacedRecordIds)?rec.replacedRecordIds:[])].filter(id=>id&&id!==rec.recordId);
-                if(replaced.length){
-                    const batch=db.batch();
-                    replaced.forEach(id=>batch.set(recordsRef().doc(id),{deletedAt:new Date().toISOString(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}));
-                    await batch.commit();
-                }
+            let base=normalizeData(payload); let expectedRevision=null;
+            if(docRef()){
+                const guarded=await guardPayloadBeforeSave(base);
+                if(!guarded.ok)return false;
+                base=guarded.payload; expectedRevision=guarded.expectedRevision;
+                beforeState=normalizeData(guarded.cloud||committedDataRef.current||beforeState);
             }
-            setSyncText(successText + " " + new Date().toLocaleTimeString("zh-TW", { hour:"2-digit", minute:"2-digit" }));
-            setTimeout(() => ignoreCloud.current = false, 1200);
+            let formal = withPortfolioSnapshot(base, recordToAppend ? (recordToAppend.recordType||'execution') : 'manual_save');
+            let writtenRevision=Math.max(0,Math.floor(getNum(formal.dataRevision)));
+            if(docRef()){
+                ignoreCloud.current=true;
+                const wr=await writeFormalCloudWithRevision(formal,recordToAppend,{expectedRevision,source:'app-formal',softDeleteRecordId:options.undoRecordId||''});
+                writtenRevision=wr.revision;
+                formal=normalizeData({...formal,dataRevision:wr.revision,lastWriteId:wr.writeId,lastWriteSource:'app-formal',lastWriteAt:wr.writeAt});
+                markSuccessfulSync('正式儲存',writtenRevision,[]);
+                setTimeout(() => ignoreCloud.current = false, 1200);
+            }
+            localStorage.setItem(LOCAL_KEY + "_committed", JSON.stringify(formal));
+            localStorage.setItem(LOCAL_KEY,JSON.stringify(formal));
+            committedDataRef.current=formal; dataRef.current=formal;
+            setCommittedData(formal); setData(formal);
+            draftChangesRef.current=false; externalDraftDirtyRef.current=false; externalDraftRef.current=pickExternalAccountState(formal); setHasDraftChanges(false);
+            if(!options.skipUndo) persistUndoCheckpoint(beforeState,successText,recordToAppend?.recordId||'');
+            setSyncText((docRef()?successText:"正式資料已存本機；Google 登入後才跨裝置同步") + " " + new Date().toLocaleTimeString("zh-TW", { hour:"2-digit", minute:"2-digit" }));
             return true;
         } catch(e) {
-            ignoreCloud.current = false;
-            draftChangesRef.current = true;
-            setHasDraftChanges(true);
-            setSyncText("同步失敗：" + e.message);
+            ignoreCloud.current=false; draftChangesRef.current=true; setHasDraftChanges(true);
+            if(e?.code==='revision-mismatch'){
+                saveConflictRef.current='儲存瞬間雲端又有新版，已安全攔截。請重新確認後再儲存。';
+                setSyncText(saveConflictRef.current); await syncFromCloud({reason:'版本鎖重新同步',silent:true,force:true});
+            }else setSyncText("同步失敗：" + e.message);
             return false;
         }
     };
     const manualSave = async () => {
         const ok = await saveFormalData(data, "已手動同步目前正式狀態");
-        showToast(ok ? "已同步目前正式狀態" : "同步失敗");
+        showToast(ok ? "已同步目前正式狀態" : (saveConflictRef.current||"同步失敗"));
     };
     const saveExternalAccounts = async (source=data, successText="已儲存其他券商與今日快照") => {
         const nowIso=new Date().toISOString();
-        const ftChanged=getNum(source?.ftUsd)!==getNum(committedDataRef.current?.ftUsd);
-        const prepared=normalizeData({...source,ftUpdatedAt:ftChanged||!source?.ftUpdatedAt?nowIso:source.ftUpdatedAt,subUsd:computeSubAccountValue(source).valueUsd});
+        let prepared=normalizeData(source);
+        const ftChanged=getNum(prepared?.ftUsd)!==getNum(committedDataRef.current?.ftUsd);
+        prepared=normalizeData({...prepared,ftUpdatedAt:ftChanged||!prepared?.ftUpdatedAt?nowIso:prepared.ftUpdatedAt,subUsd:computeSubAccountValue(prepared).valueUsd});
+        let cloudBase=normalizeData(committedDataRef.current||{}); let expectedRevision=null;
+        if(docRef()){
+            try{
+                const guarded=await guardPayloadBeforeSave(prepared);
+                if(!guarded.ok){showToast(saveConflictRef.current||"雲端資料剛更新，請確認後再儲存");return false;}
+                prepared=guarded.payload; expectedRevision=guarded.expectedRevision;
+                if(guarded.cloud)cloudBase=guarded.cloud;
+            }catch(e){showToast("儲存前雲端比對失敗："+(e.message||"未知錯誤"));return false;}
+        }
         const externalPatch=pickExternalAccountState(prepared);
-        const base=normalizeData({...committedData,...externalPatch,portfolioHistory:prepared.portfolioHistory||committedData.portfolioHistory||[]});
+        const base=normalizeData({...cloudBase,...externalPatch,portfolioHistory:prepared.portfolioHistory||cloudBase.portfolioHistory||[],history:mergeRecordLists(cloudBase.history,prepared.history)});
         const formalBase=withPortfolioSnapshot(base,'external_account');
         const formalExternal=pickExternalAccountState(formalBase);
-        const mergedCommitted=normalizeData({...committedData,...formalExternal,portfolioHistory:formalBase.portfolioHistory});
-        const mergedDraft=normalizeData({...data,...formalExternal,portfolioHistory:formalBase.portfolioHistory});
+        const mergedCommitted=normalizeData({...cloudBase,...formalExternal,portfolioHistory:formalBase.portfolioHistory,history:base.history});
+        const mergedDraft=normalizeData({...prepared,...formalExternal,portfolioHistory:formalBase.portfolioHistory,history:base.history});
         try{
-            localStorage.setItem(LOCAL_KEY+"_committed",JSON.stringify(mergedCommitted));
-            localStorage.setItem(LOCAL_KEY,JSON.stringify(mergedDraft));
-            setCommittedData(mergedCommitted);
-            setData(mergedDraft);
-            externalDraftRef.current=pickExternalAccountState(mergedDraft);
-            const remainingStrategyDraft=[...PERSONAL_KEYS].filter(key=>!EXTERNAL_ACCOUNT_KEYS.has(key)).some(key=>JSON.stringify(mergedDraft[key])!==JSON.stringify(mergedCommitted[key]));
-            draftChangesRef.current=remainingStrategyDraft;
-            setHasDraftChanges(remainingStrategyDraft);
+            const beforeState=normalizeData(committedDataRef.current||{});
+            let cloudRevision=getNum(mergedCommitted.dataRevision), cloudWrite=null;
             if(docRef()){
                 ignoreCloud.current=true;
-                await docRef().set(sanitize({...formalExternal,portfolioHistory:formalBase.portfolioHistory,updatedAtText:new Date().toLocaleString('zh-TW'),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}),{merge:true});
-                setTimeout(()=>ignoreCloud.current=false,1200);
+                cloudWrite=await writeCloudPatchWithRevision({...formalExternal,portfolioHistory:formalBase.portfolioHistory},{expectedRevision,source:'app-external'});
+                cloudRevision=cloudWrite.revision;
+                markSuccessfulSync('其他帳戶儲存',cloudRevision,[]);
             }
+            const committedWithRevision=normalizeData({...mergedCommitted,dataRevision:cloudRevision,lastWriteId:cloudWrite?.writeId||mergedCommitted.lastWriteId,lastWriteSource:cloudWrite?'app-external':mergedCommitted.lastWriteSource,lastWriteAt:cloudWrite?.writeAt||mergedCommitted.lastWriteAt});
+            const draftWithRevision=normalizeData({...mergedDraft,dataRevision:cloudRevision,lastWriteId:committedWithRevision.lastWriteId,lastWriteSource:committedWithRevision.lastWriteSource,lastWriteAt:committedWithRevision.lastWriteAt});
+            localStorage.setItem(LOCAL_KEY+"_committed",JSON.stringify(committedWithRevision));
+            localStorage.setItem(LOCAL_KEY,JSON.stringify(draftWithRevision));
+            committedDataRef.current=committedWithRevision; dataRef.current=draftWithRevision;
+            setCommittedData(committedWithRevision);
+            setData(draftWithRevision);
+            externalDraftRef.current=pickExternalAccountState(draftWithRevision);
+            externalDraftDirtyRef.current=false;
+            const remainingStrategyDraft=changedSyncKeys(draftWithRevision,committedWithRevision).some(key=>!EXTERNAL_ACCOUNT_KEYS.has(key));
+            draftChangesRef.current=remainingStrategyDraft;
+            setHasDraftChanges(remainingStrategyDraft);
+            if(docRef()) setTimeout(()=>ignoreCloud.current=false,1200);
+            persistUndoCheckpoint(beforeState,successText,'');
             setSyncText((docRef()?successText:"其他券商資料已存本機")+" "+new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}));
             showToast("✓ "+successText);
             return true;
@@ -1211,6 +1496,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
             const q=await fetchSymbol(symbol);
             const next=normalizeData({...data,...draft,subSymbol:symbol,subPriceUsd:round2(q.close),subPriceUpdatedAt:new Date().toISOString()});
             externalDraftRef.current=pickExternalAccountState(next);
+            externalDraftDirtyRef.current=true;
             setData(next);
             draftChangesRef.current=true;setHasDraftChanges(true);
             flashUpdateSuccess();
@@ -1291,7 +1577,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         const formal=normalizeData({...next,history:replaceSameDayHistory(data.history,rec)});
         setData(formal);
         const ok=await saveFormalData(formal,'已開啟新一輪 HOT',rec);
-        showToast(ok?`已開啟 HOT${newHot} 新週期`:'已存本機，但雲端同步失敗');
+        showToast(ok?`已開啟 HOT${newHot} 新週期`:(saveConflictRef.current||'已存本機，但雲端同步失敗'));
     };
     const loginGoogle = async () => {
         if (!auth || typeof firebase === "undefined") { showToast("Firebase 未載入，無法 Google 登入"); return; }
@@ -1372,6 +1658,26 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         const next=normalizeData({...data,cashUsd:nextCash,history:[rec,...(data.history||[])]}); setData(next);
         const ok=await saveFormalData(next,`已記錄${typeText}`,rec); if(ok){setCashflowAmount('');setCashflowNote('');showToast(`${typeText}已記錄`);}
     };
+    const adjustDividendNet = async entry => {
+        if(!entry?.id)return;
+        const recorded=getNum(entry.actualNetUsd??entry.netUsd);
+        const raw=prompt(`QQQI ${entry.payableDate} 券商實際入帳金額（USD）`,recorded.toFixed(2));
+        if(raw===null)return;
+        const actual=getNum(raw);
+        if(actual<0){showToast('實際入帳不可小於 0');return;}
+        const delta=Math.round((actual-recorded)*10000)/10000;
+        if(Math.abs(delta)<0.0001){showToast('金額沒有變更');return;}
+        if(getNum(data.cashUsd)+delta<0){showToast('修正後現金不可小於 0');return;}
+        if(!confirm(`實際入帳改為 $${money(actual,2)}，IB 現金將${delta>=0?'增加':'減少'} $${money(Math.abs(delta),2)}。確定？`))return;
+        const ledger=(data.qqqiDividendLedger||[]).map(x=>x.id===entry.id?{...x,actualNetUsd:actual,adjustmentUsd:getNum(x.adjustmentUsd)+delta,adjustedAt:new Date().toISOString()}:x);
+        const before={TQQQ:getNum(data.sharesTqqq),QQQ:getNum(data.sharesQqq),SPY:getNum(data.sharesSpy),SPYI:getNum(data.sharesSpyi),QQQI:getNum(data.sharesQqqi),cashUsd:getNum(data.cashUsd),otherUsd:getNum(data.otherUsd)};
+        const after={...before,cashUsd:getNum(data.cashUsd)+delta};
+        const next=normalizeData({...data,cashUsd:after.cashUsd,qqqiDividendLedger:ledger});
+        const rec=normalizeRecord({recordSchemaVersion:RECORD_SCHEMA_VERSION,recordId:makeRecordId(),strategyId:STRATEGY_ID,strategyVersion:STRATEGY_VERSION,recordType:'dividend_adjustment',createdAt:new Date().toISOString(),dates:{marketClose:data.marketCloseDate||data.marketDate||'',signal:entry.exDate||entry.payableDate,execution:todayStr()},prices:{SPY:getNum(data.spy),QQQ:getNum(data.qqq),TQQQ:getNum(data.tqqq),SPYI:getNum(data.spyi),QQQI:getNum(data.qqqi)},indicators:{SPY200:getNum(data.spySma),QQQ200:getNum(data.qqqSma)},state:{marketState:data.marketState,hotRank:data.hotRank,hotAsset:data.hotAsset||'QQQ',introAsset:data.introAsset||'QQQI',strategyPhase:data.strategyPhase,dcaActive:data.dcaActive,dcaCompleted:data.dcaCompleted,riskOffCycleId:data.riskOffCycleId||'',riskOnCycleId:data.riskOnCycleId||''},holdings:{before,after},valuation:{totalUsd:getNum(evaluateStrategy(next).totalUsd),totalDisplay:''},decision:{title:'QQQI 配息實收修正',allocation:'IB 現金',immediate:'',formalState:'',todayAction:`修正 ${delta>=0?'+':''}$${money(delta,2)}`},cashflow:{type:'dividend_adjustment',amountUsd:delta,date:todayStr(),note:`${entry.payableDate} QQQI 配息實收修正`},actions:[`券商實收 $${money(actual,2)}；相較原記錄 ${delta>=0?'+':''}$${money(delta,2)}`],notes:'人工依券商實際入帳修正；不視為外部入出金。',deletedAt:null});
+        setData(next);
+        const ok=await saveFormalData(next,'已修正 QQQI 配息實收',rec);
+        showToast(ok?'配息實收已修正':(saveConflictRef.current||'已存本機，但雲端同步失敗'));
+    };
     const previewData = useMemo(() => buildPreviewData(data, previewScenario), [data, previewScenario]);
     const metrics = useMemo(() => evaluateStrategy(previewData), [previewData]);
     const portfolio = useMemo(() => computePortfolioSummary(previewData, metrics.totalUsd, historyCurrency), [previewData.ftUsd, previewData.subUsd, previewData.subSymbol, previewData.subShares, previewData.subCashUsd, previewData.subAvgCostUsd, previewData.subPriceUsd, previewData.twStockTwd, previewData.otherTotalTwd, previewData.usdtwd, metrics.totalUsd, historyCurrency]);
@@ -1435,12 +1741,12 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         try{localStorage.setItem(LOCAL_KEY,JSON.stringify(snapData));}catch(e){}
         if(docRef()){
             try{
-                await docRef().set(sanitize({
+                const wr=await writeCloudPatchWithRevision({
                     spy:snapData.spy,qqq:snapData.qqq,tqqq:snapData.tqqq,spyi:snapData.spyi,qqqi:snapData.qqqi,
                     marketDate:snapData.marketDate,marketCloseDate:snapData.marketCloseDate,priceUpdatedAt:snapData.priceUpdatedAt,
-                    priceSources:snapData.priceSources,portfolioHistory:snapData.portfolioHistory,
-                    updatedAtText:new Date().toLocaleString('zh-TW'),updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-                }),{merge:true});
+                    priceSources:snapData.priceSources,portfolioHistory:snapData.portfolioHistory
+                },{source:'app-price-snapshot'});
+                markSuccessfulSync('股價快照',wr.revision,[]);
             }catch(e){ setSyncText('每日快照雲端同步失敗：'+e.message); }
         }
         return snapData;
@@ -1586,7 +1892,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         try{localStorage.setItem(LOCAL_KEY+'_committed',JSON.stringify({...committedData,history:nextHistory}));}catch(e){}
         if(recordsRef()) { try {
             await recordsRef().doc(item.recordId).set({deletedAt,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
-            if(docRef()) await docRef().set({history:firebase.firestore.FieldValue.delete()},{merge:true});
+            if(docRef()) await writeCloudPatchWithRevision({history:firebase.firestore.FieldValue.delete()},{source:'app-record-cleanup',raw:true});
         } catch(e){ showToast('已移到本機回收區，但雲端標記失敗'); return; } }
         showToast('已移到回收區，可隨時還原');
     };
@@ -1628,7 +1934,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         setData(formalData);
         const ok=await saveFormalData(formalData,"已執行並同步（同日紀錄已覆蓋）",item);
         setPendingExecution(false);
-        showToast(ok?"已確認執行；同一天同類紀錄只保留最新一筆":"已寫入本機，但雲端同步失敗");
+        showToast(ok?"已確認執行；同一天同類紀錄只保留最新一筆":(saveConflictRef.current||"已寫入本機，但雲端同步失敗"));
     };
     const resetAssetHigh = () => { if (confirm('把目前總資產設為新的高點？')) {
         patch('assetHighUsd', metrics.totalUsd);
@@ -1650,12 +1956,15 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         const expected=latestCompletedUsTradingDay();
         const calc = (iso, fallbackDate) => {
             const dateText=fallbackDate || (iso ? formatDateLocal(new Date(iso)) : '');
-            if(!dateText) return { text:'尚未更新', tone:'red', tradingAge:999, expected };
+            if(!dateText) return { text:'尚未更新', tone:'red', tradingAge:999, expected, dateText:'' };
             const age=tradingDayDistance(dateText,expected);
-            return { text:age===0?'最新交易日':age<=1?'落後 1 個交易日':age<=3?`落後 ${age} 個交易日`:'已過期', tone:age===0?'green':age<=1?'amber':'red', tradingAge:age, expected };
+            return { text:age===0?'最新交易日':age<=1?'落後 1 個交易日':age<=2?`落後 ${age} 個交易日`:'已過期', tone:age===0?'green':age<=2?'amber':'red', tradingAge:age, expected, dateText };
         };
-        return { price:calc(data.priceUpdatedAt, data.marketCloseDate||data.marketDate), sma:calc(data.smaUpdatedAt, data.marketCloseDate||data.marketDate), expected };
-    }, [data.priceUpdatedAt, data.smaUpdatedAt, data.marketCloseDate, data.marketDate]);
+        const spySma=calc('',data.spySmaUpdatedDate), qqqSma=calc('',data.qqqSmaUpdatedDate);
+        const smaAge=Math.max(spySma.tradingAge,qqqSma.tradingAge);
+        const sma={text:smaAge>=999?'尚未標記日期':smaAge<=2?'可用':`已過期 ${smaAge} 個交易日`,tone:smaAge<=2?(smaAge===0?'green':'amber'):'red',tradingAge:smaAge,expected};
+        return { price:calc(data.priceUpdatedAt, data.marketCloseDate||data.marketDate), sma, spySma, qqqSma, expected };
+    }, [data.priceUpdatedAt, data.marketCloseDate, data.marketDate, data.spySmaUpdatedDate, data.qqqSmaUpdatedDate]);
     const fxStatus = useMemo(() => {
         const online=data.exchangeRateProvider===EXCHANGE_RATE_PROVIDER;
         const attemptedToday=data.exchangeRateLastAttemptDate===todayStr();
@@ -1664,11 +1973,43 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         const text=data.exchangeRateLastError&&attemptedToday?`今日更新失敗，沿用 ${successDate||"既有"} 匯率`:online?`線上匯率 ${successDate||"已更新"}`:"目前使用手動匯率";
         return {online,attemptedToday,tone,text};
     },[data.exchangeRateProvider,data.exchangeRateLastAttemptDate,data.exchangeRateUpdatedDate,data.exchangeRateLastError,data.usdtwd]);
+    const autoHealth = useMemo(() => {
+        const expected=latestCompletedUsTradingDay();
+        const date=data.autoSnapshotMarketDate||'';
+        const age=date?tradingDayDistance(date,expected):999;
+        const quality=['complete','estimated','incomplete'].includes(data.autoSnapshotQuality)?data.autoSnapshotQuality:(data.autoSnapshotLastError?'estimated':date?'complete':'incomplete');
+        const ftAge=getNum(data.ftUsd)>0?(data.ftUpdatedAt?Math.max(0,Math.floor((Date.now()-Date.parse(data.ftUpdatedAt))/86400000)):999):0;
+        const latestDividend=(Array.isArray(data.qqqiDividendLedger)?data.qqqiDividendLedger:[])[0]||null;
+        const upToDate=age===0;
+        const smaBad=!metrics.smaFreshForExecution;
+        const ftBad=getNum(data.ftUsd)>0&&ftAge>7;
+        const tone=!date||!upToDate||quality==='incomplete'||smaBad?'red':quality==='estimated'||ftBad?'amber':'green';
+        let label='🟢 全部正常';
+        if(smaBad) label='🔴 200SMA 過期，禁止正式執行';
+        else if(!date) label='🔴 尚未完成自動記帳';
+        else if(!upToDate) label=`🔴 自動記帳落後 ${age} 個交易日`;
+        else if(quality==='incomplete') label='🔴 自動記帳資料不完整';
+        else if(ftBad) label=`🟡 FT 已 ${ftAge} 天未更新`;
+        else if(quality==='estimated') label='🟡 已記帳，但部分資料為估算';
+        return {expected,date,age,quality,ftAge,latestDividend,upToDate,tone,label};
+    },[data.autoSnapshotMarketDate,data.autoSnapshotQuality,data.autoSnapshotLastError,data.ftUsd,data.ftUpdatedAt,data.qqqiDividendLedger,metrics.smaFreshForExecution]);
+    const AutoHealthCard = () => React.createElement(Card,{className:`p-4 mt-4 border ${autoHealth.tone==='green'?'border-emerald-100 bg-emerald-50/70':autoHealth.tone==='amber'?'border-amber-100 bg-amber-50/70':'border-red-100 bg-red-50/70'}`},
+        React.createElement("div",{className:"flex items-start justify-between gap-3"},
+            React.createElement("div",null,React.createElement("div",{className:"text-[10px] font-black tracking-[.14em] text-slate-500"},"系統健康"),React.createElement("div",{className:"mt-1 text-lg font-black text-slate-950"},autoHealth.label),React.createElement("div",{className:"mt-1 text-xs font-bold text-slate-500"},`最近應有 ${autoHealth.expected}｜實際 ${autoHealth.date||'-'}`)),
+            React.createElement(Pill,{tone:autoHealth.tone},autoHealth.tone==='green'?'正常':autoHealth.tone==='amber'?'注意':'需處理')),
+        React.createElement("details",{className:"mt-3 rounded-2xl bg-white/65 border border-white/80 p-3"},
+            React.createElement("summary",{className:"cursor-pointer text-xs font-black text-slate-700"},"查看詳細狀態"),
+            React.createElement("div",{className:"grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3"},
+                React.createElement("div",{className:"rounded-2xl bg-white/75 p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"股價"),React.createElement("div",{className:"mt-1 text-sm font-black text-slate-900"},`${getNum(data.autoSnapshotFreshPrices)}/${getNum(data.autoSnapshotExpectedPrices)||'-'} 最新`)),
+                React.createElement("div",{className:"rounded-2xl bg-white/75 p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"FT 淨值"),React.createElement("div",{className:`mt-1 text-sm font-black ${autoHealth.ftAge>7?'text-amber-700':'text-slate-900'}`},getNum(data.ftUsd)<=0?'未使用':autoHealth.ftAge>=999?'未標記更新':autoHealth.ftAge===0?'今日更新':`${autoHealth.ftAge} 天前`)),
+                React.createElement("div",{className:"rounded-2xl bg-white/75 p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"200SMA"),React.createElement("div",{className:`mt-1 text-sm font-black ${metrics.smaFreshForExecution?'text-emerald-700':'text-red-700'}`},metrics.smaFreshForExecution?'可用':'需重新確認')),
+                React.createElement("div",{className:"rounded-2xl bg-white/75 p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"QQQI 配息"),React.createElement("div",{className:"mt-1 text-sm font-black text-slate-900"},autoHealth.latestDividend?`最近 ${autoHealth.latestDividend.payableDate}`:'尚無入帳'))),
+            (data.autoSnapshotQualityNote||data.autoSnapshotLastError)&&React.createElement("div",{className:"mt-3 text-xs font-bold text-slate-600 leading-relaxed"},data.autoSnapshotQualityNote||data.autoSnapshotLastError)));
     const FreshnessCard = () => React.createElement(Card, { className:"p-4 mt-4" },
         React.createElement(SectionTitle, { title:"市場資料狀態", desc:`依美股交易日判斷；最近應有資料日期：${freshnessInfo.expected}。匯率每天最多自動連線一次。` }),
         React.createElement("div", { className:"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2" },
             React.createElement("div", { className:"bg-slate-50 border border-slate-100 rounded-2xl p-3" }, React.createElement("div", { className:"text-[10px] font-black text-slate-500" }, "股價更新"), React.createElement("div", { className:"font-mono text-sm font-black text-slate-900 mt-1" }, data.priceUpdatedAt ? new Date(data.priceUpdatedAt).toLocaleString('zh-TW') : (data.marketCloseDate || data.marketDate || '-')), React.createElement(Pill, { tone:freshnessInfo.price.tone }, freshnessInfo.price.text)),
-            React.createElement("div", { className:"bg-slate-50 border border-slate-100 rounded-2xl p-3" }, React.createElement("div", { className:"text-[10px] font-black text-slate-500" }, "200SMA 更新"), React.createElement("div", { className:"font-mono text-sm font-black text-slate-900 mt-1" }, data.smaUpdatedAt ? new Date(data.smaUpdatedAt).toLocaleString('zh-TW') : (data.marketDate || '-')), React.createElement(Pill, { tone:freshnessInfo.sma.tone }, freshnessInfo.sma.text)),
+            React.createElement("div", { className:"bg-slate-50 border border-slate-100 rounded-2xl p-3" }, React.createElement("div", { className:"text-[10px] font-black text-slate-500" }, "200SMA 更新"), React.createElement("div", { className:"font-mono text-xs font-black text-slate-900 mt-1" }, `SPY ${data.spySmaUpdatedDate||'-'}｜QQQ ${data.qqqSmaUpdatedDate||'-'}`), React.createElement(Pill, { tone:freshnessInfo.sma.tone }, freshnessInfo.sma.text)),
             React.createElement("div", { className:"bg-blue-50 border border-blue-100 rounded-2xl p-3" },
                 React.createElement("div", { className:"flex items-center justify-between gap-2" },
                     React.createElement("div", { className:"text-[10px] font-black text-blue-700" }, "USD/TWD 匯率"),
@@ -1681,7 +2022,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
             React.createElement("div", { className:"bg-emerald-50 border border-emerald-100 rounded-2xl p-3" },
                 React.createElement("div", { className:"text-[10px] font-black text-emerald-700" }, "盤後自動快照"),
                 React.createElement("div", { className:"font-black text-sm text-slate-900 mt-1" }, data.autoSnapshotMarketDate||"尚未由雲端執行"),
-                React.createElement(Pill, { tone:data.autoSnapshotLastError?'amber':data.autoSnapshotMarketDate?'green':'slate' }, data.autoSnapshotLastError?'最近一次失敗':data.autoSnapshotMarketDate?'已自動記錄':'待設定'),
+                React.createElement(Pill, { tone:data.autoSnapshotQuality==='complete'?'green':data.autoSnapshotMarketDate?'amber':'slate' }, data.autoSnapshotQuality==='complete'?'完整':data.autoSnapshotMarketDate?'已記錄／有估算':'待設定'),
                 React.createElement("div", { className:"text-[10px] font-bold text-slate-500 mt-2 leading-relaxed" }, data.autoSnapshotUpdatedAt?`更新：${new Date(data.autoSnapshotUpdatedAt).toLocaleString('zh-TW')}｜FT 使用最後手動淨值`:'需完成 GitHub Actions 一次性設定；登入後手動更新會覆蓋同一美股交易日。'),
                 data.autoSnapshotLastError&&React.createElement("div", { className:"text-[10px] font-bold text-amber-700 mt-2" }, data.autoSnapshotLastError)),
             React.createElement("div", { className:"rounded-2xl bg-sky-50 border border-sky-100 p-3" },
@@ -1848,6 +2189,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
                     React.createElement("div", { className:"text-sm font-bold text-slate-700 mt-1" }, "左右滑動查看總覽、訊號與今日交易")),
                 React.createElement("div", { className:"home-slide-dots flex gap-1.5" }, [0,1,2].map(idx => React.createElement("button", { key:idx, onClick:()=>scrollHomeTo(idx), className:`h-2.5 rounded-full transition-all ${homeSlide===idx?'w-8 bg-slate-900':'w-2.5 bg-slate-300'}` })))),
             React.createElement("div", { ref:homeSliderRef, onScroll:handleHomeSliderScroll, className:"home-slider flex gap-4 overflow-x-auto pb-2" }, overviewSlide, signalSlide, tradeSlide),
+            React.createElement(AutoHealthCard,null),
             React.createElement("div", { className:"home-page-count mt-4 flex justify-center" },
                 React.createElement("div", { className:"rounded-full bg-white/70 border border-white/80 px-4 py-2 text-xs font-bold text-slate-500" }, `${homeSlide+1} / 3`))
         );
@@ -1867,9 +2209,9 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
                 React.createElement("div", { className:"flex justify-end mb-3" }, React.createElement("button", { onClick:fetchPrices, disabled:loadingPrice, className:"px-4 py-3 rounded-2xl bg-slate-950 text-white text-sm font-black disabled:opacity-50" }, loadingPrice?'更新中…':'自動抓股價')),
                 React.createElement("div", { className:"grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3" },
                     React.createElement(NumInput, { label:"SPY 收盤價", value:data.spy, onChange:v=>patch('spy',v) }),
-                    React.createElement(NumInput, { label:"SPY 200SMA（手動）", value:data.spySma, onChange:v=>patch('spySma',v) }),
+                    React.createElement(NumInput, { label:"SPY 200SMA（手動）", value:data.spySma, onChange:v=>merge({spySma:v,spySmaUpdatedDate:data.marketDate||todayStr(),smaUpdatedAt:new Date().toISOString()}) }),
                     React.createElement(NumInput, { label:"QQQ 收盤價", value:data.qqq, onChange:v=>patch('qqq',v) }),
-                    React.createElement(NumInput, { label:"QQQ 200SMA（HOT 必要）", value:data.qqqSma, onChange:v=>patch('qqqSma',v) }),
+                    React.createElement(NumInput, { label:"QQQ 200SMA（HOT 必要）", value:data.qqqSma, onChange:v=>merge({qqqSma:v,qqqSmaUpdatedDate:data.marketDate||todayStr(),smaUpdatedAt:new Date().toISOString()}) }),
                     React.createElement(NumInput, { label:"TQQQ 價格", value:data.tqqq, onChange:v=>patch('tqqq',v) }),
                     data.hotAsset==='SPYI' && React.createElement(NumInput, { label:'SPYI 價格', value:data.spyi, onChange:v=>patch('spyi',v) }),
                     (data.hotAsset==='QQQI'||data.introAsset==='QQQI') && React.createElement(NumInput, { label:'QQQI 價格', value:data.qqqi, onChange:v=>patch('qqqi',v) }),
@@ -2235,7 +2577,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
                     if(snap.docs.length<400)break;
                 }
                 for(let i=0;i<records.length;i+=400){const batch=db.batch();records.slice(i,i+400).forEach(r=>batch.set(recordsRef().doc(r.recordId),sanitize(r),{merge:true}));await batch.commit();}
-                if(docRef())await docRef().set({history:firebase.firestore.FieldValue.delete()},{merge:true});
+                if(docRef())await writeCloudPatchWithRevision({history:firebase.firestore.FieldValue.delete()},{source:'app-backup-restore',raw:true});
             }
             setData(next);setCommittedData(next);localStorage.setItem(LOCAL_KEY,JSON.stringify(next));localStorage.setItem(LOCAL_KEY+'_committed',JSON.stringify(next));
             setRecordsCursor(null);setRecordsHasMore(records.length>200);
@@ -2247,9 +2589,29 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         if(!confirm('刪除這份本機備份卡片？已下載的 JSON 不受影響。'))return;
         const next=backupCards.filter(x=>x.id!==card.id);writeBackupCards(next);setBackupCards(next);showToast('備份卡片已刪除');
     };
+    const restoreUndoCheckpoint = async () => {
+        const checkpoint=undoCheckpoint||readUndoCheckpoint(); if(!checkpoint?.state){showToast('目前沒有可復原的上一版');return;}
+        if(!confirm(`復原到上一次正式儲存前的狀態？
+
+時間：${new Date(checkpoint.createdAt).toLocaleString('zh-TW')}
+來源：${checkpoint.reason||'正式儲存'}
+
+會透過版本鎖安全寫回；若雲端又有更新會自動攔截。`))return;
+        const state=normalizeData(checkpoint.state);
+        const ok=await saveFormalData(state,'已復原上一版正式狀態',null,{skipUndo:true,undoRecordId:checkpoint.recordId||''});
+        if(!ok){showToast(saveConflictRef.current||'復原失敗');return;}
+        writeUndoCheckpoint(null); setUndoCheckpoint(null); showToast('✓ 已復原上一版正式狀態');
+    };
     const csvCell = v => `"${String(v??'').replace(/"/g,'""')}"`;
     const exportRecordsCsv = async () => {
         try{showToast('正在整理完整 CSV…');const records=await fetchAllCloudRecords();const header=['執行日','行情日','類型','訊號','配置','總資產USD','資金流類型','資金流USD','SPY','QQQ','TQQQ','SPYI','QQQI','TQQQ股數','QQQ股數','SPY股數','SPYI股數','QQQI股數','現金USD','HOT','DCA進度','備註'];const rows=records.map(h=>[h.executionDate||'',h.marketDate||'',h.recordType||h.kind||'',h.signal||'',h.allocation||'',h.totalUsd||0,h.cashflowType||'',h.cashflowAmountUsd||0,h.spy||0,h.qqq||0,h.tqqq||0,h.spyi||0,h.qqqi||0,h.shares?.TQQQ||0,h.shares?.QQQ||0,h.shares?.SPY||0,h.shares?.SPYI||0,h.shares?.QQQI||0,h.shares?.cashUsd||0,h.hotRank||0,h.dcaCompleted||0,h.notes||'']);downloadTextFile(`tqqq-records-${todayStr()}.csv`,'\ufeff'+[header,...rows].map(r=>r.map(csvCell).join(',')).join('\n'),'text/csv');showToast(`已匯出完整 ${records.length} 筆 CSV`);}catch(e){showToast('CSV 匯出失敗：'+e.message);}
+    };
+    const exportPortfolioCsv = () => {
+        const snapshots=(Array.isArray(data.portfolioHistory)?data.portfolioHistory:[]).slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+        const header=['日期','建立時間','品質','品質說明','IB_USD','全部_TWD','匯率','FT_USD','FT更新日','複委託_USD','台股_TWD','其他_TWD','TQQQ股數','QQQ股數','SPY股數','SPYI股數','QQQI股數','IB現金_USD','配息淨入帳_USD','舊價標的','來源'];
+        const rows=snapshots.map(x=>[x.date,x.createdAt,x.quality,x.qualityNote,x.strategyUsd,x.totalTwd,x.rate,x.ftUsd,x.ftUpdatedAt,x.subUsd,x.twStockTwd,x.otherTotalTwd,x.sharesTqqq,x.sharesQqq,x.sharesSpy,x.sharesSpyi,x.sharesQqqi,x.cashUsd,x.dividendNetAddedUsd,(x.staleSymbols||[]).join('|'),x.source]);
+        downloadTextFile(`portfolio-history-${todayStr()}.csv`,'\ufeff'+[header,...rows].map(r=>r.map(csvCell).join(',')).join('\n'),'text/csv');
+        showToast(`已匯出 ${snapshots.length} 筆每日資產快照 CSV`);
     };
     const recordPositionAsset = h => {
         const preferred=String(h.state?.hotAsset||h.hotAsset||'QQQ').toUpperCase();
@@ -2269,9 +2631,11 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
                 React.createElement("div", { className: "text-[11px] text-slate-400 font-bold" }, h.timeText, "｜行情日 ", h.marketDate || '-')),
             React.createElement("div", { className: "text-right" },
                 React.createElement("div", { className: "font-mono font-black text-slate-900 privacy-value" }, h.totalDisplay || ('$' + money(h.totalUsd, 2))),
-                React.createElement("button", { onClick: () => deleteLog(h), className: `mt-1 px-2 py-1 rounded-lg text-[10px] font-black active:scale-95 ${h.recordType==='cashflow'?'bg-slate-100 text-slate-500':'bg-red-50 text-red-700'}` }, h.recordType==='cashflow'?'需反向沖銷':'刪除'))),
+                React.createElement("button", { onClick: () => deleteLog(h), disabled:['cashflow','dividend','dividend_adjustment'].includes(h.recordType), className: `mt-1 px-2 py-1 rounded-lg text-[10px] font-black active:scale-95 ${['cashflow','dividend','dividend_adjustment'].includes(h.recordType)?'bg-slate-100 text-slate-400':'bg-red-50 text-red-700'}` }, ['cashflow','dividend','dividend_adjustment'].includes(h.recordType)?'請用修正／沖銷':'刪除'))),
         React.createElement("div", { className: "mt-2 flex flex-wrap gap-2" },
             h.recordType==='cashflow' ? React.createElement(Pill, { tone:h.cashflowType==='withdrawal'?'red':'green' }, `${h.cashflowType==='withdrawal'?'出金':'入金'} $${money(h.cashflowAmountUsd,2)}`) : null,
+            h.recordType==='dividend' ? React.createElement(Pill,{tone:'green'},`QQQI 配息 +$${money(h.cashflowAmountUsd,2)}`) : null,
+            h.recordType==='dividend_adjustment' ? React.createElement(Pill,{tone:'amber'},`配息修正 ${h.cashflowAmountUsd>=0?'+':''}$${money(h.cashflowAmountUsd,2)}`) : null,
             React.createElement(Pill, { tone: "blue" }, h.allocation || '-'),
             React.createElement(Pill, null, `${recordPositionAsset(h)} $${money(recordPositionAsset(h)==='QQQ'?h.qqq:recordPositionAsset(h)==='SPY'?h.spy:recordPositionAsset(h)==='SPYI'?h.spyi:h.qqqi, 2)}`),
             React.createElement(Pill, null, "TQQQ $", money(h.tqqq, 2))),
@@ -2389,41 +2753,42 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
                 deleted+=snap.docs.length; if(snap.docs.length<400)break;
             }
             await docRef().delete();
-            localStorage.removeItem(LOCAL_KEY); localStorage.removeItem(LOCAL_KEY+'_committed'); localStorage.removeItem(TRASH_KEY);
+            localStorage.removeItem(LOCAL_KEY); localStorage.removeItem(LOCAL_KEY+'_committed'); localStorage.removeItem(TRASH_KEY); localStorage.removeItem(UNDO_KEY); localStorage.removeItem(LAST_SYNC_KEY);
             const fresh=normalizeData(DEFAULT); setData(fresh); setCommittedData(fresh);
             setRecordsCursor(null); setRecordsHasMore(false); setHasDraftChanges(false); draftChangesRef.current=false;
             setSyncText(`雲端已全部重置，共刪除 ${deleted} 筆歷史紀錄`); showToast('雲端與本機資料已全部重置'); setPage('home');
         }catch(e){setSyncText('重置失敗：'+e.message);showToast('重置失敗：'+e.message);}finally{setResettingCloud(false);}
     };
-    const Sync = () => React.createElement("main", { className:"max-w-5xl mx-auto px-4 pt-5 content-bottom-space" },
+    const Sync = () => {
+        const syncAgeHours=cloudSyncMeta.lastAt?Math.max(0,(Date.now()-Date.parse(cloudSyncMeta.lastAt))/3600000):Infinity;
+        const syncHealthy=syncAgeHours<=18;
+        return React.createElement("main", { className:"max-w-5xl mx-auto px-4 pt-5 content-bottom-space" },
         React.createElement(Card, { className:"p-6 mb-5 bg-gradient-to-br from-white/95 to-blue-50/80" },
             React.createElement("div", { className:"text-[11px] font-black tracking-[.2em] text-brand-600" }, "資料與同步"),
             React.createElement("div", { className:"mt-3 text-3xl font-black text-slate-950" }, user&&!user.isAnonymous?"Google 雲端已連線":"目前使用本機資料"),
             React.createElement("div", { className:"mt-2 text-sm font-bold text-slate-500 leading-relaxed" }, syncText),
+            React.createElement("div",{className:"mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3"},
+                React.createElement("div",{className:"rounded-2xl bg-emerald-50 border border-emerald-100 p-3"},React.createElement("div",{className:"text-[10px] font-black text-emerald-700"},"前景自動同步"),React.createElement("div",{className:"mt-1 text-sm font-black text-emerald-950"},"已啟用"),React.createElement("div",{className:"mt-1 text-[10px] font-bold text-emerald-700"},"回到 App 自動重新讀雲端")),
+                React.createElement("div",{className:"rounded-2xl bg-blue-50 border border-blue-100 p-3"},React.createElement("div",{className:"text-[10px] font-black text-blue-700"},"資料版本鎖"),React.createElement("div",{className:"mt-1 text-sm font-black text-blue-950"},`Revision ${Math.max(getNum(data.dataRevision),getNum(cloudSyncMeta.revision))}`),React.createElement("div",{className:"mt-1 text-[10px] font-bold text-blue-700"},"儲存瞬間再次驗證版本，避免競態覆蓋")),
+                React.createElement("div",{className:`rounded-2xl border p-3 ${syncHealthy?'bg-emerald-50 border-emerald-100':'bg-amber-50 border-amber-100'}`},React.createElement("div",{className:`text-[10px] font-black ${syncHealthy?'text-emerald-700':'text-amber-700'}`},"最近成功同步"),React.createElement("div",{className:"mt-1 text-sm font-black text-slate-950"},cloudSyncMeta.lastAt?new Date(cloudSyncMeta.lastAt).toLocaleString('zh-TW'):'尚無成功紀錄'),React.createElement("div",{className:"mt-1 text-[10px] font-bold text-slate-600"},cloudSyncMeta.lastAt?`${cloudSyncMeta.reason||'雲端同步'}${syncHealthy?'':'｜已超過 18 小時'}`:'登入後會開始記錄'))),
             React.createElement("div", { className:"mt-5 rounded-[24px] bg-slate-950 text-white p-4" },
                 React.createElement("div", { className:"text-[10px] font-black text-white/60" }, "資料位置"),
                 React.createElement("div", { className:"mt-2 text-sm font-black break-all" }, "qldmax / strategyDashboards / tqqq-qqq200-main"),
                 React.createElement("div", { className:"mt-2 text-xs font-bold text-white/60" }, `${allLogs.length} 筆已載入紀錄｜每頁最多 200 筆`))),
         React.createElement("div", { className:"space-y-3" },
-            React.createElement("button", { onClick:manualSave, className:"settings-row w-full text-left" },
-                React.createElement("span", { className:"settings-icon text-blue-600" }, "↥"),
-                React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-slate-900" }, "手動同步正式資料"), React.createElement("span", { className:"block text-xs font-bold text-slate-500 mt-1" }, hasDraftChanges?"目前有草稿；同步會保存現況":"目前資料已正式保存")),
-                React.createElement("span", { className:"text-2xl text-slate-400" }, "›")),
-            React.createElement("button", { onClick:loginGoogle, className:"settings-row w-full text-left" },
-                React.createElement("span", { className:"settings-icon text-emerald-600" }, "G"),
-                React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-slate-900" }, user&&!user.isAnonymous?"重新確認 Google 帳號":"Google 登入"), React.createElement("span", { className:"block text-xs font-bold text-slate-500 mt-1" }, user&&!user.isAnonymous?"目前已可跨手機與網頁同步":"登入後才會跨裝置同步")),
-                React.createElement("span", { className:`px-3 py-1.5 rounded-full text-xs font-black ${user&&!user.isAnonymous?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500'}` }, user&&!user.isAnonymous?"已連線":"未登入")),
-            React.createElement("button", { onClick:logout, className:"settings-row w-full text-left" },
-                React.createElement("span", { className:"settings-icon text-slate-500" }, "◌"),
-                React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-slate-900" }, "切回本機模式"), React.createElement("span", { className:"block text-xs font-bold text-slate-500 mt-1" }, "保留手機本機資料，不再讀取 Google 雲端")),
-                React.createElement("span", { className:"text-2xl text-slate-400" }, "›"))),
-        React.createElement("div", { className:"mt-8" },
-            React.createElement("div", { className:"text-xs font-black tracking-[.15em] text-red-700 mb-3 ml-2" }, "系統維護"),
-            React.createElement("button", { onClick:resetAllCloudData, disabled:resettingCloud||!user||user.isAnonymous, className:"settings-row w-full text-left disabled:opacity-40" },
-                React.createElement("span", { className:"settings-icon text-red-600" }, "□"),
-                React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-red-700" }, resettingCloud?"正在重置…":"重置全部雲端與本機資料"), React.createElement("span", { className:"block text-xs font-bold text-red-500 mt-1 leading-relaxed" }, "永久刪除正式策略狀態與全部紀錄；建議先備份 JSON")),
-                React.createElement("span", { className:"text-2xl text-red-300" }, "›")))
+            React.createElement("button", { onClick:()=>syncFromCloud({reason:"手動重新同步",silent:false,force:true}), disabled:!user||user.isAnonymous, className:"settings-row w-full text-left disabled:opacity-40" },React.createElement("span", { className:"settings-icon text-emerald-600" }, "↻"),React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-slate-900" }, "立即重新讀取雲端"), React.createElement("span", { className:"block text-xs font-bold text-slate-500 mt-1" }, "不刪除草稿；會把 GitHub Actions 新淨值與配息先合併進來")),React.createElement("span", { className:"text-2xl text-slate-400" }, "›")),
+            React.createElement("button", { onClick:manualSave, className:"settings-row w-full text-left" },React.createElement("span", { className:"settings-icon text-blue-600" }, "↥"),React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-slate-900" }, "手動同步正式資料"), React.createElement("span", { className:"block text-xs font-bold text-slate-500 mt-1" }, hasDraftChanges?"目前有草稿；若遇衝突會直接讓你比較雲端／本機":"目前資料已正式保存")),React.createElement("span", { className:"text-2xl text-slate-400" }, "›")),
+            React.createElement("button", { onClick:restoreUndoCheckpoint, disabled:!undoCheckpoint, className:"settings-row w-full text-left disabled:opacity-40" },React.createElement("span", { className:"settings-icon text-amber-600" }, "↶"),React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-slate-900" }, "復原上一次正式儲存"), React.createElement("span", { className:"block text-xs font-bold text-slate-500 mt-1" }, undoCheckpoint?`${new Date(undoCheckpoint.createdAt).toLocaleString('zh-TW')}｜${undoCheckpoint.reason}`:"目前沒有可復原版本")),React.createElement("span", { className:"text-2xl text-slate-400" }, "›")),
+            React.createElement("button", { onClick:loginGoogle, className:"settings-row w-full text-left" },React.createElement("span", { className:"settings-icon text-emerald-600" }, "G"),React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-slate-900" }, user&&!user.isAnonymous?"重新確認 Google 帳號":"Google 登入"), React.createElement("span", { className:"block text-xs font-bold text-slate-500 mt-1" }, user&&!user.isAnonymous?"目前已可跨手機與網頁同步":"登入後才會跨裝置同步")),React.createElement("span", { className:`px-3 py-1.5 rounded-full text-xs font-black ${user&&!user.isAnonymous?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500'}` }, user&&!user.isAnonymous?"已連線":"未登入")),
+            React.createElement("button", { onClick:logout, className:"settings-row w-full text-left" },React.createElement("span", { className:"settings-icon text-slate-500" }, "◌"),React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-slate-900" }, "切回本機模式"), React.createElement("span", { className:"block text-xs font-bold text-slate-500 mt-1" }, "保留手機本機資料，不再讀取 Google 雲端")),React.createElement("span", { className:"text-2xl text-slate-400" }, "›"))),
+        React.createElement(Card,{className:"p-5 mt-5"},
+            React.createElement("div",{className:"text-[10px] font-black tracking-[.14em] text-purple-600"},"QQQI 隔離 E2E 測試"),
+            React.createElement("div",{className:"mt-2 text-lg font-black text-slate-950"},data.qqqiE2eTestAt?"GitHub Actions → Firebase → App 已有測試結果":"尚未執行 v5.8 E2E 測試"),
+            React.createElement("div",{className:"mt-2 text-xs font-bold text-slate-500 leading-relaxed"},data.qqqiE2eTestAt?`${new Date(data.qqqiE2eTestAt).toLocaleString('zh-TW')}｜測試現金 US$ ${money(data.qqqiE2eTestBeforeCashUsd,2)} + 配息 ${money(data.qqqiE2eTestNetUsd,2)} = ${money(data.qqqiE2eTestAfterCashUsd,2)}｜第二次執行新增 ${money(data.qqqiE2eTestSecondPassNetUsd,2)}`:"到 GitHub Actions 手動選 qqqi_e2e_test；只寫隔離測試結果，不改正式 IB 現金。"),
+            data.qqqiE2eTestStatus&&React.createElement("div",{className:"mt-3 rounded-2xl bg-purple-50 border border-purple-100 p-3 text-xs font-black text-purple-800"},data.qqqiE2eTestStatus)),
+        React.createElement("div", { className:"mt-8" },React.createElement("div", { className:"text-xs font-black tracking-[.15em] text-red-700 mb-3 ml-2" }, "系統維護"),React.createElement("button", { onClick:resetAllCloudData, disabled:resettingCloud||!user||user.isAnonymous, className:"settings-row w-full text-left disabled:opacity-40" },React.createElement("span", { className:"settings-icon text-red-600" }, "□"),React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-red-700" }, resettingCloud?"正在重置…":"重置全部雲端與本機資料"), React.createElement("span", { className:"block text-xs font-bold text-red-500 mt-1 leading-relaxed" }, "永久刪除正式策略狀態與全部紀錄；建議先備份 JSON")),React.createElement("span", { className:"text-2xl text-red-300" }, "›")))
     );
+    };
     const SettingsBack = useMemo(() => ({ title="返回設定" }) => React.createElement("div", { className:"max-w-5xl mx-auto px-4 pt-4" },
         React.createElement("button", { onClick:backToSettings, className:"inline-flex items-center gap-2 rounded-full bg-white/95 border border-white px-4 py-2.5 text-sm font-black text-slate-700 shadow-sm" }, "‹", title)), [backToSettings]);
     const SettingsPage = useMemo(() => ({eyebrow,title,desc,children}) => React.createElement("div",{className:"page-slide-from-right settings-input-stable"},
@@ -2438,15 +2803,18 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         React.createElement(Card,{className:"p-5"},
             React.createElement("div",{className:"grid grid-cols-1 sm:grid-cols-2 gap-3"},
                 React.createElement(NumInput,{label:"SPY 收盤價",value:data.spy,onChange:v=>patch('spy',v)}),
-                React.createElement(NumInput,{label:"SPY 200SMA",value:data.spySma,onChange:v=>patch('spySma',v)}),
+                React.createElement(NumInput,{label:"SPY 200SMA",value:data.spySma,onChange:v=>merge({spySma:v,spySmaUpdatedDate:data.marketDate||todayStr(),smaUpdatedAt:new Date().toISOString()})}),
+                React.createElement("label",{className:"block bg-slate-50 border border-slate-200 rounded-2xl p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-500 mb-1"},"SPY 200SMA 資料日"),React.createElement("input",{type:"date",value:data.spySmaUpdatedDate||"",onChange:e=>merge({spySmaUpdatedDate:e.target.value,smaUpdatedAt:new Date().toISOString()}),className:"block w-full min-w-0 border-0 bg-transparent p-0 text-center font-mono font-black"})),
                 React.createElement(NumInput,{label:"QQQ 收盤價",value:data.qqq,onChange:v=>patch('qqq',v)}),
-                React.createElement(NumInput,{label:"QQQ 200SMA",value:data.qqqSma,onChange:v=>patch('qqqSma',v)}),
+                React.createElement(NumInput,{label:"QQQ 200SMA",value:data.qqqSma,onChange:v=>merge({qqqSma:v,qqqSmaUpdatedDate:data.marketDate||todayStr(),smaUpdatedAt:new Date().toISOString()})}),
+                React.createElement("label",{className:"block bg-slate-50 border border-slate-200 rounded-2xl p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-500 mb-1"},"QQQ 200SMA 資料日"),React.createElement("input",{type:"date",value:data.qqqSmaUpdatedDate||"",onChange:e=>merge({qqqSmaUpdatedDate:e.target.value,smaUpdatedAt:new Date().toISOString()}),className:"block w-full min-w-0 border-0 bg-transparent p-0 text-center font-mono font-black"})),
                 React.createElement(NumInput,{label:"TQQQ 價格",value:data.tqqq,onChange:v=>patch('tqqq',v)}),
                 data.hotAsset==='SPYI'&&React.createElement(NumInput,{label:'SPYI 價格',value:data.spyi,onChange:v=>patch('spyi',v)}),
                 (data.hotAsset==='QQQI'||data.introAsset==='QQQI')&&React.createElement(NumInput,{label:'QQQI 價格',value:data.qqqi,onChange:v=>patch('qqqi',v)})),
             React.createElement("div",{className:"grid grid-cols-2 gap-3 mt-4"},
                 React.createElement("button",{onClick:fetchPrices,disabled:loadingPrice,className:"py-4 rounded-[22px] bg-slate-950 text-white font-black disabled:opacity-50"},loadingPrice?"更新中…":"更新股價"),
-                React.createElement("button",{onClick:manualSave,className:"py-4 rounded-[22px] bg-brand-600 text-white font-black"},"儲存正式資料")),
+                React.createElement("button",{onClick:()=>{if(getNum(data.spySma)<=0||getNum(data.qqqSma)<=0){showToast('請先輸入兩條 200SMA');return;}const d=data.marketDate||latestCompletedUsTradingDay();merge({spySmaUpdatedDate:d,qqqSmaUpdatedDate:d,smaUpdatedAt:new Date().toISOString()});showToast(`兩條 200SMA 已標記為 ${d}`);},className:"py-4 rounded-[22px] bg-amber-500 text-white font-black"},"確認 SMA 日期"),
+                React.createElement("button",{onClick:manualSave,className:"col-span-2 py-4 rounded-[22px] bg-brand-600 text-white font-black"},"儲存正式資料")),
             React.createElement("div",{className:"mt-4 rounded-[22px] bg-slate-50 border border-slate-200 p-4"},
                 React.createElement("div",{className:"flex items-start justify-between gap-3"},
                     React.createElement("div",null,
@@ -2487,6 +2855,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
             React.createElement(Card,{className:"p-5 mb-4"},
                 React.createElement(SectionTitle,{title:"Firstrade｜帳戶淨值模式",desc:"短線切換不用逐筆記錄，只輸入券商顯示的 Total Account Value。"}),
                 stableNum("ftUsd","Firstrade Total Account Value","USD","輸入時只更新這個欄位，不會整頁重繪或跳回上方。"),
+                getNum(draft.ftUsd)>0&&React.createElement("div",{className:`mt-3 rounded-2xl border p-3 text-xs font-bold leading-relaxed ${!data.ftUpdatedAt||Math.floor((Date.now()-Date.parse(data.ftUpdatedAt))/86400000)>7?'bg-amber-50 border-amber-100 text-amber-800':'bg-emerald-50 border-emerald-100 text-emerald-800'}`},data.ftUpdatedAt?`最後人工更新：${new Date(data.ftUpdatedAt).toLocaleString('zh-TW')}｜${Math.max(0,Math.floor((Date.now()-Date.parse(data.ftUpdatedAt))/86400000))} 天前${Math.floor((Date.now()-Date.parse(data.ftUpdatedAt))/86400000)>7?'；已超過 7 天，全部資產淨值會標記為估算。':''}`:"尚未標記 FT 更新時間；儲存一次今日淨值後會開始追蹤。"),
                 React.createElement("div",{className:"mt-3 rounded-2xl bg-slate-50 border border-slate-100 p-3 text-xs font-bold text-slate-600 leading-relaxed"},"交易再頻繁也不用輸入持股；更新淨值並儲存今日快照即可。入金／出金請在下方另行記錄，避免績效失真。"),
                 React.createElement("button",{onClick:()=>saveDraft('Firstrade 今日淨值已儲存'),className:"w-full mt-4 py-4 rounded-[22px] bg-slate-950 text-white font-black"},"儲存 FT 今日淨值")),
             React.createElement(Card,{className:"p-5 mb-4"},
@@ -2556,6 +2925,33 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
                 React.createElement("input",{value:cashflowNote,onChange:e=>setCashflowNote(e.target.value),placeholder:"備註",className:"rounded-2xl px-4 py-3 text-sm font-bold",style:{fontSize:'16px'}})),
             React.createElement("div",{className:"mt-4 rounded-[24px] bg-slate-50 border border-slate-100 p-4"},React.createElement("div",{className:"text-[10px] font-black text-slate-500"},"目前 IB 現金"),React.createElement("div",{className:"mt-2 text-2xl font-black privacy-value"},`US$ ${money(data.cashUsd,2)}`)),
             React.createElement("button",{onClick:addCashflowRecord,className:"w-full mt-4 rounded-[22px] bg-brand-600 text-white font-black px-4 py-4"},"記錄並調整 IB 現金")));
+    const DividendSettingsPage = () => {
+        const ledger=Array.isArray(data.qqqiDividendLedger)?data.qqqiDividendLedger:[];
+        const latest=ledger[0]||null;
+        return React.createElement(SettingsPage,{eyebrow:"QQQI 配息",title:"自動加入 IB 現金",desc:"GitHub Actions 會讀取 NEOS 官方 QQQI 配息資料；付款日自動把稅後金額加入 IB 可用現金。同一筆配息只會入帳一次。"},
+            React.createElement("div",{className:"space-y-4"},
+                React.createElement(Card,{className:"p-5"},
+                    React.createElement("label",{className:"form-check form-switch flex items-center justify-between gap-3"},React.createElement("span",{className:"form-check-label font-black text-slate-900"},"啟用 QQQI 自動配息入現金"),React.createElement("input",{type:"checkbox",checked:data.qqqiDividendAutomationEnabled!==false,onChange:e=>patch('qqqiDividendAutomationEnabled',e.target.checked),className:"form-check-input"})),
+                    React.createElement("div",{className:"grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4"},
+                        React.createElement(NumInput,{label:"預扣稅率",value:data.qqqiDividendTaxRate,onChange:v=>patch('qqqiDividendTaxRate',Math.max(0,Math.min(100,getNum(v)))),suffix:"%",hint:"預設 30%；每筆實際入帳仍可之後人工修正。"}),
+                        React.createElement("div",{className:"rounded-2xl bg-slate-50 border border-slate-100 p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-500"},"自動化起算日"),React.createElement("div",{className:"mt-2 font-mono font-black text-slate-900"},data.qqqiDividendStartDate||"首次正式自動執行時建立"),React.createElement("div",{className:"mt-1 text-[10px] font-bold text-slate-400"},"不會自動回補起算日前的舊配息，避免重複加現金。"))),
+                    React.createElement("button",{onClick:manualSave,className:"w-full mt-4 py-4 rounded-[22px] bg-slate-950 text-white font-black"},"儲存配息設定"),
+                    React.createElement("div",{className:"mt-3 text-[11px] font-bold text-slate-500 leading-relaxed"},"計算基準：除息日前一個美股交易日的 QQQI 持股快照 × 每股配息 ×（1－預扣稅率）。付款日才加入 cashUsd；不會自動買股票，也不會改變 Risk-On／Off、HOT 或 DCA。")),
+                React.createElement(Card,{className:"p-5"},
+                    React.createElement(SectionTitle,{title:"自動化狀態",desc:"官方配息頁若暫時抓不到，當天不會亂加現金；下一次排程會再檢查。"}),
+                    React.createElement("div",{className:"grid grid-cols-2 gap-3"},
+                        React.createElement("div",{className:"rounded-2xl bg-slate-50 p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"最後檢查"),React.createElement("div",{className:"mt-1 text-xs font-black text-slate-900"},data.qqqiDividendLastCheckAt?new Date(data.qqqiDividendLastCheckAt).toLocaleString('zh-TW'):"尚未由雲端檢查")),
+                        React.createElement("div",{className:"rounded-2xl bg-slate-50 p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"最近入帳"),React.createElement("div",{className:"mt-1 text-xs font-black text-slate-900"},latest?latest.payableDate:"尚無"),latest&&React.createElement("div",{className:"mt-1 text-[10px] font-bold text-emerald-700 privacy-value"},`+US$ ${money(latest.actualNetUsd??latest.netUsd,2)}`))),
+                    data.qqqiDividendLastError&&React.createElement("div",{className:"mt-3 rounded-2xl bg-amber-50 border border-amber-100 p-3 text-xs font-bold text-amber-800"},data.qqqiDividendLastError)),
+                React.createElement("div",{className:"space-y-3"},ledger.length?ledger.slice(0,18).map(entry=>React.createElement(Card,{key:entry.id,className:"p-4"},
+                    React.createElement("div",{className:"flex items-start justify-between gap-3"},React.createElement("div",null,React.createElement("div",{className:"font-black text-slate-950"},`QQQI｜付款 ${entry.payableDate}`),React.createElement("div",{className:"mt-1 text-[11px] font-bold text-slate-500"},`除息 ${entry.exDate}｜基準 ${entry.entitlementDate||entry.shareSourceDate||'-'}${entry.estimatedShares?'｜持股為估算':''}`)),React.createElement(Pill,{tone:entry.estimatedShares?'amber':'green'},entry.estimatedShares?'估算':'已入帳')),
+                    React.createElement("div",{className:"grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3"},
+                        React.createElement("div",{className:"rounded-2xl bg-slate-50 p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"持股"),React.createElement("div",{className:"font-mono font-black privacy-value"},money(entry.eligibleShares,4))),
+                        React.createElement("div",{className:"rounded-2xl bg-slate-50 p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"每股"),React.createElement("div",{className:"font-mono font-black"},`$${money(entry.amountPerShare,4)}`)),
+                        React.createElement("div",{className:"rounded-2xl bg-slate-50 p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"稅前／稅"),React.createElement("div",{className:"font-mono text-xs font-black privacy-value"},`$${money(entry.grossUsd,2)} / -$${money(entry.taxUsd,2)}`)),
+                        React.createElement("div",{className:"rounded-2xl bg-emerald-50 p-3"},React.createElement("div",{className:"text-[10px] font-black text-emerald-700"},"實收"),React.createElement("div",{className:"font-mono font-black text-emerald-800 privacy-value"},`$${money(entry.actualNetUsd??entry.netUsd,2)}`))),
+                    React.createElement("button",{onClick:()=>adjustDividendNet(entry),className:"w-full mt-3 py-3 rounded-2xl bg-blue-50 text-blue-700 text-xs font-black"},"依券商實際入帳修正"))):React.createElement(Card,{className:"p-5 text-center text-sm font-bold text-slate-400"},"尚無 QQQI 配息入帳紀錄"))));
+    };
     const LeverageCalculatorSettingsPage = () => {
         const c=leverageCalc;
         const baseNow=calcNum(c.baseNow), baseFuture=calcNum(c.baseFuture), basePct=calcNum(c.basePct);
@@ -2613,7 +3009,8 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         React.createElement("div",null,
             React.createElement(Card,{className:"p-5 mb-4"},
                 React.createElement("button",{onClick:createBackupCard,className:"w-full py-4 rounded-[22px] bg-slate-950 text-white font-black"},"建立新的備份卡片"),
-                React.createElement("div",{className:"grid grid-cols-3 gap-2 mt-3"},React.createElement("button",{onClick:exportRecordsJson,className:"py-3 rounded-2xl bg-blue-50 text-blue-700 text-xs font-black"},"下載 JSON"),React.createElement("button",{onClick:()=>importInputRef.current?.click(),className:"py-3 rounded-2xl bg-emerald-50 text-emerald-700 text-xs font-black"},"還原 JSON"),React.createElement("button",{onClick:exportRecordsCsv,className:"py-3 rounded-2xl bg-purple-50 text-purple-700 text-xs font-black"},"匯出 CSV")),
+                React.createElement("button",{onClick:restoreUndoCheckpoint,disabled:!undoCheckpoint,className:"w-full mt-3 py-3 rounded-[20px] bg-amber-50 border border-amber-100 text-amber-800 text-sm font-black disabled:opacity-40"},undoCheckpoint?`↶ 復原上一次正式儲存｜${new Date(undoCheckpoint.createdAt).toLocaleString('zh-TW')}`:"目前沒有可復原的上一版"),
+                React.createElement("div",{className:"grid grid-cols-2 gap-2 mt-3"},React.createElement("button",{onClick:exportRecordsJson,className:"py-3 rounded-2xl bg-blue-50 text-blue-700 text-xs font-black"},"完整 JSON"),React.createElement("button",{onClick:()=>importInputRef.current?.click(),className:"py-3 rounded-2xl bg-emerald-50 text-emerald-700 text-xs font-black"},"還原 JSON"),React.createElement("button",{onClick:exportRecordsCsv,className:"py-3 rounded-2xl bg-purple-50 text-purple-700 text-xs font-black"},"策略紀錄 CSV"),React.createElement("button",{onClick:exportPortfolioCsv,className:"py-3 rounded-2xl bg-amber-50 text-amber-700 text-xs font-black"},"每日淨值 CSV")),
                 React.createElement("input",{ref:importInputRef,type:"file",accept:"application/json,.json",onChange:importRecordsJson,className:"hidden"})),
             React.createElement("div",{className:"space-y-3"},backupCards.length?backupCards.map(card=>React.createElement(Card,{key:card.id,className:"p-4"},
                 React.createElement("div",{className:"flex justify-between gap-3"},React.createElement("div",null,React.createElement("div",{className:"font-black text-slate-950"},new Date(card.createdAt).toLocaleString('zh-TW')),React.createElement("div",{className:"text-xs font-bold text-slate-500 mt-1"},`${card.recordCount} 筆紀錄｜${card.strategyVersion}`)),React.createElement("div",{className:"text-right"},React.createElement("div",{className:"font-black privacy-value"},`IB US$ ${money(card.strategyUsd,0)}`),React.createElement("div",{className:"text-xs font-bold text-slate-500 privacy-value"},`全部 NT$ ${money(card.totalTwd,0)}`))),
@@ -2625,6 +3022,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         if(settingsView==="params")return ParametersSettingsPage();
         if(settingsView==="appearance")return AppearanceSettingsPage();
         if(settingsView==="cashflow")return CashflowSettingsPage();
+        if(settingsView==="dividends")return DividendSettingsPage();
         if(settingsView==="backups")return BackupsSettingsPage();
         if(settingsView==="leverage")return LeverageCalculatorSettingsPage();
         if(settingsView==="advanced")return React.createElement("div",{className:"page-slide-from-right settings-input-stable"},React.createElement(SettingsBack,{title:"返回設定"}),Inputs());
@@ -2636,7 +3034,8 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
             ['params','◇','策略參數','Risk-On／Off、HOT 與替代標的'],
             ['appearance','◉','外觀與隱私','封面主題、金額隱藏'],
             ['cashflow','±','IB 入金與出金','獨立記錄資金流，避免績效失真'],
-            ['backups','↓','備份與還原','本機備份卡片、JSON 與 CSV'],
+            ['dividends','$','QQQI 配息','每月配息扣稅後自動加入 IB 現金'],
+            ['backups','↓','備份與還原','本機備份卡片、JSON 與兩種 CSV'],
             ['leverage','2×','槓桿股票換算器','原型股 ↔ 槓桿股未來價格與漲跌幅'],
             ['advanced','⚙','進階策略工具','情境模擬、新一輪 HOT 與完整規則'],
             ['sync','☁','雲端同步與系統',user&&!user.isAnonymous?'Google 雲端已連線':'目前使用本機資料']
@@ -2752,6 +3151,20 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         QuickUpdateSheet(),
         TrashSheet(),
         ExecutionModal(),
+        conflictDialog && React.createElement("div",{className:"fixed inset-0 z-[95] sheet-backdrop sheet-animate-backdrop flex items-end sm:items-center justify-center p-3"},
+            React.createElement("div",{className:"sheet-panel w-full max-w-lg max-h-[88vh] overflow-auto rounded-[32px] bg-white p-5 shadow-2xl"},
+                React.createElement("div",{className:"text-[10px] font-black tracking-[.16em] text-red-600"},"同步衝突保護"),
+                React.createElement("div",{className:"mt-2 text-2xl font-black text-slate-950"},"雲端與本機都改了同一欄位"),
+                React.createElement("div",{className:"mt-2 text-sm font-bold text-slate-500 leading-relaxed"},"請比較差異。採用雲端只會替換下列衝突欄位；保留本機則會用版本鎖確認後覆蓋這些欄位。"),
+                React.createElement("div",{className:"space-y-3 mt-4"},conflictDialog.conflicts.map(key=>React.createElement("div",{key,className:"rounded-[22px] border border-slate-200 overflow-hidden"},
+                    React.createElement("div",{className:"px-4 py-2 bg-slate-50 text-xs font-black text-slate-700"},SYNC_KEY_LABELS[key]||key),
+                    React.createElement("div",{className:"grid grid-cols-2"},
+                        React.createElement("div",{className:"p-3 border-r border-slate-100"},React.createElement("div",{className:"text-[10px] font-black text-blue-600"},"雲端"),React.createElement("div",{className:"mt-1 text-sm font-black text-slate-950 break-words privacy-value"},formatConflictValue(conflictDialog.cloud[key]))),
+                        React.createElement("div",{className:"p-3"},React.createElement("div",{className:"text-[10px] font-black text-amber-600"},"本機"),React.createElement("div",{className:"mt-1 text-sm font-black text-slate-950 break-words privacy-value"},formatConflictValue(conflictDialog.local[key])))))),
+                React.createElement("div",{className:"grid grid-cols-3 gap-2 mt-5"},
+                    React.createElement("button",{onClick:()=>resolveConflictDialog('cancel'),className:"py-3 rounded-2xl bg-slate-100 text-slate-700 text-xs font-black"},"取消"),
+                    React.createElement("button",{onClick:()=>resolveConflictDialog('cloud'),className:"py-3 rounded-2xl bg-blue-600 text-white text-xs font-black"},"採用雲端"),
+                    React.createElement("button",{onClick:()=>resolveConflictDialog('local'),className:"py-3 rounded-2xl bg-amber-500 text-white text-xs font-black"},"保留本機"))))),
         toast && React.createElement("div", { className: "fixed left-1/2 -translate-x-1/2 bottom-40 z-50 bg-slate-900/90 backdrop-blur text-white rounded-2xl px-4 py-3 text-sm font-black shadow-2xl" }, toast));
 };
 class ErrorBoundary extends React.Component {
