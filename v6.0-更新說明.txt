@@ -1,0 +1,49 @@
+股票資產 PWA v6.0｜系統健康捷徑＋統一操作視窗
+日期：2026-09-01
+
+本版以 v5.9 為底，策略核心完全不改，集中優化手機操作、防呆與「看到問題就能直接處理」。
+
+一、系統健康直接處理
+1. 系統健康不再只顯示「需要更新」。有異常時會出現「直接處理」按鈕。
+2. 200SMA 過期 → 直接進市場資料並捲到「確認 SMA 日期」，短暫藍框標示。
+3. 股價過期 → 直接捲到「更新股價」按鈕。
+4. FT 超過 7 天未更新 → 直接捲到 Firstrade Total Account Value 與「儲存 FT 今日淨值」區。
+5. 自動記帳落後／不完整 → 直接捲到「自動化／GitHub Actions」狀態區。
+6. 雲端同步超過 18 小時 → 直接捲到「立即重新讀取雲端」。
+7. QQQI 配息自動化錯誤 → 直接捲到 QQQI「自動化狀態」。
+8. 今日 USD/TWD 更新失敗 → 直接捲到 USD/TWD 卡片與「立即更新」。
+9. 系統健康詳細狀態的「股價／FT／200SMA／QQQI 配息」四格本身也可點擊，並精準定位到實際處理位置。
+10. 在 GitHub Pages 上會自動推導目前 Repository，雲端同步頁提供「開啟 GitHub Actions」直接連結，不用再回 GitHub 自己找 workflow。
+
+二、App 內統一確認／輸入視窗
+1. 移除 app.js 裡所有瀏覽器原生 prompt()、confirm()、alert()。
+2. Finnhub API Key 設定／更換改為 App 內輸入視窗。
+3. 清除 API Key、HOT 新週期、匯入備份、入出金、QQQI 配息實收修正、回收區、備份還原、Undo、策略參數解鎖、全部資料重置等確認，都改為同一套 App 視窗。
+4. 危險操作使用紅色確認鍵；一般操作使用藍色確認鍵。
+5. 手機底部安全區、100dvh 與鍵盤操作已納入；桌機 Esc 可取消可取消的對話框。
+
+三、Bottom Sheet 手機操作統一
+1. 首頁「快速更新 FT／複委託」改成固定標題＋可捲內容＋固定底部操作列。
+2. 「帳戶資產明細」同樣改成固定底部「快速更新／完整設定」。
+3. 「紀錄回收區」同樣改成固定底部「重新讀取／全部還原」。
+4. 原有衝突比較視窗仍維持固定底部三選項。
+5. 小螢幕、Samsung Internet／Chrome 的 safe-area 與動態視窗高度均保留。
+
+四、其他修正
+1. 雲端同步頁的資料位置文字修正為：qldmax / users / {目前登入 UID} / strategyDashboards / tqqq-qqq200-main，避免誤以為新版仍使用舊的頂層 strategyDashboards。
+2. PWA 版本升級為 6.0.0，Service Worker 使用全新快取名稱。
+3. GitHub Actions 寫入 clientAppVersion 更新為 v6.0，避免自動快照把版本字樣寫回舊版。
+4. v5.9 的「相同值不算衝突」、Revision 版本鎖、Undo、QQQI E2E 與同步競態保護全部保留。
+
+五、策略核心保護
+- Risk-On：SPY > 200SMA × 1.04，未修改。
+- Risk-Off：SPY < 200SMA × 0.97，未修改。
+- HOT：19% / 24% / 28%，未修改。
+- evaluateStrategy() 與 v5.9 原始碼逐字一致。
+- applyExecutionState() 與 v5.9 原始碼逐字一致。
+- FT／複委託／台股仍不參與 IB 主策略訊號。
+
+六、部署
+- 最簡單：完整覆蓋 v6.0 ZIP。
+- 本版 firestore.rules 沒有修改；v5.8 Revision Rules 已在 Firebase Publish 的話，不用再發布一次。
+- GitHub Pages deployment 完成後，App 出現「發現新版 v6.0」時按「立即更新」。

@@ -14,7 +14,7 @@ if (HAS_FIREBASE && !firebase.apps.length)
 const auth = HAS_FIREBASE ? firebase.auth() : null;
 const db = HAS_FIREBASE ? firebase.firestore() : null;
 const DOC_PATH = ["strategyDashboards", "tqqq-qqq200-main"];
-const APP_VERSION = "股票資產 PWA v5.8｜版本鎖＋衝突處理＋一鍵復原";
+const APP_VERSION = "股票資產 PWA v6.0｜系統健康捷徑＋統一操作視窗";
 const STRATEGY_ID = "tqqq-spy200";
 const STRATEGY_VERSION = "SPY200-4-3-HOT-19-24-28-INTRO-v1.2";
 const RECORD_SCHEMA_VERSION = 2;
@@ -105,12 +105,8 @@ function clearFinnhubKey() {
     notifyFinnhubKeyChanged();
 }
 function getFinnhubKey() {
-    let key = readSavedFinnhubKey();
-    if (!key) {
-        key = String(prompt("請輸入 Finnhub API Key。會只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase；除非清除網站資料，否則下次開啟不用再輸入。") || "").trim();
-        if (key && !saveFinnhubKey(key)) key = "";
-    }
-    if (!isValidFinnhubKey(key)) throw new Error("未提供有效的 Finnhub API Key；也可等待 GitHub Actions 每日盤後自動更新，或手動輸入價格");
+    const key = readSavedFinnhubKey();
+    if (!isValidFinnhubKey(key)) throw new Error("尚未設定 Finnhub API Key；請到『設定 → 市場資料』直接設定，或等待 GitHub Actions 每日盤後自動更新");
     return key;
 }
 const EXCHANGE_RATE_ENDPOINT = "https://open.er-api.com/v6/latest/USD";
@@ -395,7 +391,16 @@ const SYNC_EXCLUDED_KEYS=new Set([
     "qqqiE2eTestAt","qqqiE2eTestStatus","qqqiE2eTestId","qqqiE2eTestBeforeCashUsd","qqqiE2eTestNetUsd","qqqiE2eTestAfterCashUsd","qqqiE2eTestSecondPassNetUsd"
 ]);
 const SYNC_TRACKED_KEYS=Object.keys(DEFAULT).filter(k=>!SYNC_EXCLUDED_KEYS.has(k));
-const syncValueEqual=(a,b)=>{ try{return JSON.stringify(sanitize(a===undefined?null:a))===JSON.stringify(sanitize(b===undefined?null:b));}catch(e){return String(a)===String(b);} };
+const stableSyncValue = value => {
+    const clean=sanitize(value===undefined?null:value);
+    const sortDeep=v=>{
+        if(Array.isArray(v)) return v.map(sortDeep);
+        if(v&&typeof v==="object") return Object.keys(v).sort().reduce((out,k)=>{out[k]=sortDeep(v[k]);return out;},{});
+        return v;
+    };
+    return sortDeep(clean);
+};
+const syncValueEqual=(a,b)=>{ try{return JSON.stringify(stableSyncValue(a))===JSON.stringify(stableSyncValue(b));}catch(e){return String(a)===String(b);} };
 const changedSyncKeys=(a,b)=>SYNC_TRACKED_KEYS.filter(k=>!syncValueEqual(a?.[k],b?.[k]));
 const mergeRecordLists=(...lists)=>{
     const byId=new Map();
@@ -542,8 +547,8 @@ const SectionTitle = ({ title, desc, right }) => React.createElement("div", { cl
         React.createElement("h2", { className: "font-black text-slate-900" }, title),
         desc && React.createElement("p", { className: "text-xs text-slate-500 mt-1 leading-relaxed" }, desc)),
     right);
-async function fetchFinnhubQuote(symbol) {
-    const key = getFinnhubKey();
+async function fetchFinnhubQuote(symbol, keyOverride="") {
+    const key = isValidFinnhubKey(keyOverride) ? String(keyOverride).trim() : getFinnhubKey();
     const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(key)}`, { cache: "no-store", referrerPolicy:"no-referrer" });
     if (r.status === 429) throw new Error("Finnhub API 額度暫時用完（HTTP 429）");
     if (!r.ok) throw new Error(`Finnhub HTTP ${r.status}`);
@@ -552,8 +557,8 @@ async function fetchFinnhubQuote(symbol) {
     if (close <= 0) throw new Error(symbol + " Finnhub 報價無資料");
     return { symbol, close, date: todayStr(), quoteSource: "Finnhub" };
 }
-async function fetchSymbol(symbol) {
-    return await fetchFinnhubQuote(symbol);
+async function fetchSymbol(symbol, keyOverride="") {
+    return await fetchFinnhubQuote(symbol, keyOverride);
 }
 
 const LEVERAGE_CALC_LOCAL_KEY = "stockAssetsLeverageCalcV1";
@@ -932,6 +937,7 @@ const App = () => {
     const [syncText, setSyncText] = useState("準備中");
     const [cloudSyncMeta,setCloudSyncMeta]=useState(() => readLastSyncMeta());
     const [conflictDialog,setConflictDialog]=useState(null);
+    const [appDialog,setAppDialog]=useState(null);
     const [undoCheckpoint,setUndoCheckpoint]=useState(() => readUndoCheckpoint());
     const [loadingPrice, setLoadingPrice] = useState(false);
     const [loadingFx, setLoadingFx] = useState(false);
@@ -990,32 +996,66 @@ const App = () => {
     const lastForegroundSyncRef=useRef(0);
     const saveConflictRef=useRef("");
     const conflictResolverRef=useRef(null);
+    const appDialogResolverRef=useRef(null);
     const externalDraftDirtyRef=useRef(false);
     const externalDraftRef = useRef(pickExternalAccountState(data));
     const updateExternalDraft = useCallback((key,value) => { externalDraftRef.current={...externalDraftRef.current,[key]:value}; externalDraftDirtyRef.current=true; }, []);
     const collectExternalDraft = useCallback(() => normalizeData({...data,...externalDraftRef.current}), [data]);
     const toggleCollapse = useCallback(id => setCollapsed(prev => ({ ...prev, [id]: !prev[id] })), []);
     const showToast = useCallback(txt => { setToast(txt); setTimeout(() => setToast(""), 2600); }, []);
+    const openAppDialog = useCallback(options => new Promise(resolve => {
+        if(appDialogResolverRef.current){ try{appDialogResolverRef.current(null);}catch(e){} }
+        appDialogResolverRef.current=resolve;
+        setAppDialog({
+            kind:options?.kind||'confirm', title:options?.title||'請確認', message:options?.message||'',
+            confirmText:options?.confirmText||'確認', cancelText:options?.cancelText||'取消',
+            danger:Boolean(options?.danger), value:String(options?.initialValue??''), placeholder:options?.placeholder||'',
+            inputMode:options?.inputMode||'text', secret:Boolean(options?.secret), allowCancel:options?.allowCancel!==false
+        });
+    }), []);
+    const resolveAppDialog = useCallback(result => {
+        const resolver=appDialogResolverRef.current; appDialogResolverRef.current=null; setAppDialog(null); if(resolver)resolver(result);
+    }, []);
+    const askConfirm = useCallback((message, options={}) => openAppDialog({...options,kind:'confirm',message}), [openAppDialog]);
+    const askPrompt = useCallback((message, options={}) => openAppDialog({...options,kind:'prompt',message}), [openAppDialog]);
+    const showInfoDialog = useCallback((message, options={}) => openAppDialog({...options,kind:'info',message,confirmText:options.confirmText||'知道了',allowCancel:false}), [openAppDialog]);
+    const ensureFinnhubKey = useCallback(async () => {
+        let key=readSavedFinnhubKey();
+        if(isValidFinnhubKey(key)) return key;
+        const next=await askPrompt('請貼上 Finnhub API Key。只會保存在這台裝置，不會同步到 GitHub 或 Firebase。',{title:'設定 Finnhub API Key',confirmText:'儲存 Key',placeholder:'Finnhub API Key',secret:true});
+        if(next===null) throw new Error('已取消 Finnhub API Key 設定');
+        key=String(next||'').trim();
+        if(!isValidFinnhubKey(key)) throw new Error('Finnhub API Key 格式不正確');
+        if(!saveFinnhubKey(key)) throw new Error('瀏覽器無法保存 Finnhub API Key');
+        showToast('Finnhub API Key 已保存在這台裝置');
+        return key;
+    },[askPrompt,showToast]);
+    useEffect(()=>{
+        if(!appDialog)return;
+        const oldOverflow=document.body.style.overflow; document.body.style.overflow='hidden';
+        const onKey=e=>{if(e.key==='Escape'&&appDialog.allowCancel!==false)resolveAppDialog(null);};
+        window.addEventListener('keydown',onKey);
+        return()=>{document.body.style.overflow=oldOverflow;window.removeEventListener('keydown',onKey);};
+    },[appDialog,resolveAppDialog]);
     useEffect(() => {
         const refreshFinnhubKeyState = () => setFinnhubKeySaved(Boolean(readSavedFinnhubKey()));
         window.addEventListener("finnhub-key-changed", refreshFinnhubKeyState);
         return () => window.removeEventListener("finnhub-key-changed", refreshFinnhubKeyState);
     }, []);
-    const configureFinnhubKey = useCallback(() => {
-        const next = String(prompt(`${readSavedFinnhubKey()?"目前已儲存 Finnhub API Key。要更換時，":""}請貼上新的 Finnhub API Key。
-
-Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase。`) || "").trim();
-        if (!next) { showToast("Finnhub API Key 未變更"); return; }
-        if (!isValidFinnhubKey(next)) { showToast("Finnhub API Key 格式不正確"); return; }
-        if (saveFinnhubKey(next)) showToast("Finnhub API Key 已保存在這台裝置");
+    const configureFinnhubKey = useCallback(async () => {
+        const next = await askPrompt(`${readSavedFinnhubKey()?"目前已儲存 Finnhub API Key。要更換時，":""}請貼上新的 Finnhub API Key。\n\nKey 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase。`,{title:"Finnhub API Key",confirmText:readSavedFinnhubKey()?"更換 Key":"儲存 Key",placeholder:"Finnhub API Key",secret:true});
+        if (next===null || !String(next).trim()) { showToast("Finnhub API Key 未變更"); return; }
+        const key=String(next).trim();
+        if (!isValidFinnhubKey(key)) { showToast("Finnhub API Key 格式不正確"); return; }
+        if (saveFinnhubKey(key)) showToast("Finnhub API Key 已保存在這台裝置");
         else showToast("瀏覽器無法保存 Finnhub API Key");
-    }, [showToast]);
-    const removeFinnhubKey = useCallback(() => {
+    }, [askPrompt,showToast]);
+    const removeFinnhubKey = useCallback(async () => {
         if (!readSavedFinnhubKey()) { showToast("這台裝置目前沒有保存 Finnhub API Key"); return; }
-        if (!confirm("清除這台裝置保存的 Finnhub API Key？下次手動更新股價時會再次詢問。")) return;
+        if (!await askConfirm("清除這台裝置保存的 Finnhub API Key？下次手動更新股價時會再次詢問。",{title:"清除 Finnhub API Key",confirmText:"清除",danger:true})) return;
         clearFinnhubKey();
         showToast("已清除這台裝置的 Finnhub API Key");
-    }, [showToast]);
+    }, [askConfirm,showToast]);
     useEffect(() => { writeLeverageCalcState(leverageCalc); }, [leverageCalc]);
     const updateLeverageCalcField = useCallback((field,value,{signed=false,driver=false}={}) => {
         const cleaned=signed?sanitizeSignedDecimal(value):sanitizeUnsignedDecimal(value);
@@ -1039,7 +1079,8 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         setLoadingLeveragePrices(true);
         setLeveragePriceError("");
         try {
-            const results=await Promise.allSettled([fetchSymbol(baseSymbol),fetchSymbol(levSymbol)]);
+            const key=await ensureFinnhubKey();
+            const results=await Promise.allSettled([fetchSymbol(baseSymbol,key),fetchSymbol(levSymbol,key)]);
             const failed=[];
             if(results[0].status!=="fulfilled") failed.push(`${baseSymbol}：${results[0].reason?.message||"抓價失敗"}`);
             if(results[1].status!=="fulfilled") failed.push(`${levSymbol}：${results[1].reason?.message||"抓價失敗"}`);
@@ -1178,6 +1219,14 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
     const resolveConflictDialog = useCallback(choice=>{
         const resolver=conflictResolverRef.current; conflictResolverRef.current=null; setConflictDialog(null); if(resolver)resolver(choice);
     },[]);
+    useEffect(()=>{
+        if(!conflictDialog)return;
+        const oldOverflow=document.body.style.overflow;
+        document.body.style.overflow='hidden';
+        const onKey=e=>{if(e.key==='Escape'){e.preventDefault();resolveConflictDialog('cancel');}};
+        window.addEventListener('keydown',onKey);
+        return ()=>{document.body.style.overflow=oldOverflow;window.removeEventListener('keydown',onKey);};
+    },[conflictDialog,resolveConflictDialog]);
     const persistUndoCheckpoint = useCallback((beforeState,reason,recordId='') => {
         const checkpoint={id:`undo-${Date.now()}`,createdAt:new Date().toISOString(),reason:String(reason||'正式儲存'),recordId:String(recordId||''),state:normalizeData(beforeState||{})};
         writeUndoCheckpoint(checkpoint); setUndoCheckpoint(checkpoint); return checkpoint;
@@ -1205,11 +1254,15 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         rebased.qqqiDividendLedger=mergeDividendLedgerDraft(remote.qqqiDividendLedger,local.qqqiDividendLedger,base.qqqiDividendLedger);
         rebased.history=mergeRecordLists(remote.history,local.history);
         rebased.portfolioHistory=Array.isArray(remote.portfolioHistory)?remote.portfolioHistory:[];
-        const conflicts=localChanged.filter(k=>remoteChanged.includes(k)&&k!=="qqqiDividendLedger");
+        // 只有「兩邊都改過，而且目前值真的不同」才算衝突。
+        // v5.8 只看是否都改過，會在雲端/本機最後值相同時誤跳衝突視窗。
+        const conflicts=localChanged.filter(k=>remoteChanged.includes(k)&&k!=="qqqiDividendLedger"&&!syncValueEqual(local[k],remote[k]));
         return {rebased:normalizeData(rebased),localChanged,remoteChanged,conflicts};
     },[]);
     const syncFromCloud = useCallback(async ({reason="前景同步",silent=false,force=false}={}) => {
         if(!user||user.isAnonymous||!docRef())return false;
+        // 使用者正在比較衝突時，不在背景偷偷換掉比較基準；最後寫入仍由 Revision Transaction 再確認一次。
+        if(conflictResolverRef.current)return false;
         const now=Date.now();
         if(!force&&now-lastForegroundSyncRef.current<15000)return true;
         if(cloudSyncInFlightRef.current)return false;
@@ -1493,7 +1546,8 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         if(!symbol){showToast('請先輸入複委託股票代號');return;}
         setLoadingSubPrice(true);
         try{
-            const q=await fetchSymbol(symbol);
+            const key=await ensureFinnhubKey();
+            const q=await fetchSymbol(symbol,key);
             const next=normalizeData({...data,...draft,subSymbol:symbol,subPriceUsd:round2(q.close),subPriceUpdatedAt:new Date().toISOString()});
             externalDraftRef.current=pickExternalAccountState(next);
             externalDraftDirtyRef.current=true;
@@ -1555,7 +1609,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         const warning=isIntro
             ? `⚠️ 確定人工開啟正式 HOT 策略嗎？\n\n目前 SPY 已符合 Risk-On，QQQ 即時門檻為 HOT${newHot}。確認後會跳過首次導入等待，正式階段改為 ACTIVE，並依 HOT${newHot} 產生配置建議。\n\n此操作不會自動修改股數，但可能立即出現買入 TQQQ 或替代標的的交易建議。`
             : `⚠️ 確定開啟新一輪 HOT 嗎？\n\n目前本輪正式鎖定 HOT${oldHot}，QQQ 即時門檻已回落至 HOT${newHot}。確認後會把正式 HOT 重設為 HOT${newHot}，建立新的 Risk-On 週期，之後可再次由 HOT${newHot} 向上升階。\n\n這可能產生加回 TQQQ 的交易建議，請確認你認為上一輪過熱已結束。`;
-        if(!confirm(warning))return;
+        if(!await askConfirm(warning,{title:isIntro?"開啟正式 HOT 策略":"開啟新一輪 HOT",confirmText:"確定開啟",danger:true}))return;
         const now=new Date();
         const before={TQQQ:getNum(data.sharesTqqq),QQQ:getNum(data.sharesQqq),SPY:getNum(data.sharesSpy),SPYI:getNum(data.sharesSpyi),QQQI:getNum(data.sharesQqqi),cashUsd:getNum(data.cashUsd),otherUsd:getNum(data.otherUsd)};
         const cycleId=`ON-MANUAL-${data.marketDate||todayStr()}-${Date.now()}`;
@@ -1632,9 +1686,9 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
             const existing=new Map((data.history||[]).map(r=>[r.recordId,normalizeRecord(r)]));
             let added=0,updated=0;
             imported.forEach(r=>{const old=existing.get(r.recordId);if(!old){added++;existing.set(r.recordId,r);}else if(String(r.createdAt||'')>=String(old.createdAt||'')){updated++;existing.set(r.recordId,r);}});
-            if(!confirm(`解析到 ${imported.length} 筆紀錄。\n新增 ${added} 筆、合併更新 ${updated} 筆。\n確定匯入嗎？`))return;
+            if(!await askConfirm(`解析到 ${imported.length} 筆紀錄。\n新增 ${added} 筆、合併更新 ${updated} 筆。\n確定匯入嗎？`,{title:"匯入備份紀錄",confirmText:"確定匯入"}))return;
             const merged=[...existing.values()].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
-            const restoreCurrent=parsed.currentState && confirm('備份也包含目前持股與策略狀態。是否一併還原？取消則只合併歷史紀錄。');
+            const restoreCurrent=Boolean(parsed.currentState) && Boolean(await askConfirm('備份也包含目前持股與策略狀態。是否一併還原？取消則只合併歷史紀錄。',{title:'還原目前策略狀態',confirmText:'一併還原'}));
             const next=normalizeData({...data,...(restoreCurrent?parsed.currentState:{}),history:merged}); setData(next); setCommittedData(next);
             localStorage.setItem(LOCAL_KEY+'_committed',JSON.stringify(next));
             if(recordsRef()){
@@ -1650,7 +1704,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         const nextCash=getNum(data.cashUsd)+sign*amount;
         if(nextCash<0){showToast('出金金額不可大於目前現金');return;}
         const typeText=cashflowType==='withdrawal'?'出金':'入金';
-        if(!confirm(`${typeText} $${money(amount,2)}，並把現金調整為 $${money(nextCash,2)}？`))return;
+        if(!await askConfirm(`${typeText} $${money(amount,2)}，並把現金調整為 $${money(nextCash,2)}？`,{title:`確認${typeText}`,confirmText:`確認${typeText}`,danger:cashflowType==='withdrawal'}))return;
         const before={TQQQ:getNum(data.sharesTqqq),QQQ:getNum(data.sharesQqq),SPY:getNum(data.sharesSpy),SPYI:getNum(data.sharesSpyi),QQQI:getNum(data.sharesQqqi),cashUsd:getNum(data.cashUsd),otherUsd:getNum(data.otherUsd)};
         const after={...before,cashUsd:nextCash};
         const totalAfter=metrics.totalUsd+sign*amount;
@@ -1661,14 +1715,14 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
     const adjustDividendNet = async entry => {
         if(!entry?.id)return;
         const recorded=getNum(entry.actualNetUsd??entry.netUsd);
-        const raw=prompt(`QQQI ${entry.payableDate} 券商實際入帳金額（USD）`,recorded.toFixed(2));
+        const raw=await askPrompt(`QQQI ${entry.payableDate} 券商實際入帳金額（USD）`,{title:"修正 QQQI 配息實收",confirmText:"套用金額",initialValue:recorded.toFixed(2),inputMode:"decimal"});
         if(raw===null)return;
         const actual=getNum(raw);
         if(actual<0){showToast('實際入帳不可小於 0');return;}
         const delta=Math.round((actual-recorded)*10000)/10000;
         if(Math.abs(delta)<0.0001){showToast('金額沒有變更');return;}
         if(getNum(data.cashUsd)+delta<0){showToast('修正後現金不可小於 0');return;}
-        if(!confirm(`實際入帳改為 $${money(actual,2)}，IB 現金將${delta>=0?'增加':'減少'} $${money(Math.abs(delta),2)}。確定？`))return;
+        if(!await askConfirm(`實際入帳改為 $${money(actual,2)}，IB 現金將${delta>=0?'增加':'減少'} $${money(Math.abs(delta),2)}。確定？`,{title:"確認配息實收修正",confirmText:"確認修正",danger:delta<0}))return;
         const ledger=(data.qqqiDividendLedger||[]).map(x=>x.id===entry.id?{...x,actualNetUsd:actual,adjustmentUsd:getNum(x.adjustmentUsd)+delta,adjustedAt:new Date().toISOString()}:x);
         const before={TQQQ:getNum(data.sharesTqqq),QQQ:getNum(data.sharesQqq),SPY:getNum(data.sharesSpy),SPYI:getNum(data.sharesSpyi),QQQI:getNum(data.sharesQqqi),cashUsd:getNum(data.cashUsd),otherUsd:getNum(data.otherUsd)};
         const after={...before,cashUsd:getNum(data.cashUsd)+delta};
@@ -1712,7 +1766,8 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         const extraSymbols=[String(data.hotAsset||"QQQ").toUpperCase(),String(data.introAsset||"QQQI").toUpperCase()].filter(x=>["SPYI","QQQI"].includes(x));
         const syms = ["SPY", "QQQ", "TQQQ", ...extraSymbols].filter((v,i,a)=>a.indexOf(v)===i);
         try {
-            const results = await Promise.allSettled(syms.map(fetchSymbol));
+            const key=await ensureFinnhubKey();
+            const results = await Promise.allSettled(syms.map(sym=>fetchSymbol(sym,key)));
             const updates = { lastFetchAttemptAt: attemptedAt }, failed = [], priceSources = { ...(data.priceSources || {}) };
             results.forEach((res, idx) => {
                 const sym = syms[idx];
@@ -1861,7 +1916,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
     const restoreAllTrashRecords = async () => {
         const list=trashRecords.length?trashRecords:readLocalTrash();
         if(!list.length){showToast('回收區目前是空的');return;}
-        if(!confirm(`確定還原回收區內 ${list.length} 筆紀錄？同一天同類型仍只保留最新一筆。`))return;
+        if(!await askConfirm(`確定還原回收區內 ${list.length} 筆紀錄？同一天同類型仍只保留最新一筆。`,{title:"全部還原紀錄",confirmText:"全部還原"}))return;
         setLoadingTrash(true);
         try{
             if(recordsRef()){
@@ -1882,8 +1937,8 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         const logs = Array.isArray(data.history) ? data.history : [];
         const item = typeof target === "number" ? logs[target] : target;
         if (!item) return;
-        if(item.recordType==='cashflow'){alert('入金／出金紀錄不可直接刪除。請新增一筆相反方向、相同金額的資金流作為沖銷，才能保留完整稽核軌跡。');return;}
-        if (!confirm(`確定把這筆紀錄移到回收區？\n${item.timeText || ""}\n${item.signal || ""}\n${item.totalDisplay || ("$"+money(item.totalUsd,0))}\n\n之後可從「回收區」還原。`)) return;
+        if(item.recordType==='cashflow'){await showInfoDialog('入金／出金紀錄不可直接刪除。請新增一筆相反方向、相同金額的資金流作為沖銷，才能保留完整稽核軌跡。',{title:'資金流紀錄保護'});return;}
+        if (!await askConfirm(`確定把這筆紀錄移到回收區？\n${item.timeText || ""}\n${item.signal || ""}\n${item.totalDisplay || ("$"+money(item.totalUsd,0))}\n\n之後可從「回收區」還原。`,{title:"移到回收區",confirmText:"移到回收區",danger:true})) return;
         const deletedAt=new Date().toISOString();
         const hiddenItem=normalizeRecord({...item,deletedAt});
         mergeTrashRecords([hiddenItem]);
@@ -1936,7 +1991,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         setPendingExecution(false);
         showToast(ok?"已確認執行；同一天同類紀錄只保留最新一筆":(saveConflictRef.current||"已寫入本機，但雲端同步失敗"));
     };
-    const resetAssetHigh = () => { if (confirm('把目前總資產設為新的高點？')) {
+    const resetAssetHigh = async () => { if (await askConfirm('把目前總資產設為新的高點？',{title:'重設資產高點',confirmText:'設為新高點'})) {
         patch('assetHighUsd', metrics.totalUsd);
         showToast('已重設資產高點');
     } };
@@ -1973,6 +2028,38 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         const text=data.exchangeRateLastError&&attemptedToday?`今日更新失敗，沿用 ${successDate||"既有"} 匯率`:online?`線上匯率 ${successDate||"已更新"}`:"目前使用手動匯率";
         return {online,attemptedToday,tone,text};
     },[data.exchangeRateProvider,data.exchangeRateLastAttemptDate,data.exchangeRateUpdatedDate,data.exchangeRateLastError,data.usdtwd]);
+    const githubActionsUrl = useMemo(() => {
+        try {
+            const host=String(window.location.hostname||'');
+            if(!host.endsWith('.github.io')) return '';
+            const owner=host.split('.')[0];
+            const parts=String(window.location.pathname||'/').split('/').filter(Boolean);
+            const repo=parts[0] && !/\.html?$/i.test(parts[0]) ? parts[0] : `${owner}.github.io`;
+            return `https://github.com/${owner}/${repo}/actions/workflows/daily-portfolio-snapshot.yml`;
+        } catch(e) { return ''; }
+    },[]);
+    const focusHealthAnchor = useCallback((anchor) => {
+        if(!anchor){ try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){window.scrollTo(0,0);} return; }
+        const attempt=()=>{
+            const el=document.getElementById(anchor);
+            if(!el) return false;
+            try{el.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){el.scrollIntoView();}
+            el.classList.remove('health-target-flash');
+            void el.offsetWidth;
+            el.classList.add('health-target-flash');
+            setTimeout(()=>el.classList.remove('health-target-flash'),1800);
+            return true;
+        };
+        setTimeout(attempt,40);
+        setTimeout(attempt,180);
+        setTimeout(attempt,420);
+    },[]);
+    const goToHealthTarget = useCallback((view,anchor='') => {
+        setSettingsMotion("forward");
+        setSettingsView(view);
+        setPage("settings");
+        focusHealthAnchor(anchor);
+    },[focusHealthAnchor]);
     const autoHealth = useMemo(() => {
         const expected=latestCompletedUsTradingDay();
         const date=data.autoSnapshotMarketDate||'';
@@ -1980,37 +2067,54 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         const quality=['complete','estimated','incomplete'].includes(data.autoSnapshotQuality)?data.autoSnapshotQuality:(data.autoSnapshotLastError?'estimated':date?'complete':'incomplete');
         const ftAge=getNum(data.ftUsd)>0?(data.ftUpdatedAt?Math.max(0,Math.floor((Date.now()-Date.parse(data.ftUpdatedAt))/86400000)):999):0;
         const latestDividend=(Array.isArray(data.qqqiDividendLedger)?data.qqqiDividendLedger:[])[0]||null;
+        const syncAgeHours=cloudSyncMeta.lastAt?Math.max(0,(Date.now()-Date.parse(cloudSyncMeta.lastAt))/3600000):Infinity;
         const upToDate=age===0;
         const smaBad=!metrics.smaFreshForExecution;
         const ftBad=getNum(data.ftUsd)>0&&ftAge>7;
-        const tone=!date||!upToDate||quality==='incomplete'||smaBad?'red':quality==='estimated'||ftBad?'amber':'green';
-        let label='🟢 全部正常';
-        if(smaBad) label='🔴 200SMA 過期，禁止正式執行';
-        else if(!date) label='🔴 尚未完成自動記帳';
-        else if(!upToDate) label=`🔴 自動記帳落後 ${age} 個交易日`;
-        else if(quality==='incomplete') label='🔴 自動記帳資料不完整';
-        else if(ftBad) label=`🟡 FT 已 ${ftAge} 天未更新`;
-        else if(quality==='estimated') label='🟡 已記帳，但部分資料為估算';
-        return {expected,date,age,quality,ftAge,latestDividend,upToDate,tone,label};
-    },[data.autoSnapshotMarketDate,data.autoSnapshotQuality,data.autoSnapshotLastError,data.ftUsd,data.ftUpdatedAt,data.qqqiDividendLedger,metrics.smaFreshForExecution]);
+        const priceBad=freshnessInfo.price.tradingAge>2;
+        const syncBad=Boolean(user&&!user.isAnonymous)&&syncAgeHours>18;
+        const dividendBad=Boolean(String(data.qqqiDividendLastError||'').trim());
+        const fxBad=Boolean(data.exchangeRateLastError&&data.exchangeRateLastAttemptDate===todayStr());
+        const issues=[];
+        const add=(id,severity,title,detail,target,action,anchor='')=>{if(!issues.some(x=>x.id===id))issues.push({id,severity,title,detail,target,action,anchor});};
+        if(smaBad)add('sma','red','200SMA 需要重新確認',`SPY ${data.spySmaUpdatedDate||'-'}｜QQQ ${data.qqqSmaUpdatedDate||'-'}`,'market','更新 200SMA','health-market-sma');
+        if(priceBad)add('price','red','股價資料已過期',freshnessInfo.price.text,'market','更新股價','health-market-prices');
+        if(!date)add('snapshot','red','尚未完成自動記帳','請查看 GitHub Actions／雲端同步狀態','sync','查看自動快照','health-sync-snapshot');
+        else if(!upToDate)add('snapshot','red',`自動記帳落後 ${age} 個交易日`,`最近應有 ${expected}｜實際 ${date}`,'sync','查看自動快照','health-sync-snapshot');
+        else if(quality==='incomplete')add('snapshot','red','自動記帳資料不完整',data.autoSnapshotQualityNote||data.autoSnapshotLastError||'請查看雲端同步狀態','sync','查看原因','health-sync-snapshot');
+        else if(quality==='estimated')add('snapshot-est','amber','部分自動記帳資料為估算',data.autoSnapshotQualityNote||'可查看自動快照詳細狀態','sync','查看估算原因','health-sync-snapshot');
+        if(ftBad)add('ft','amber',`FT 已 ${ftAge} 天未更新`,'更新 Firstrade Total Account Value 後重新儲存今日快照','accounts','更新 FT','health-accounts-ft');
+        if(syncBad)add('sync','amber','雲端同步已超過 18 小時',cloudSyncMeta.lastAt?`最近同步 ${new Date(cloudSyncMeta.lastAt).toLocaleString('zh-TW')}`:'尚無成功同步紀錄','sync','立即檢查同步','health-sync-now');
+        if(dividendBad)add('dividend','amber','QQQI 配息自動化有錯誤',String(data.qqqiDividendLastError).slice(0,160),'dividends','查看 QQQI 配息','health-dividends-status');
+        if(fxBad)add('fx','amber','今日匯率更新失敗',String(data.exchangeRateLastError).slice(0,160),'market','更新匯率','health-market-fx');
+        const tone=issues.some(x=>x.severity==='red')?'red':issues.length?'amber':'green';
+        const label=issues.length?(issues[0].severity==='red'?'🔴 ':'🟡 ')+issues[0].title:'🟢 全部正常';
+        return {expected,date,age,quality,ftAge,latestDividend,upToDate,tone,label,issues,syncAgeHours};
+    },[data.autoSnapshotMarketDate,data.autoSnapshotQuality,data.autoSnapshotQualityNote,data.autoSnapshotLastError,data.ftUsd,data.ftUpdatedAt,data.qqqiDividendLedger,data.qqqiDividendLastError,data.exchangeRateLastError,data.exchangeRateLastAttemptDate,data.spySmaUpdatedDate,data.qqqSmaUpdatedDate,metrics.smaFreshForExecution,freshnessInfo.price.tradingAge,freshnessInfo.price.text,cloudSyncMeta.lastAt,user]);
+    const HealthActionButton = ({issue}) => React.createElement("button",{type:"button",onClick:()=>goToHealthTarget(issue.target,issue.anchor),className:`health-action-button ${issue.severity==='red'?'is-red':'is-amber'}`},
+        React.createElement("span",{className:"min-w-0 text-left"},React.createElement("span",{className:"block text-xs font-black"},issue.title),React.createElement("span",{className:"block mt-1 text-[10px] font-bold opacity-75 leading-relaxed"},issue.detail)),
+        React.createElement("span",{className:"shrink-0 text-xs font-black whitespace-nowrap"},`${issue.action} ›`));
     const AutoHealthCard = () => React.createElement(Card,{className:`p-4 mt-4 border ${autoHealth.tone==='green'?'border-emerald-100 bg-emerald-50/70':autoHealth.tone==='amber'?'border-amber-100 bg-amber-50/70':'border-red-100 bg-red-50/70'}`},
         React.createElement("div",{className:"flex items-start justify-between gap-3"},
             React.createElement("div",null,React.createElement("div",{className:"text-[10px] font-black tracking-[.14em] text-slate-500"},"系統健康"),React.createElement("div",{className:"mt-1 text-lg font-black text-slate-950"},autoHealth.label),React.createElement("div",{className:"mt-1 text-xs font-bold text-slate-500"},`最近應有 ${autoHealth.expected}｜實際 ${autoHealth.date||'-'}`)),
             React.createElement(Pill,{tone:autoHealth.tone},autoHealth.tone==='green'?'正常':autoHealth.tone==='amber'?'注意':'需處理')),
+        autoHealth.issues.length>0&&React.createElement("div",{className:"mt-3 space-y-2"},
+            React.createElement("div",{className:"text-[10px] font-black tracking-[.12em] text-slate-500"},"直接處理"),
+            autoHealth.issues.map(issue=>React.createElement(HealthActionButton,{key:issue.id,issue}))),
         React.createElement("details",{className:"mt-3 rounded-2xl bg-white/65 border border-white/80 p-3"},
             React.createElement("summary",{className:"cursor-pointer text-xs font-black text-slate-700"},"查看詳細狀態"),
             React.createElement("div",{className:"grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3"},
-                React.createElement("div",{className:"rounded-2xl bg-white/75 p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"股價"),React.createElement("div",{className:"mt-1 text-sm font-black text-slate-900"},`${getNum(data.autoSnapshotFreshPrices)}/${getNum(data.autoSnapshotExpectedPrices)||'-'} 最新`)),
-                React.createElement("div",{className:"rounded-2xl bg-white/75 p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"FT 淨值"),React.createElement("div",{className:`mt-1 text-sm font-black ${autoHealth.ftAge>7?'text-amber-700':'text-slate-900'}`},getNum(data.ftUsd)<=0?'未使用':autoHealth.ftAge>=999?'未標記更新':autoHealth.ftAge===0?'今日更新':`${autoHealth.ftAge} 天前`)),
-                React.createElement("div",{className:"rounded-2xl bg-white/75 p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"200SMA"),React.createElement("div",{className:`mt-1 text-sm font-black ${metrics.smaFreshForExecution?'text-emerald-700':'text-red-700'}`},metrics.smaFreshForExecution?'可用':'需重新確認')),
-                React.createElement("div",{className:"rounded-2xl bg-white/75 p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"QQQI 配息"),React.createElement("div",{className:"mt-1 text-sm font-black text-slate-900"},autoHealth.latestDividend?`最近 ${autoHealth.latestDividend.payableDate}`:'尚無入帳'))),
-            (data.autoSnapshotQualityNote||data.autoSnapshotLastError)&&React.createElement("div",{className:"mt-3 text-xs font-bold text-slate-600 leading-relaxed"},data.autoSnapshotQualityNote||data.autoSnapshotLastError)));
+                React.createElement("button",{type:"button",onClick:()=>goToHealthTarget('market','health-market-prices'),className:"health-detail-tile text-left"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"股價"),React.createElement("div",{className:`mt-1 text-sm font-black ${freshnessInfo.price.tradingAge>2?'text-red-700':'text-slate-900'}`},freshnessInfo.price.text),React.createElement("div",{className:"health-detail-link"},"市場資料 ›")),
+                React.createElement("button",{type:"button",onClick:()=>goToHealthTarget('accounts','health-accounts-ft'),className:"health-detail-tile text-left"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"FT 淨值"),React.createElement("div",{className:`mt-1 text-sm font-black ${autoHealth.ftAge>7?'text-amber-700':'text-slate-900'}`},getNum(data.ftUsd)<=0?'未使用':autoHealth.ftAge>=999?'未標記更新':autoHealth.ftAge===0?'今日更新':`${autoHealth.ftAge} 天前`),React.createElement("div",{className:"health-detail-link"},"FT 設定 ›")),
+                React.createElement("button",{type:"button",onClick:()=>goToHealthTarget('market','health-market-sma'),className:"health-detail-tile text-left"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"200SMA"),React.createElement("div",{className:`mt-1 text-sm font-black ${metrics.smaFreshForExecution?'text-emerald-700':'text-red-700'}`},metrics.smaFreshForExecution?'可用':'需重新確認'),React.createElement("div",{className:"health-detail-link"},"更新 SMA ›")),
+                React.createElement("button",{type:"button",onClick:()=>goToHealthTarget('dividends','health-dividends-status'),className:"health-detail-tile text-left"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"QQQI 配息"),React.createElement("div",{className:"mt-1 text-sm font-black text-slate-900"},autoHealth.latestDividend?`最近 ${autoHealth.latestDividend.payableDate}`:'尚無入帳'),React.createElement("div",{className:"health-detail-link"},"配息設定 ›"))),
+            (data.autoSnapshotQualityNote||data.autoSnapshotLastError)&&React.createElement("button",{type:"button",onClick:()=>goToHealthTarget('sync','health-sync-snapshot'),className:"mt-3 w-full text-left text-xs font-bold text-slate-600 leading-relaxed underline decoration-dotted"},`${data.autoSnapshotQualityNote||data.autoSnapshotLastError}｜查看雲端同步 ›`)));
     const FreshnessCard = () => React.createElement(Card, { className:"p-4 mt-4" },
         React.createElement(SectionTitle, { title:"市場資料狀態", desc:`依美股交易日判斷；最近應有資料日期：${freshnessInfo.expected}。匯率每天最多自動連線一次。` }),
         React.createElement("div", { className:"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2" },
             React.createElement("div", { className:"bg-slate-50 border border-slate-100 rounded-2xl p-3" }, React.createElement("div", { className:"text-[10px] font-black text-slate-500" }, "股價更新"), React.createElement("div", { className:"font-mono text-sm font-black text-slate-900 mt-1" }, data.priceUpdatedAt ? new Date(data.priceUpdatedAt).toLocaleString('zh-TW') : (data.marketCloseDate || data.marketDate || '-')), React.createElement(Pill, { tone:freshnessInfo.price.tone }, freshnessInfo.price.text)),
             React.createElement("div", { className:"bg-slate-50 border border-slate-100 rounded-2xl p-3" }, React.createElement("div", { className:"text-[10px] font-black text-slate-500" }, "200SMA 更新"), React.createElement("div", { className:"font-mono text-xs font-black text-slate-900 mt-1" }, `SPY ${data.spySmaUpdatedDate||'-'}｜QQQ ${data.qqqSmaUpdatedDate||'-'}`), React.createElement(Pill, { tone:freshnessInfo.sma.tone }, freshnessInfo.sma.text)),
-            React.createElement("div", { className:"bg-blue-50 border border-blue-100 rounded-2xl p-3" },
+            React.createElement("div", { id:"health-market-fx", className:"bg-blue-50 border border-blue-100 rounded-2xl p-3" },
                 React.createElement("div", { className:"flex items-center justify-between gap-2" },
                     React.createElement("div", { className:"text-[10px] font-black text-blue-700" }, "USD/TWD 匯率"),
                     React.createElement("button", { onClick:()=>updateExchangeRate({force:true,silent:false}), disabled:loadingFx, className:"px-2.5 py-1.5 rounded-xl bg-blue-700 text-white text-[10px] font-black disabled:opacity-50 active:scale-95" }, loadingFx?"更新中":"立即更新")),
@@ -2247,9 +2351,9 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         Collapsible({ id: "marketStatus", title: "市場資料狀態", desc: "資料日期、來源與新鮮度。", children: FreshnessCard() }),
         Collapsible({ id: "strategyParams", title: "策略參數", desc: "Risk-On／Risk-Off、HOT 門檻與過熱替代標的。", children:
             React.createElement("div", null,
-                React.createElement(SectionTitle, { title: "參數設定", desc: `首次導入持有 ${data.introAsset||'QQQI'}；Risk-Off 後 DCA 固定買 QQQ。`, right: React.createElement("button", { onClick: () => {
+                React.createElement(SectionTitle, { title: "參數設定", desc: `首次導入持有 ${data.introAsset||'QQQI'}；Risk-Off 後 DCA 固定買 QQQ。`, right: React.createElement("button", { onClick: async () => {
                     if(data.parametersLocked!==false){
-                        if(confirm("⚠️ 確定要解鎖策略參數嗎？\n\n修改 Risk-On、Risk-Off 或 HOT 門檻，可能改變整套策略的交易結果。請確認你已理解影響並確定要修改。")) patch('parametersLocked', false);
+                        if(await askConfirm("⚠️ 確定要解鎖策略參數嗎？\n\n修改 Risk-On、Risk-Off 或 HOT 門檻，可能改變整套策略的交易結果。請確認你已理解影響並確定要修改。",{title:'解鎖策略參數',confirmText:'確定解鎖',danger:true})) patch('parametersLocked', false);
                     } else {
                         patch('parametersLocked', true); showToast("策略參數已鎖定");
                     }
@@ -2271,9 +2375,9 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
                             React.createElement("option", { value:"QQQ" }, "QQQ"), React.createElement("option", { value:"SPY" }, "SPY"), React.createElement("option", { value:"SPYI" }, "SPYI"), React.createElement("option", { value:"QQQI" }, "QQQI")),
                         React.createElement("div", { className:"text-[10px] text-slate-400 mt-1 leading-relaxed" }, "只影響 HOT1／HOT2／HOT3 被 TQQQ 釋出的比例；不影響首次導入選擇，Risk-Off DCA 仍固定使用 QQQ。"))),
                 React.createElement("div", { className:"flex flex-col sm:flex-row gap-2 mt-3" },
-                    React.createElement("button", { onClick: () => {
+                    React.createElement("button", { onClick: async () => {
                         if(data.parametersLocked!==false) return;
-                        if(confirm("確定要恢復正式預設參數 +4% / -3% / 19% / 24% / 28% 嗎？")) merge({ entryBuffer:4, exitBuffer:3, hot1:19, hot2:24, hot3:28, hotAsset:"QQQ", introAsset:"QQQI" }, true);
+                        if(await askConfirm("確定要恢復正式預設參數 +4% / -3% / 19% / 24% / 28% 嗎？",{title:'恢復正式預設參數',confirmText:'恢復預設'})) merge({ entryBuffer:4, exitBuffer:3, hot1:19, hot2:24, hot3:28, hotAsset:"QQQ", introAsset:"QQQI" }, true);
                     }, disabled:metrics.paramsLocked, className:`px-3 py-3 rounded-2xl text-xs font-black ${metrics.paramsLocked?"bg-slate-100 text-slate-400 cursor-not-allowed":"bg-brand-50 text-brand-700 border border-brand-100"}` }, "恢復正式預設"),
                     React.createElement("div", { className:`flex-1 rounded-2xl border p-3 ${metrics.paramsLocked?"bg-emerald-50 border-emerald-100":"bg-amber-50 border-amber-200"}` },
                         React.createElement("div", { className:`text-sm font-black ${metrics.paramsLocked?"text-emerald-900":"text-amber-900"}` }, metrics.paramsLocked?"參數已鎖定":"⚠️ 參數目前可修改"),
@@ -2489,7 +2593,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
     const clearAllLogs = async () => {
         const logs=Array.isArray(data.history)?data.history:[];
         if(!logs.length){showToast('目前沒有紀錄');return;}
-        if(!confirm(`確定把全部 ${logs.length} 筆紀錄移到回收區？\n\n資料不會永久刪除，可從「回收區」全部還原。`))return;
+        if(!await askConfirm(`確定把全部 ${logs.length} 筆紀錄移到回收區？\n\n資料不會永久刪除，可從「回收區」全部還原。`,{title:"全部移到回收區",confirmText:"全部移入",danger:true}))return;
         const deletedAt=new Date().toISOString();
         const hidden=logs.map(r=>normalizeRecord({...r,deletedAt}));
         mergeTrashRecords(hidden);
@@ -2564,9 +2668,9 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
     const restoreBackupCard = async card => {
         if(!card?.payload)return;
         const records=(Array.isArray(card.payload.records)?card.payload.records:[]).map(normalizeRecord).filter(r=>!r.deletedAt);
-        if(!confirm(`確定完整還原 ${new Date(card.createdAt).toLocaleString('zh-TW')} 的備份？
+        if(!await askConfirm(`確定完整還原 ${new Date(card.createdAt).toLocaleString('zh-TW')} 的備份？
 
-目前正式策略狀態與雲端歷史紀錄會被替換成備份內的 ${records.length} 筆紀錄。此操作不會刪除本機其他備份卡片。`))return;
+目前正式策略狀態與雲端歷史紀錄會被替換成備份內的 ${records.length} 筆紀錄。此操作不會刪除本機其他備份卡片。`,{title:"完整還原備份",confirmText:"完整還原",danger:true}))return;
         try{
             const next=normalizeData({...card.payload.currentState,history:records});
             if(recordsRef()){
@@ -2585,18 +2689,18 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
             showToast('備份完整還原完成');
         }catch(e){showToast('還原失敗：'+e.message);}
     };
-    const deleteBackupCard = card => {
-        if(!confirm('刪除這份本機備份卡片？已下載的 JSON 不受影響。'))return;
+    const deleteBackupCard = async card => {
+        if(!await askConfirm('刪除這份本機備份卡片？已下載的 JSON 不受影響。',{title:'刪除備份卡片',confirmText:'刪除',danger:true}))return;
         const next=backupCards.filter(x=>x.id!==card.id);writeBackupCards(next);setBackupCards(next);showToast('備份卡片已刪除');
     };
     const restoreUndoCheckpoint = async () => {
         const checkpoint=undoCheckpoint||readUndoCheckpoint(); if(!checkpoint?.state){showToast('目前沒有可復原的上一版');return;}
-        if(!confirm(`復原到上一次正式儲存前的狀態？
+        if(!await askConfirm(`復原到上一次正式儲存前的狀態？
 
 時間：${new Date(checkpoint.createdAt).toLocaleString('zh-TW')}
 來源：${checkpoint.reason||'正式儲存'}
 
-會透過版本鎖安全寫回；若雲端又有更新會自動攔截。`))return;
+會透過版本鎖安全寫回；若雲端又有更新會自動攔截。`,{title:"復原上一版正式狀態",confirmText:"確認復原",danger:true}))return;
         const state=normalizeData(checkpoint.state);
         const ok=await saveFormalData(state,'已復原上一版正式狀態',null,{skipUndo:true,undoRecordId:checkpoint.recordId||''});
         if(!ok){showToast(saveConflictRef.current||'復原失敗');return;}
@@ -2713,7 +2817,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
                         React.createElement("div", { className:"text-base font-black" }, `${m} 月`),
                         React.createElement("div", { className:"text-[10px] font-bold mt-1 opacity-80" }, count?`${count} 筆`:'無紀錄'));
                 })),
-                React.createElement("button", { onClick:()=>{setLogYearFilter('all');setLogMonthFilter('all');setShowMonthSheet(false);}, className:"w-full mt-5 py-4 rounded-[22px] bg-slate-950 text-white font-black" }, "顯示全部紀錄")));
+                React.createElement("button", { onClick:()=>{setLogYearFilter('all');setLogMonthFilter('all');setShowMonthSheet(false);}, className:"sheet-sticky-single w-full mt-5 py-4 rounded-[22px] bg-slate-950 text-white font-black" }, "顯示全部紀錄")));
     };
 
     const CalendarDaySheet = () => {
@@ -2740,9 +2844,9 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
 
     const resetAllCloudData = async () => {
         if(!docRef() || !recordsRef()){showToast('請先使用 Google 登入');return;}
-        const typed=prompt('這會永久刪除目前 Google 帳號的策略狀態與全部歷史紀錄，無法復原。\n\n請輸入「全部重置」繼續：','');
+        const typed=await askPrompt('這會永久刪除目前 Google 帳號的策略狀態與全部歷史紀錄，無法復原。\n\n請輸入「全部重置」繼續：',{title:'永久重置全部雲端資料',confirmText:'下一步',placeholder:'輸入：全部重置'});
         if(typed!=='全部重置'){showToast('已取消重置');return;}
-        if(!confirm('最後確認：確定永久刪除全部雲端資料與本機資料，重新從零開始？'))return;
+        if(!await askConfirm('最後確認：確定永久刪除全部雲端資料與本機資料，重新從零開始？',{title:'最後確認',confirmText:'永久刪除全部資料',danger:true}))return;
         setResettingCloud(true); setSyncText('正在永久刪除全部雲端資料…');
         try{
             let deleted=0;
@@ -2773,19 +2877,20 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
                 React.createElement("div",{className:`rounded-2xl border p-3 ${syncHealthy?'bg-emerald-50 border-emerald-100':'bg-amber-50 border-amber-100'}`},React.createElement("div",{className:`text-[10px] font-black ${syncHealthy?'text-emerald-700':'text-amber-700'}`},"最近成功同步"),React.createElement("div",{className:"mt-1 text-sm font-black text-slate-950"},cloudSyncMeta.lastAt?new Date(cloudSyncMeta.lastAt).toLocaleString('zh-TW'):'尚無成功紀錄'),React.createElement("div",{className:"mt-1 text-[10px] font-bold text-slate-600"},cloudSyncMeta.lastAt?`${cloudSyncMeta.reason||'雲端同步'}${syncHealthy?'':'｜已超過 18 小時'}`:'登入後會開始記錄'))),
             React.createElement("div", { className:"mt-5 rounded-[24px] bg-slate-950 text-white p-4" },
                 React.createElement("div", { className:"text-[10px] font-black text-white/60" }, "資料位置"),
-                React.createElement("div", { className:"mt-2 text-sm font-black break-all" }, "qldmax / strategyDashboards / tqqq-qqq200-main"),
+                React.createElement("div", { className:"mt-2 text-sm font-black break-all" }, "qldmax / users / {目前登入 UID} / strategyDashboards / tqqq-qqq200-main"),
                 React.createElement("div", { className:"mt-2 text-xs font-bold text-white/60" }, `${allLogs.length} 筆已載入紀錄｜每頁最多 200 筆`))),
         React.createElement("div", { className:"space-y-3" },
-            React.createElement("button", { onClick:()=>syncFromCloud({reason:"手動重新同步",silent:false,force:true}), disabled:!user||user.isAnonymous, className:"settings-row w-full text-left disabled:opacity-40" },React.createElement("span", { className:"settings-icon text-emerald-600" }, "↻"),React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-slate-900" }, "立即重新讀取雲端"), React.createElement("span", { className:"block text-xs font-bold text-slate-500 mt-1" }, "不刪除草稿；會把 GitHub Actions 新淨值與配息先合併進來")),React.createElement("span", { className:"text-2xl text-slate-400" }, "›")),
+            React.createElement("button", { id:"health-sync-now", onClick:()=>syncFromCloud({reason:"手動重新同步",silent:false,force:true}), disabled:!user||user.isAnonymous, className:"settings-row w-full text-left disabled:opacity-40" },React.createElement("span", { className:"settings-icon text-emerald-600" }, "↻"),React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-slate-900" }, "立即重新讀取雲端"), React.createElement("span", { className:"block text-xs font-bold text-slate-500 mt-1" }, "不刪除草稿；會把 GitHub Actions 新淨值與配息先合併進來")),React.createElement("span", { className:"text-2xl text-slate-400" }, "›")),
             React.createElement("button", { onClick:manualSave, className:"settings-row w-full text-left" },React.createElement("span", { className:"settings-icon text-blue-600" }, "↥"),React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-slate-900" }, "手動同步正式資料"), React.createElement("span", { className:"block text-xs font-bold text-slate-500 mt-1" }, hasDraftChanges?"目前有草稿；若遇衝突會直接讓你比較雲端／本機":"目前資料已正式保存")),React.createElement("span", { className:"text-2xl text-slate-400" }, "›")),
             React.createElement("button", { onClick:restoreUndoCheckpoint, disabled:!undoCheckpoint, className:"settings-row w-full text-left disabled:opacity-40" },React.createElement("span", { className:"settings-icon text-amber-600" }, "↶"),React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-slate-900" }, "復原上一次正式儲存"), React.createElement("span", { className:"block text-xs font-bold text-slate-500 mt-1" }, undoCheckpoint?`${new Date(undoCheckpoint.createdAt).toLocaleString('zh-TW')}｜${undoCheckpoint.reason}`:"目前沒有可復原版本")),React.createElement("span", { className:"text-2xl text-slate-400" }, "›")),
             React.createElement("button", { onClick:loginGoogle, className:"settings-row w-full text-left" },React.createElement("span", { className:"settings-icon text-emerald-600" }, "G"),React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-slate-900" }, user&&!user.isAnonymous?"重新確認 Google 帳號":"Google 登入"), React.createElement("span", { className:"block text-xs font-bold text-slate-500 mt-1" }, user&&!user.isAnonymous?"目前已可跨手機與網頁同步":"登入後才會跨裝置同步")),React.createElement("span", { className:`px-3 py-1.5 rounded-full text-xs font-black ${user&&!user.isAnonymous?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500'}` }, user&&!user.isAnonymous?"已連線":"未登入")),
             React.createElement("button", { onClick:logout, className:"settings-row w-full text-left" },React.createElement("span", { className:"settings-icon text-slate-500" }, "◌"),React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-slate-900" }, "切回本機模式"), React.createElement("span", { className:"block text-xs font-bold text-slate-500 mt-1" }, "保留手機本機資料，不再讀取 Google 雲端")),React.createElement("span", { className:"text-2xl text-slate-400" }, "›"))),
-        React.createElement(Card,{className:"p-5 mt-5"},
-            React.createElement("div",{className:"text-[10px] font-black tracking-[.14em] text-purple-600"},"QQQI 隔離 E2E 測試"),
-            React.createElement("div",{className:"mt-2 text-lg font-black text-slate-950"},data.qqqiE2eTestAt?"GitHub Actions → Firebase → App 已有測試結果":"尚未執行 v5.8 E2E 測試"),
-            React.createElement("div",{className:"mt-2 text-xs font-bold text-slate-500 leading-relaxed"},data.qqqiE2eTestAt?`${new Date(data.qqqiE2eTestAt).toLocaleString('zh-TW')}｜測試現金 US$ ${money(data.qqqiE2eTestBeforeCashUsd,2)} + 配息 ${money(data.qqqiE2eTestNetUsd,2)} = ${money(data.qqqiE2eTestAfterCashUsd,2)}｜第二次執行新增 ${money(data.qqqiE2eTestSecondPassNetUsd,2)}`:"到 GitHub Actions 手動選 qqqi_e2e_test；只寫隔離測試結果，不改正式 IB 現金。"),
-            data.qqqiE2eTestStatus&&React.createElement("div",{className:"mt-3 rounded-2xl bg-purple-50 border border-purple-100 p-3 text-xs font-black text-purple-800"},data.qqqiE2eTestStatus)),
+        React.createElement("div",{id:"health-sync-snapshot",className:"mt-5"},React.createElement(Card,{className:"p-5"},
+            React.createElement("div",{className:"text-[10px] font-black tracking-[.14em] text-purple-600"},"自動化／GitHub Actions"),
+            React.createElement("div",{className:"mt-2 text-lg font-black text-slate-950"},data.autoSnapshotMarketDate?`最近自動快照 ${data.autoSnapshotMarketDate}`:"尚未完成盤後自動快照"),
+            React.createElement("div",{className:"mt-2 text-xs font-bold text-slate-500 leading-relaxed"},data.autoSnapshotLastError?`最近錯誤：${data.autoSnapshotLastError}`:data.qqqiE2eTestAt?`QQQI E2E 已通過｜${new Date(data.qqqiE2eTestAt).toLocaleString('zh-TW')}`:"可直接開啟 GitHub Actions 檢查／手動執行。"),
+            githubActionsUrl&&React.createElement("a",{href:githubActionsUrl,target:"_blank",rel:"noreferrer",className:"mt-4 w-full inline-flex items-center justify-center rounded-[20px] bg-slate-950 text-white px-4 py-3 font-black text-sm"},"開啟 GitHub Actions ↗"),
+            data.qqqiE2eTestStatus&&React.createElement("div",{className:"mt-3 rounded-2xl bg-purple-50 border border-purple-100 p-3 text-xs font-black text-purple-800"},data.qqqiE2eTestStatus))),
         React.createElement("div", { className:"mt-8" },React.createElement("div", { className:"text-xs font-black tracking-[.15em] text-red-700 mb-3 ml-2" }, "系統維護"),React.createElement("button", { onClick:resetAllCloudData, disabled:resettingCloud||!user||user.isAnonymous, className:"settings-row w-full text-left disabled:opacity-40" },React.createElement("span", { className:"settings-icon text-red-600" }, "□"),React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-red-700" }, resettingCloud?"正在重置…":"重置全部雲端與本機資料"), React.createElement("span", { className:"block text-xs font-bold text-red-500 mt-1 leading-relaxed" }, "永久刪除正式策略狀態與全部紀錄；建議先備份 JSON")),React.createElement("span", { className:"text-2xl text-red-300" }, "›")))
     );
     };
@@ -2812,8 +2917,8 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
                 data.hotAsset==='SPYI'&&React.createElement(NumInput,{label:'SPYI 價格',value:data.spyi,onChange:v=>patch('spyi',v)}),
                 (data.hotAsset==='QQQI'||data.introAsset==='QQQI')&&React.createElement(NumInput,{label:'QQQI 價格',value:data.qqqi,onChange:v=>patch('qqqi',v)})),
             React.createElement("div",{className:"grid grid-cols-2 gap-3 mt-4"},
-                React.createElement("button",{onClick:fetchPrices,disabled:loadingPrice,className:"py-4 rounded-[22px] bg-slate-950 text-white font-black disabled:opacity-50"},loadingPrice?"更新中…":"更新股價"),
-                React.createElement("button",{onClick:()=>{if(getNum(data.spySma)<=0||getNum(data.qqqSma)<=0){showToast('請先輸入兩條 200SMA');return;}const d=data.marketDate||latestCompletedUsTradingDay();merge({spySmaUpdatedDate:d,qqqSmaUpdatedDate:d,smaUpdatedAt:new Date().toISOString()});showToast(`兩條 200SMA 已標記為 ${d}`);},className:"py-4 rounded-[22px] bg-amber-500 text-white font-black"},"確認 SMA 日期"),
+                React.createElement("button",{id:"health-market-prices",onClick:fetchPrices,disabled:loadingPrice,className:"py-4 rounded-[22px] bg-slate-950 text-white font-black disabled:opacity-50"},loadingPrice?"更新中…":"更新股價"),
+                React.createElement("button",{id:"health-market-sma",onClick:()=>{if(getNum(data.spySma)<=0||getNum(data.qqqSma)<=0){showToast('請先輸入兩條 200SMA');return;}const d=data.marketDate||latestCompletedUsTradingDay();merge({spySmaUpdatedDate:d,qqqSmaUpdatedDate:d,smaUpdatedAt:new Date().toISOString()});showToast(`兩條 200SMA 已標記為 ${d}`);},className:"py-4 rounded-[22px] bg-amber-500 text-white font-black"},"確認 SMA 日期"),
                 React.createElement("button",{onClick:manualSave,className:"col-span-2 py-4 rounded-[22px] bg-brand-600 text-white font-black"},"儲存正式資料")),
             React.createElement("div",{className:"mt-4 rounded-[22px] bg-slate-50 border border-slate-200 p-4"},
                 React.createElement("div",{className:"flex items-start justify-between gap-3"},
@@ -2852,12 +2957,12 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
                 React.createElement("div",{className:"rounded-[24px] bg-blue-50 border border-blue-100 p-4"},
                     React.createElement("div",{className:"font-black text-blue-950"},"IB 主策略保護"),
                     React.createElement("div",{className:"text-xs font-bold text-blue-700 mt-1 leading-relaxed"},"本頁只會更新 FT、複委託、台股、其他資產與其歷史快照，不會修改 IB 持股、Risk-On／Off、HOT、DCA 或交易紀錄。"))),
-            React.createElement(Card,{className:"p-5 mb-4"},
+            React.createElement("div",{id:"health-accounts-ft"},React.createElement(Card,{className:"p-5 mb-4"},
                 React.createElement(SectionTitle,{title:"Firstrade｜帳戶淨值模式",desc:"短線切換不用逐筆記錄，只輸入券商顯示的 Total Account Value。"}),
                 stableNum("ftUsd","Firstrade Total Account Value","USD","輸入時只更新這個欄位，不會整頁重繪或跳回上方。"),
                 getNum(draft.ftUsd)>0&&React.createElement("div",{className:`mt-3 rounded-2xl border p-3 text-xs font-bold leading-relaxed ${!data.ftUpdatedAt||Math.floor((Date.now()-Date.parse(data.ftUpdatedAt))/86400000)>7?'bg-amber-50 border-amber-100 text-amber-800':'bg-emerald-50 border-emerald-100 text-emerald-800'}`},data.ftUpdatedAt?`最後人工更新：${new Date(data.ftUpdatedAt).toLocaleString('zh-TW')}｜${Math.max(0,Math.floor((Date.now()-Date.parse(data.ftUpdatedAt))/86400000))} 天前${Math.floor((Date.now()-Date.parse(data.ftUpdatedAt))/86400000)>7?'；已超過 7 天，全部資產淨值會標記為估算。':''}`:"尚未標記 FT 更新時間；儲存一次今日淨值後會開始追蹤。"),
                 React.createElement("div",{className:"mt-3 rounded-2xl bg-slate-50 border border-slate-100 p-3 text-xs font-bold text-slate-600 leading-relaxed"},"交易再頻繁也不用輸入持股；更新淨值並儲存今日快照即可。入金／出金請在下方另行記錄，避免績效失真。"),
-                React.createElement("button",{onClick:()=>saveDraft('Firstrade 今日淨值已儲存'),className:"w-full mt-4 py-4 rounded-[22px] bg-slate-950 text-white font-black"},"儲存 FT 今日淨值")),
+                React.createElement("button",{onClick:()=>saveDraft('Firstrade 今日淨值已儲存'),className:"w-full mt-4 py-4 rounded-[22px] bg-slate-950 text-white font-black"},"儲存 FT 今日淨值"))),
             React.createElement(Card,{className:"p-5 mb-4"},
                 React.createElement(SectionTitle,{title:"複委託｜單一股票模式",desc:"輸入股票代號、股數與帳戶現金；股價可自動抓取或手動修正。"}),
                 React.createElement("div",{className:"grid grid-cols-1 sm:grid-cols-2 gap-3"},
@@ -2896,7 +3001,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         React.createElement(Card,{className:"p-5"},
             React.createElement("div",{className:"flex items-center justify-between gap-3 mb-4"},
                 React.createElement("div",null,React.createElement("div",{className:"font-black text-slate-950"},metrics.paramsLocked?"參數已鎖定":"參數可修改"),React.createElement("div",{className:"text-xs font-bold text-slate-500 mt-1"},"正式預設 +4 / -3 / 19 / 24 / 28")),
-                React.createElement("button",{onClick:()=>{if(data.parametersLocked!==false){if(confirm('確定解鎖正式策略參數？'))patch('parametersLocked',false);}else patch('parametersLocked',true);},className:`px-4 py-3 rounded-2xl text-xs font-black ${metrics.paramsLocked?'bg-slate-950 text-white':'bg-amber-500 text-white'}`},metrics.paramsLocked?"解鎖":"重新鎖定")),
+                React.createElement("button",{onClick:async()=>{if(data.parametersLocked!==false){if(await askConfirm('確定解鎖正式策略參數？',{title:'解鎖正式策略參數',confirmText:'確定解鎖',danger:true}))patch('parametersLocked',false);}else patch('parametersLocked',true);},className:`px-4 py-3 rounded-2xl text-xs font-black ${metrics.paramsLocked?'bg-slate-950 text-white':'bg-amber-500 text-white'}`},metrics.paramsLocked?"解鎖":"重新鎖定")),
             React.createElement("div",{className:"grid grid-cols-2 gap-3"},
                 React.createElement(NumInput,{label:"Risk-On",value:data.entryBuffer,onChange:v=>patch('entryBuffer',v),suffix:"%",disabled:metrics.paramsLocked}),
                 React.createElement(NumInput,{label:"Risk-Off",value:data.exitBuffer,onChange:v=>patch('exitBuffer',v),suffix:"%",disabled:metrics.paramsLocked}),
@@ -2937,12 +3042,12 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
                         React.createElement("div",{className:"rounded-2xl bg-slate-50 border border-slate-100 p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-500"},"自動化起算日"),React.createElement("div",{className:"mt-2 font-mono font-black text-slate-900"},data.qqqiDividendStartDate||"首次正式自動執行時建立"),React.createElement("div",{className:"mt-1 text-[10px] font-bold text-slate-400"},"不會自動回補起算日前的舊配息，避免重複加現金。"))),
                     React.createElement("button",{onClick:manualSave,className:"w-full mt-4 py-4 rounded-[22px] bg-slate-950 text-white font-black"},"儲存配息設定"),
                     React.createElement("div",{className:"mt-3 text-[11px] font-bold text-slate-500 leading-relaxed"},"計算基準：除息日前一個美股交易日的 QQQI 持股快照 × 每股配息 ×（1－預扣稅率）。付款日才加入 cashUsd；不會自動買股票，也不會改變 Risk-On／Off、HOT 或 DCA。")),
-                React.createElement(Card,{className:"p-5"},
+                React.createElement("div",{id:"health-dividends-status"},React.createElement(Card,{className:"p-5"},
                     React.createElement(SectionTitle,{title:"自動化狀態",desc:"官方配息頁若暫時抓不到，當天不會亂加現金；下一次排程會再檢查。"}),
                     React.createElement("div",{className:"grid grid-cols-2 gap-3"},
                         React.createElement("div",{className:"rounded-2xl bg-slate-50 p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"最後檢查"),React.createElement("div",{className:"mt-1 text-xs font-black text-slate-900"},data.qqqiDividendLastCheckAt?new Date(data.qqqiDividendLastCheckAt).toLocaleString('zh-TW'):"尚未由雲端檢查")),
                         React.createElement("div",{className:"rounded-2xl bg-slate-50 p-3"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"最近入帳"),React.createElement("div",{className:"mt-1 text-xs font-black text-slate-900"},latest?latest.payableDate:"尚無"),latest&&React.createElement("div",{className:"mt-1 text-[10px] font-bold text-emerald-700 privacy-value"},`+US$ ${money(latest.actualNetUsd??latest.netUsd,2)}`))),
-                    data.qqqiDividendLastError&&React.createElement("div",{className:"mt-3 rounded-2xl bg-amber-50 border border-amber-100 p-3 text-xs font-bold text-amber-800"},data.qqqiDividendLastError)),
+                    data.qqqiDividendLastError&&React.createElement("div",{className:"mt-3 rounded-2xl bg-amber-50 border border-amber-100 p-3 text-xs font-bold text-amber-800"},data.qqqiDividendLastError))),
                 React.createElement("div",{className:"space-y-3"},ledger.length?ledger.slice(0,18).map(entry=>React.createElement(Card,{key:entry.id,className:"p-4"},
                     React.createElement("div",{className:"flex items-start justify-between gap-3"},React.createElement("div",null,React.createElement("div",{className:"font-black text-slate-950"},`QQQI｜付款 ${entry.payableDate}`),React.createElement("div",{className:"mt-1 text-[11px] font-bold text-slate-500"},`除息 ${entry.exDate}｜基準 ${entry.entitlementDate||entry.shareSourceDate||'-'}${entry.estimatedShares?'｜持股為估算':''}`)),React.createElement(Pill,{tone:entry.estimatedShares?'amber':'green'},entry.estimatedShares?'估算':'已入帳')),
                     React.createElement("div",{className:"grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3"},
@@ -3051,62 +3156,56 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         const sub=computeSubAccountValue(preview);
         const stableNum=(field,label,suffix="",hint="")=>React.createElement(StableDraftNumInput,{key:field,label,value:draft[field],onDraft:v=>updateExternalDraft(field,v),suffix,hint});
         const lastPriceTime=draft.subPriceUpdatedAt?new Date(draft.subPriceUpdatedAt).toLocaleString('zh-TW'):'尚未自動更新';
-        return React.createElement("div",{className:"fixed inset-0 z-[78] sheet-backdrop sheet-animate-backdrop flex items-end justify-center p-3",onClick:()=>setShowQuickUpdateSheet(false)},
-            React.createElement("div",{className:"sheet-panel quick-update-sheet w-full max-w-md max-h-[90vh] overflow-auto rounded-[34px] bg-white p-5 safe-bottom shadow-2xl",onClick:e=>e.stopPropagation()},
-                React.createElement("div",{className:"mx-auto w-12 h-1.5 rounded-full bg-slate-200 mb-5"}),
-                React.createElement("div",{className:"flex justify-between items-start gap-3"},
-                    React.createElement("div",null,
-                        React.createElement("div",{className:"text-[10px] font-black tracking-[.18em] text-blue-600"},"首頁快速更新"),
-                        React.createElement("div",{className:"mt-1 text-2xl font-black text-slate-950"},"更新 FT 與複委託"),
-                        React.createElement("div",{className:"mt-1 text-xs font-bold text-slate-500"},"一次儲存今日快照；IB 主策略完全不變。")),
-                    React.createElement("button",{onClick:()=>setShowQuickUpdateSheet(false),className:"w-11 h-11 rounded-full bg-slate-100 text-xl text-slate-500"},"×")),
-                React.createElement("div",{className:"mt-5 rounded-[24px] bg-slate-950 text-white p-4"},
-                    React.createElement("div",{className:"text-[10px] font-black text-white/55"},"目前全部股票總資產"),
-                    React.createElement("div",{className:"mt-2 text-2xl font-black privacy-value"},portfolio.totalDisplay),
-                    React.createElement("div",{className:"mt-1 text-xs font-bold text-white/60"},"本面板只更新外部帳戶與歷史快照")),
-                React.createElement("div",{className:"mt-4 rounded-[26px] bg-blue-50 border border-blue-100 p-4"},
-                    React.createElement(SectionTitle,{title:"Firstrade",desc:"輸入券商顯示的 Total Account Value；短線買賣不用逐筆記。"}),
-                    stableNum("ftUsd","FT 帳戶總資產","USD","輸入完成後按最下方一次儲存。")),
-                React.createElement("div",{className:"mt-4 rounded-[26px] bg-slate-50 border border-slate-100 p-4"},
-                    React.createElement(SectionTitle,{title:"複委託",desc:sub.holdingMode?`${sub.symbol}｜${money(getNum(draft.subShares),3)} 股`:'尚未設定有效股票代號與股數'}),
-                    React.createElement("div",{className:"grid grid-cols-1 sm:grid-cols-2 gap-3"},
-                        stableNum("subPriceUsd","目前股價","USD",`最後更新：${lastPriceTime}`),
-                        stableNum("subCashUsd","帳戶現金","USD","股數與成本等低頻資料仍放在完整設定。")),
-                    React.createElement("button",{type:"button",onClick:fetchSubPrice,disabled:loadingSubPrice,className:"sub-price-update-button w-full mt-3 py-4 rounded-[22px] bg-blue-600 text-white font-black disabled:opacity-50"},loadingSubPrice?"正在更新複委託股價…":`↻ 更新 ${String(draft.subSymbol||'複委託').toUpperCase()} 股價`),
-                    React.createElement("div",{className:"mt-3 rounded-2xl bg-white border border-slate-200 p-3 flex items-center justify-between gap-3"},
-                        React.createElement("div",null,React.createElement("div",{className:"text-[10px] font-black text-slate-500"},"目前複委託估值"),React.createElement("div",{className:"mt-1 text-xs font-bold text-slate-500"},sub.holdingMode?"股票市值＋帳戶現金":"使用手動備援淨值")),
-                        React.createElement("div",{className:"font-mono text-lg font-black text-slate-950 privacy-value"},`US$ ${money(sub.valueUsd,2)}`))),
-                React.createElement("button",{onClick:saveQuickUpdate,disabled:quickSaving,className:"w-full mt-5 py-4 rounded-[22px] bg-slate-950 text-white font-black disabled:opacity-50"},quickSaving?"正在儲存今日快照…":"儲存今日 FT＋複委託快照"),
-                React.createElement("button",{onClick:()=>{setShowQuickUpdateSheet(false);openSettingsView('accounts');setPage('settings');},className:"w-full mt-3 py-3 rounded-[20px] bg-slate-100 text-slate-700 text-xs font-black"},"修改股票代號、股數、成本或記錄入金／出金")));
+        return React.createElement("div",{className:"fixed inset-0 z-[78] sheet-backdrop sheet-animate-backdrop flex items-end sm:items-center justify-center unified-sheet-backdrop",onClick:()=>setShowQuickUpdateSheet(false)},
+            React.createElement("div",{className:"sheet-panel unified-sheet-panel quick-update-sheet w-full max-w-md bg-white shadow-2xl",onClick:e=>e.stopPropagation()},
+                React.createElement("div",{className:"unified-sheet-header"},
+                    React.createElement("div",{className:"mx-auto w-12 h-1.5 rounded-full bg-slate-200 mb-4"}),
+                    React.createElement("div",{className:"flex justify-between items-start gap-3"},
+                        React.createElement("div",null,React.createElement("div",{className:"text-[10px] font-black tracking-[.18em] text-blue-600"},"首頁快速更新"),React.createElement("div",{className:"mt-1 text-2xl font-black text-slate-950"},"更新 FT 與複委託"),React.createElement("div",{className:"mt-1 text-xs font-bold text-slate-500"},"一次儲存今日快照；IB 主策略完全不變。")),
+                        React.createElement("button",{onClick:()=>setShowQuickUpdateSheet(false),className:"w-11 h-11 rounded-full bg-slate-100 text-xl text-slate-500"},"×"))),
+                React.createElement("div",{className:"unified-sheet-scroll"},
+                    React.createElement("div",{className:"rounded-[24px] bg-slate-950 text-white p-4"},React.createElement("div",{className:"text-[10px] font-black text-white/55"},"目前全部股票總資產"),React.createElement("div",{className:"mt-2 text-2xl font-black privacy-value"},portfolio.totalDisplay),React.createElement("div",{className:"mt-1 text-xs font-bold text-white/60"},"本面板只更新外部帳戶與歷史快照")),
+                    React.createElement("div",{className:"mt-4 rounded-[26px] bg-blue-50 border border-blue-100 p-4"},React.createElement(SectionTitle,{title:"Firstrade",desc:"輸入券商顯示的 Total Account Value；短線買賣不用逐筆記。"}),stableNum("ftUsd","FT 帳戶總資產","USD","輸入完成後按最下方一次儲存。")),
+                    React.createElement("div",{className:"mt-4 rounded-[26px] bg-slate-50 border border-slate-100 p-4"},
+                        React.createElement(SectionTitle,{title:"複委託",desc:sub.holdingMode?`${sub.symbol}｜${money(getNum(draft.subShares),3)} 股`:'尚未設定有效股票代號與股數'}),
+                        React.createElement("div",{className:"grid grid-cols-1 sm:grid-cols-2 gap-3"},stableNum("subPriceUsd","目前股價","USD",`最後更新：${lastPriceTime}`),stableNum("subCashUsd","帳戶現金","USD","股數與成本等低頻資料仍放在完整設定。")),
+                        React.createElement("button",{type:"button",onClick:fetchSubPrice,disabled:loadingSubPrice,className:"sub-price-update-button w-full mt-3 py-4 rounded-[22px] bg-blue-600 text-white font-black disabled:opacity-50"},loadingSubPrice?"正在更新複委託股價…":`↻ 更新 ${String(draft.subSymbol||'複委託').toUpperCase()} 股價`),
+                        React.createElement("div",{className:"mt-3 rounded-2xl bg-white border border-slate-200 p-3 flex items-center justify-between gap-3"},React.createElement("div",null,React.createElement("div",{className:"text-[10px] font-black text-slate-500"},"目前複委託估值"),React.createElement("div",{className:"mt-1 text-xs font-bold text-slate-500"},sub.holdingMode?"股票市值＋帳戶現金":"使用手動備援淨值")),React.createElement("div",{className:"font-mono text-lg font-black text-slate-950 privacy-value"},`US$ ${money(sub.valueUsd,2)}`)))),
+                React.createElement("div",{className:"unified-sheet-footer grid grid-cols-1 gap-2"},
+                    React.createElement("button",{onClick:saveQuickUpdate,disabled:quickSaving,className:"w-full py-4 rounded-[22px] bg-slate-950 text-white font-black disabled:opacity-50"},quickSaving?"正在儲存今日快照…":"儲存今日 FT＋複委託快照"),
+                    React.createElement("button",{onClick:()=>{setShowQuickUpdateSheet(false);openSettingsView('accounts');setPage('settings');},className:"w-full py-3 rounded-[20px] bg-slate-100 text-slate-700 text-xs font-black"},"修改股票代號、股數、成本或記錄入金／出金"))));
     };
     const AccountSheet = () => {
         if(!showAccountSheet)return null;
         const rows=portfolio.cards.map(card=>React.createElement("div",{key:card.key,className:"rounded-[24px] bg-slate-50 border border-slate-100 p-4"},
-            React.createElement("div",{className:"flex justify-between gap-3"},
-                React.createElement("div",null,React.createElement("div",{className:"font-black text-slate-900"},card.label),React.createElement("div",{className:"text-xs font-bold text-slate-500 mt-1"},card.note)),
-                React.createElement("div",{className:"text-right"},React.createElement("div",{className:"font-mono font-black text-slate-950 privacy-value"},card.amountText),React.createElement("div",{className:"text-[10px] font-bold text-slate-400 mt-1"},`占比 ${pct(card.ratio,1)}`)))));
-        return React.createElement("div",{className:"fixed inset-0 z-[75] sheet-backdrop sheet-animate-backdrop flex items-end justify-center p-3",onClick:()=>setShowAccountSheet(false)},
-            React.createElement("div",{className:"sheet-panel w-full max-w-md max-h-[86vh] overflow-auto rounded-[34px] bg-white p-5 safe-bottom shadow-2xl",onClick:e=>e.stopPropagation()},
-                React.createElement("div",{className:"mx-auto w-12 h-1.5 rounded-full bg-slate-200 mb-5"}),
-                React.createElement("div",{className:"flex justify-between items-start gap-3"},
-                    React.createElement("div",null,React.createElement("div",{className:"text-2xl font-black text-slate-950"},"帳戶資產明細"),React.createElement("div",{className:"text-sm font-bold text-slate-500 mt-1"},portfolio.totalDisplay)),
-                    React.createElement("button",{onClick:()=>setShowAccountSheet(false),className:"w-11 h-11 rounded-full bg-slate-100 text-xl text-slate-500"},"×")),
-                React.createElement("div",{className:"space-y-3 mt-5"},rows),
-                React.createElement("div",{className:"grid grid-cols-2 gap-2 mt-5"},
-                    React.createElement("button",{onClick:()=>{setShowAccountSheet(false);openQuickUpdateSheet();},className:"action-blue-button py-4 rounded-[22px] bg-blue-600 text-white font-black"},"快速更新"),
-                    React.createElement("button",{onClick:()=>{setShowAccountSheet(false);openSettingsView("accounts");setPage("settings");},className:"py-4 rounded-[22px] bg-slate-950 text-white font-black"},"完整設定"))));
+            React.createElement("div",{className:"flex justify-between gap-3"},React.createElement("div",null,React.createElement("div",{className:"font-black text-slate-900"},card.label),React.createElement("div",{className:"text-xs font-bold text-slate-500 mt-1"},card.note)),React.createElement("div",{className:"text-right"},React.createElement("div",{className:"font-mono font-black text-slate-950 privacy-value"},card.amountText),React.createElement("div",{className:"text-[10px] font-bold text-slate-400 mt-1"},`占比 ${pct(card.ratio,1)}`)))));
+        return React.createElement("div",{className:"fixed inset-0 z-[75] sheet-backdrop sheet-animate-backdrop flex items-end sm:items-center justify-center unified-sheet-backdrop",onClick:()=>setShowAccountSheet(false)},
+            React.createElement("div",{className:"sheet-panel unified-sheet-panel w-full max-w-md bg-white shadow-2xl",onClick:e=>e.stopPropagation()},
+                React.createElement("div",{className:"unified-sheet-header"},React.createElement("div",{className:"mx-auto w-12 h-1.5 rounded-full bg-slate-200 mb-4"}),React.createElement("div",{className:"flex justify-between items-start gap-3"},React.createElement("div",null,React.createElement("div",{className:"text-2xl font-black text-slate-950"},"帳戶資產明細"),React.createElement("div",{className:"text-sm font-bold text-slate-500 mt-1"},portfolio.totalDisplay)),React.createElement("button",{onClick:()=>setShowAccountSheet(false),className:"w-11 h-11 rounded-full bg-slate-100 text-xl text-slate-500"},"×"))),
+                React.createElement("div",{className:"unified-sheet-scroll"},React.createElement("div",{className:"space-y-3"},rows)),
+                React.createElement("div",{className:"unified-sheet-footer grid grid-cols-2 gap-2"},React.createElement("button",{onClick:()=>{setShowAccountSheet(false);openQuickUpdateSheet();},className:"action-blue-button py-4 rounded-[22px] bg-blue-600 text-white font-black"},"快速更新"),React.createElement("button",{onClick:()=>{setShowAccountSheet(false);openSettingsView("accounts");setPage("settings");},className:"py-4 rounded-[22px] bg-slate-950 text-white font-black"},"完整設定"))));
     };
-    const TrashSheet = () => !showTrashSheet ? null : React.createElement("div",{className:"fixed inset-0 z-[80] sheet-backdrop sheet-animate-backdrop flex items-end sm:items-center justify-center p-3",onClick:()=>setShowTrashSheet(false)},
-        React.createElement("div",{className:"sheet-panel w-full max-w-lg max-h-[86vh] overflow-auto rounded-[34px] bg-white p-5 safe-bottom shadow-2xl",onClick:e=>e.stopPropagation()},
-            React.createElement("div",{className:"mx-auto w-12 h-1.5 rounded-full bg-slate-200 mb-5"}),
-            React.createElement("div",{className:"flex items-start justify-between gap-3"},
-                React.createElement("div",null,React.createElement("div",{className:"text-[10px] font-black tracking-[.18em] text-blue-600"},"紀錄回收區"),React.createElement("div",{className:"text-2xl font-black text-slate-950 mt-1"},`${trashRecords.length} 筆可還原`),React.createElement("div",{className:"text-xs font-bold text-slate-500 mt-1"},"這裡的資料尚未永久刪除。還原後，同一天同類型仍只保留最新一筆。")),
-                React.createElement("button",{onClick:()=>setShowTrashSheet(false),className:"w-11 h-11 rounded-full bg-slate-100 text-xl text-slate-500"},"×")),
-            React.createElement("div",{className:"grid grid-cols-2 gap-2 mt-5"},
-                React.createElement("button",{onClick:loadTrashRecords,disabled:loadingTrash,className:"py-3 rounded-2xl bg-slate-100 text-slate-700 font-black disabled:opacity-50"},loadingTrash?"重新讀取中…":"重新讀取"),
-                React.createElement("button",{onClick:restoreAllTrashRecords,disabled:loadingTrash||!trashRecords.length,className:"py-3 rounded-2xl bg-blue-600 text-white font-black disabled:opacity-40"},"全部還原")),
-            React.createElement("div",{className:"space-y-3 mt-5"},trashRecords.length?trashRecords.map((r,i)=>React.createElement("div",{key:r.recordId||i,className:"rounded-[24px] border border-slate-200 bg-slate-50 p-4"},
-                React.createElement("div",{className:"flex items-start justify-between gap-3"},React.createElement("div",{className:"min-w-0"},React.createElement("div",{className:"font-black text-slate-950 truncate"},r.signal||r.todayAction||r.recordType||"策略紀錄"),React.createElement("div",{className:"text-xs font-bold text-slate-500 mt-1"},`${recordDateText(r)||'-'}｜${r.totalDisplay||`US$ ${money(r.totalUsd,0)}`}`),React.createElement("div",{className:"text-[10px] font-bold text-slate-400 mt-1"},r.deletedAt?`移入：${new Date(r.deletedAt).toLocaleString('zh-TW')}`:"可還原紀錄")),React.createElement("button",{onClick:()=>restoreTrashRecord(r),disabled:loadingTrash,className:"shrink-0 px-4 py-2.5 rounded-2xl bg-white border border-blue-200 text-blue-700 text-xs font-black disabled:opacity-50"},"還原")))):React.createElement("div",{className:"rounded-[24px] bg-slate-50 p-8 text-center text-sm font-bold text-slate-400"},"回收區目前是空的"))));
+    const TrashSheet = () => !showTrashSheet ? null : React.createElement("div",{className:"fixed inset-0 z-[80] sheet-backdrop sheet-animate-backdrop flex items-end sm:items-center justify-center unified-sheet-backdrop",onClick:()=>setShowTrashSheet(false)},
+        React.createElement("div",{className:"sheet-panel unified-sheet-panel w-full max-w-lg bg-white shadow-2xl",onClick:e=>e.stopPropagation()},
+            React.createElement("div",{className:"unified-sheet-header"},React.createElement("div",{className:"mx-auto w-12 h-1.5 rounded-full bg-slate-200 mb-4"}),React.createElement("div",{className:"flex items-start justify-between gap-3"},React.createElement("div",null,React.createElement("div",{className:"text-[10px] font-black tracking-[.18em] text-blue-600"},"紀錄回收區"),React.createElement("div",{className:"text-2xl font-black text-slate-950 mt-1"},`${trashRecords.length} 筆可還原`),React.createElement("div",{className:"text-xs font-bold text-slate-500 mt-1"},"這裡的資料尚未永久刪除。還原後，同一天同類型仍只保留最新一筆。")),React.createElement("button",{onClick:()=>setShowTrashSheet(false),className:"w-11 h-11 rounded-full bg-slate-100 text-xl text-slate-500"},"×"))),
+            React.createElement("div",{className:"unified-sheet-scroll"},React.createElement("div",{className:"space-y-3"},trashRecords.length?trashRecords.map((r,i)=>React.createElement("div",{key:r.recordId||i,className:"rounded-[24px] border border-slate-200 bg-slate-50 p-4"},React.createElement("div",{className:"flex items-start justify-between gap-3"},React.createElement("div",{className:"min-w-0"},React.createElement("div",{className:"font-black text-slate-950 truncate"},r.signal||r.todayAction||r.recordType||"策略紀錄"),React.createElement("div",{className:"text-xs font-bold text-slate-500 mt-1"},`${recordDateText(r)||'-'}｜${r.totalDisplay||`US$ ${money(r.totalUsd,0)}`}`),React.createElement("div",{className:"text-[10px] font-bold text-slate-400 mt-1"},r.deletedAt?`移入：${new Date(r.deletedAt).toLocaleString('zh-TW')}`:"可還原紀錄")),React.createElement("button",{onClick:()=>restoreTrashRecord(r),disabled:loadingTrash,className:"shrink-0 px-4 py-2.5 rounded-2xl bg-white border border-blue-200 text-blue-700 text-xs font-black disabled:opacity-50"},"還原")))):React.createElement("div",{className:"rounded-[24px] bg-slate-50 p-8 text-center text-sm font-bold text-slate-400"},"回收區目前是空的"))),
+            React.createElement("div",{className:"unified-sheet-footer grid grid-cols-2 gap-2"},React.createElement("button",{onClick:loadTrashRecords,disabled:loadingTrash,className:"py-3 rounded-2xl bg-slate-100 text-slate-700 font-black disabled:opacity-50"},loadingTrash?"重新讀取中…":"重新讀取"),React.createElement("button",{onClick:restoreAllTrashRecords,disabled:loadingTrash||!trashRecords.length,className:"py-3 rounded-2xl bg-blue-600 text-white font-black disabled:opacity-40"},"全部還原"))));
+    const AppDialog = () => {
+        if(!appDialog)return null;
+        const isPrompt=appDialog.kind==='prompt', isInfo=appDialog.kind==='info';
+        const submit=()=>resolveAppDialog(isPrompt?appDialog.value:true);
+        return React.createElement("div",{className:"fixed inset-0 z-[110] sheet-backdrop sheet-animate-backdrop app-dialog-backdrop flex items-end sm:items-center justify-center",role:"presentation",onClick:()=>{if(appDialog.allowCancel!==false)resolveAppDialog(null);}},
+            React.createElement("div",{className:"sheet-panel app-dialog-panel w-full max-w-md bg-white shadow-2xl",role:"dialog","aria-modal":"true","aria-labelledby":"app-dialog-title",onClick:e=>e.stopPropagation()},
+                React.createElement("div",{className:"app-dialog-header"},
+                    React.createElement("div",{className:"min-w-0"},React.createElement("div",{className:`text-[10px] font-black tracking-[.16em] ${appDialog.danger?'text-red-600':'text-blue-600'}`},appDialog.danger?'需要確認':'操作確認'),React.createElement("div",{id:"app-dialog-title",className:"mt-2 text-2xl font-black text-slate-950"},appDialog.title)),
+                    appDialog.allowCancel!==false&&React.createElement("button",{type:"button",onClick:()=>resolveAppDialog(null),className:"app-dialog-close","aria-label":"取消"},"×")),
+                React.createElement("div",{className:"app-dialog-body"},
+                    React.createElement("div",{className:"text-sm font-bold text-slate-600 leading-relaxed whitespace-pre-line"},appDialog.message),
+                    isPrompt&&React.createElement("input",{autoFocus:true,type:appDialog.secret?'password':'text',inputMode:appDialog.inputMode||'text',value:appDialog.value,onChange:e=>setAppDialog(prev=>prev?{...prev,value:e.target.value}:prev),onKeyDown:e=>{if(e.key==='Enter'){e.preventDefault();submit();}},placeholder:appDialog.placeholder,className:"app-dialog-input"})),
+                React.createElement("div",{className:`app-dialog-actions ${isInfo?'is-info':''}`},
+                    !isInfo&&appDialog.allowCancel!==false&&React.createElement("button",{type:"button",onClick:()=>resolveAppDialog(null),className:"app-dialog-action is-cancel"},appDialog.cancelText||'取消'),
+                    React.createElement("button",{type:"button",onClick:submit,className:`app-dialog-action ${appDialog.danger?'is-danger':'is-primary'}`},appDialog.confirmText||'確認'))));
+    };
     const ExecutionModal = () => !pendingExecution ? null : React.createElement("div", { className: "fixed inset-0 z-50 sheet-backdrop sheet-animate-backdrop flex items-end sm:items-center justify-center p-4" },
         React.createElement("div", { className: "sheet-panel bg-white rounded-3xl shadow-2xl w-full max-w-md p-5" },
             React.createElement("div", { className: "flex items-start justify-between gap-3 mb-3" },
@@ -3130,7 +3229,7 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
                 [["TQQQ 股數", committedData.sharesTqqq, data.sharesTqqq], [`${metrics.positionAsset} 股數`, committedData[metrics.positionAsset==="QQQ"?"sharesQqq":metrics.positionAsset==="SPY"?"sharesSpy":metrics.positionAsset==="SPYI"?"sharesSpyi":"sharesQqqi"], data[metrics.positionAsset==="QQQ"?"sharesQqq":metrics.positionAsset==="SPY"?"sharesSpy":metrics.positionAsset==="SPYI"?"sharesSpyi":"sharesQqqi"]], ["現金 USD", committedData.cashUsd, data.cashUsd], ["DCA 進度", committedData.dcaCompleted, data.dcaCompleted]].filter(x => String(x[1] ?? '') !== String(x[2] ?? '')).map((x,i) => React.createElement("div", { key:i, className:"text-xs font-bold text-amber-900" }, x[0], "：", x[1] || 0, " → ", x[2] || 0)),
                 !hasDraftChanges && React.createElement("div", { className:"text-xs font-bold text-amber-800" }, "沒有持倉草稿變更；仍會依目前訊號寫入執行紀錄。")),
             React.createElement("div", { className: "space-y-2 max-h-48 overflow-auto mb-4" }, metrics.actionLines.map((a, i) => React.createElement("div", { key: i, className: "text-sm font-black text-slate-800 leading-relaxed bg-white border border-slate-100 rounded-2xl p-2" }, i + 1, ". ", a))),
-            React.createElement("div", { className: "grid grid-cols-2 gap-2" },
+            React.createElement("div", { className: "sheet-sticky-actions grid grid-cols-2 gap-2" },
                 React.createElement("button", { onClick: () => setPendingExecution(false), className: "py-3 rounded-2xl bg-slate-100 text-slate-700 font-black active:scale-95" }, "取消"),
                 React.createElement("button", { onClick: performExecution, className: `py-3 rounded-2xl text-white font-black active:scale-95 ${metrics.signal === 'OFF' || metrics.signal === 'HOT2' ? 'bg-red-600' : 'bg-brand-600'}` }, "確認執行"))));
     const BottomNav = () => React.createElement(React.Fragment, null,
@@ -3144,27 +3243,34 @@ Key 只保存在這台裝置的瀏覽器，不會同步到 GitHub 或 Firebase�
         page === 'home' && Home(),
         page === 'logs' && Logs(),
         page === 'settings' && Settings(),
-        BottomNav(),
+        !conflictDialog && !appDialog && BottomNav(),
         MonthSheet(),
         CalendarDaySheet(),
         AccountSheet(),
         QuickUpdateSheet(),
         TrashSheet(),
         ExecutionModal(),
-        conflictDialog && React.createElement("div",{className:"fixed inset-0 z-[95] sheet-backdrop sheet-animate-backdrop flex items-end sm:items-center justify-center p-3"},
-            React.createElement("div",{className:"sheet-panel w-full max-w-lg max-h-[88vh] overflow-auto rounded-[32px] bg-white p-5 shadow-2xl"},
-                React.createElement("div",{className:"text-[10px] font-black tracking-[.16em] text-red-600"},"同步衝突保護"),
-                React.createElement("div",{className:"mt-2 text-2xl font-black text-slate-950"},"雲端與本機都改了同一欄位"),
-                React.createElement("div",{className:"mt-2 text-sm font-bold text-slate-500 leading-relaxed"},"請比較差異。採用雲端只會替換下列衝突欄位；保留本機則會用版本鎖確認後覆蓋這些欄位。"),
-                React.createElement("div",{className:"space-y-3 mt-4"},conflictDialog.conflicts.map(key=>React.createElement("div",{key,className:"rounded-[22px] border border-slate-200 overflow-hidden"},
-                    React.createElement("div",{className:"px-4 py-2 bg-slate-50 text-xs font-black text-slate-700"},SYNC_KEY_LABELS[key]||key),
-                    React.createElement("div",{className:"grid grid-cols-2"},
-                        React.createElement("div",{className:"p-3 border-r border-slate-100"},React.createElement("div",{className:"text-[10px] font-black text-blue-600"},"雲端"),React.createElement("div",{className:"mt-1 text-sm font-black text-slate-950 break-words privacy-value"},formatConflictValue(conflictDialog.cloud[key]))),
-                        React.createElement("div",{className:"p-3"},React.createElement("div",{className:"text-[10px] font-black text-amber-600"},"本機"),React.createElement("div",{className:"mt-1 text-sm font-black text-slate-950 break-words privacy-value"},formatConflictValue(conflictDialog.local[key])))))),
-                React.createElement("div",{className:"grid grid-cols-3 gap-2 mt-5"},
-                    React.createElement("button",{onClick:()=>resolveConflictDialog('cancel'),className:"py-3 rounded-2xl bg-slate-100 text-slate-700 text-xs font-black"},"取消"),
-                    React.createElement("button",{onClick:()=>resolveConflictDialog('cloud'),className:"py-3 rounded-2xl bg-blue-600 text-white text-xs font-black"},"採用雲端"),
-                    React.createElement("button",{onClick:()=>resolveConflictDialog('local'),className:"py-3 rounded-2xl bg-amber-500 text-white text-xs font-black"},"保留本機"))))),
+        AppDialog(),
+        conflictDialog && React.createElement("div",{className:"fixed inset-0 z-[95] sheet-backdrop sheet-animate-backdrop conflict-dialog-backdrop flex items-end sm:items-center justify-center",role:"presentation"},
+            React.createElement("div",{className:"sheet-panel conflict-dialog-panel w-full max-w-lg bg-white shadow-2xl",role:"dialog","aria-modal":"true","aria-labelledby":"conflict-dialog-title"},
+                React.createElement("div",{className:"conflict-dialog-header"},
+                    React.createElement("div",{className:"flex items-start gap-3"},
+                        React.createElement("div",{className:"min-w-0 flex-1"},
+                            React.createElement("div",{className:"text-[10px] font-black tracking-[.16em] text-red-600"},"同步衝突保護"),
+                            React.createElement("div",{id:"conflict-dialog-title",className:"mt-2 text-2xl font-black text-slate-950"},"雲端與本機有真正不同的資料"),
+                            React.createElement("div",{className:"mt-2 text-sm font-bold text-slate-500 leading-relaxed"},`共 ${conflictDialog.conflicts.length} 個欄位需要你決定。相同值已自動合併，不會再誤判成衝突。`)),
+                        React.createElement("button",{type:"button",onClick:()=>resolveConflictDialog('cancel'),className:"conflict-dialog-close","aria-label":"關閉並保留本機輸入"},"×"))),
+                React.createElement("div",{className:"conflict-dialog-scroll"},
+                    React.createElement("div",{className:"space-y-3"},conflictDialog.conflicts.map(key=>React.createElement("div",{key,className:"rounded-[22px] border border-slate-200 overflow-hidden bg-white"},
+                        React.createElement("div",{className:"px-4 py-2 bg-slate-50 text-xs font-black text-slate-700"},SYNC_KEY_LABELS[key]||key),
+                        React.createElement("div",{className:"grid grid-cols-2 conflict-compare-grid"},
+                            React.createElement("div",{className:"p-3 border-r border-slate-100 conflict-cloud-cell"},React.createElement("div",{className:"text-[10px] font-black text-blue-600"},"雲端"),React.createElement("div",{className:"mt-1 text-sm font-black text-slate-950 break-words privacy-value"},formatConflictValue(conflictDialog.cloud[key]))),
+                            React.createElement("div",{className:"p-3 conflict-local-cell"},React.createElement("div",{className:"text-[10px] font-black text-amber-600"},"本機"),React.createElement("div",{className:"mt-1 text-sm font-black text-slate-950 break-words privacy-value"},formatConflictValue(conflictDialog.local[key]))))))),
+                    React.createElement("div",{className:"mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-[11px] font-bold leading-relaxed text-slate-500"},"取消：不儲存且保留目前輸入。採用雲端：只有上列衝突欄位改用雲端。保留本機：只有上列衝突欄位用本機值覆蓋；送出前仍會再檢查 Revision。")),
+                React.createElement("div",{className:"conflict-dialog-actions"},
+                    React.createElement("button",{type:"button",onClick:()=>resolveConflictDialog('cancel'),className:"conflict-action conflict-action-cancel"},"取消"),
+                    React.createElement("button",{type:"button",onClick:()=>resolveConflictDialog('cloud'),className:"conflict-action conflict-action-cloud"},"採用雲端"),
+                    React.createElement("button",{type:"button",onClick:()=>resolveConflictDialog('local'),className:"conflict-action conflict-action-local"},"保留本機")))),
         toast && React.createElement("div", { className: "fixed left-1/2 -translate-x-1/2 bottom-40 z-50 bg-slate-900/90 backdrop-blur text-white rounded-2xl px-4 py-3 text-sm font-black shadow-2xl" }, toast));
 };
 class ErrorBoundary extends React.Component {

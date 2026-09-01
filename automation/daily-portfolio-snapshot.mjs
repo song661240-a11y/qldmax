@@ -340,7 +340,7 @@ async function patchRootWithRevision(db, ref, patch, source="github-actions") {
     if(!snap.exists) throw new Error("dashboard 不存在");
     const current=snap.data()||{};
     nextRevision=Math.max(0,Math.floor(number(current.dataRevision)))+1;
-    tx.set(ref,{...patch,dataRevision:nextRevision,lastWriteId:writeId,lastWriteSource:source,lastWriteAt:writeAt,clientAppVersion:"股票資產 PWA v5.8｜版本鎖＋衝突處理＋一鍵復原",updatedAtText:new Date().toLocaleString("zh-TW",{timeZone:"Asia/Taipei"}),autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()},{merge:true});
+    tx.set(ref,{...patch,dataRevision:nextRevision,lastWriteId:writeId,lastWriteSource:source,lastWriteAt:writeAt,clientAppVersion:"股票資產 PWA v6.0｜系統健康捷徑＋統一操作視窗",autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()},{merge:true});
   });
   return {revision:nextRevision,writeId,writeAt};
 }
@@ -359,7 +359,7 @@ async function processQqqiE2eDashboard(db, ref, targetDate) {
     qqqiDividendLedger:[]
   };
   const history=[{date:entitlementDate,sharesQqqi:1000}];
-  const distribution={symbol:"QQQI",declarationDate:entitlementDate,exDate:targetDate,recordDate:targetDate,payableDate:targetDate,amountPerShare:0.6346,source:"v5.8 isolated fixture"};
+  const distribution={symbol:"QQQI",declarationDate:entitlementDate,exDate:targetDate,recordDate:targetDate,payableDate:targetDate,amountPerShare:0.6346,source:"v6.0 isolated fixture"};
   const first=planQqqiDividends(fixtureData,history,[distribution],targetDate);
   const afterCash=round4(number(fixtureData.cashUsd)+first.netAdded);
   const second=planQqqiDividends({...fixtureData,qqqiDividendLedger:first.ledger},history,[distribution],targetDate);
@@ -505,7 +505,7 @@ async function processDashboard(db, ref, targetDate, fx, dividendInfo) {
       qqqiDividendLedger:dividendPlan.ledger,qqqiDividendLastCheckAt:nowIso,
       qqqiDividendLastError:dividendError,qqqiDividendLastProcessedAt:dividendPlan.newEntries.length?nowIso:String(data.qqqiDividendLastProcessedAt||""),
       dataRevision:currentRevision+1,lastWriteId:`github-actions-${nowIso.replace(/[^0-9]/g,"").slice(0,14)}`,lastWriteSource:"github-actions-snapshot",lastWriteAt:nowIso,
-      clientAppVersion:"股票資產 PWA v5.8｜版本鎖＋衝突處理＋一鍵復原",autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()
+      clientAppVersion:"股票資產 PWA v6.0｜系統健康捷徑＋統一操作視窗",autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()
     };
     tx.set(ref,patch,{merge:true});
 

@@ -1,66 +1,56 @@
-股票資產 PWA v4.9｜每日線上匯率版
-測試日期：2026-08-01（台灣時間）
+股票資產 PWA v6.0｜本機回歸測試報告
+日期：2026-09-01
 
-一、本版新增
-1. 每天第一次開啟 App，自動檢查 USD/TWD；同一天已嘗試過就不重複連線。
-2. 頁首「↻」更新股價時，同時檢查今日匯率。
-3. 市場資料狀態頁新增 USD/TWD 卡片、更新時間、錯誤原因與「立即更新」。
-4. 線上更新失敗時保留上一個成功匯率，不影響股價更新與 IB 主策略。
-5. 每日資產快照保存當日匯率、匯率日期與來源。
-6. 歷史損益圖切換 NT$ 時，優先使用各日期快照匯率；舊快照缺少匯率時才使用目前匯率估算。
-7. 保留手動修改 USD/TWD；手動輸入會標記為手動匯率。
-8. Service Worker 對線上匯率 API 不做快取，app.js、app.css、pwa.js 仍採網路優先。
+一、結果
+- 最終封裝前靜態／語法／結構回歸：45 / 45 通過。
+- assets/app.js、assets/pwa.js、service-worker.js、automation/daily-portfolio-snapshot.mjs：Node.js --check 全部通過。
+- manifest.webmanifest：JSON 解析通過。
+- GitHub Actions workflow：YAML 解析通過。
 
-二、匯率來源
-- 來源：ExchangeRate-API Open Access endpoint。
-- 官方規格：無需 API Key、資料每日更新一次、允許快取並要求來源標示。
-- App 已加入「Rates By Exchange Rate API」來源標示。
-- 2026-08-01 線上驗證 endpoint 回傳 result=success，且包含 TWD、資料更新時間及下次更新時間。
+二、本版實際驗證
+1. APP_VERSION、PWA_VERSION、Service Worker、Manifest、index.html 全部已升級到 v6.0 / 6.0.0。
+2. evaluateStrategy() 與 v5.9 原始碼逐字一致。
+   SHA-256：3e781fc9f933f0e299e4b7ef034d8594c64b6c37a02fd8e55d9f1fe3bcde9e10
+3. applyExecutionState() 與 v5.9 原始碼逐字一致。
+   SHA-256：2a67d76c72ec1ea6f534a4ad0b668febc91d1da0a07aa4a0dc79dfe561fb09ee
+4. app.js 內原生 prompt() / confirm() / alert()：全部 0。
+5. App 自訂 confirm／prompt／info 對話框存在，包含手機 safe-area 與固定底部操作鍵。
+6. QuickUpdateSheet／AccountSheet／TrashSheet 均使用固定 Header＋可捲 Body＋固定 Footer。
+7. v5.9「相同值不算同步衝突」邏輯保留。
+8. 衝突比較視窗固定底部操作列保留。
+9. Revision Transaction 與 revision-mismatch 攔截保留。
+10. Firestore Rules dataRevision +1 規則保留。
+11. QQQI qqqi_e2e_test workflow 模式保留。
 
-三、測試結果
-- JavaScript 語法：app.js、pwa.js、service-worker.js 全部通過。
-- HTML 與 Manifest：通過。
-- PWA 靜態檢查：29／29 通過。
-- 匯率純邏輯測試：12／12 通過。
-  - 同日跳過
-  - 跨日更新
-  - 手動強制更新
-  - 成功解析與四位小數
-  - HTTP 429 錯誤
-  - 異常匯率拒絕
-  - 快照保存匯率、日期、來源
-- App 自動更新整合測試：5／5 通過。
-  - 第一次開啟抓取一次
-  - 寫入本機資料
-  - 保存來源與日期
-  - 同一天重新開啟不重抓
-- 離線／失敗測試：4／4 通過。
-  - 失敗只嘗試一次
-  - 原匯率維持不變
-  - 錯誤原因保存
-  - 今日嘗試日期保存
-- 介面渲染：19／19 情境通過。
-  - 首頁
-  - 10 個設定子頁
-  - IB／全部／FT／複委託 × US$／NT$
-- IB 主策略外部帳戶隔離：1,000／1,000 通過。
-- 匯率變化不影響 IB 訊號與目標股數：1,000／1,000 通過。
-- evaluateStrategy：與 v4.8 完全一致。
-  SHA-256 前 16 碼：0733a52a3f621ca1
-- applyExecutionState：與 v4.8 完全一致。
-  SHA-256 前 16 碼：34fbb0e4ef5e4aaf
-- PWA 圖示尺寸：64、192、512、Maskable 512 全部正確。
+三、系統健康精準捷徑
+12. 「直接處理」按鈕存在。
+13. 200SMA 異常 → 精準定位「確認 SMA 日期」。
+14. 股價過期 → 精準定位「更新股價」。
+15. FT 過期 → 精準定位 Firstrade 淨值輸入／儲存區。
+16. 自動快照落後／不完整 → 精準定位「自動化／GitHub Actions」。
+17. 雲端同步 >18 小時 → 精準定位「立即重新讀取雲端」。
+18. QQQI 配息錯誤 → 精準定位「自動化狀態」。
+19. 匯率更新失敗 → 精準定位 USD/TWD 卡片與「立即更新」。
+20. 點入後會自動 scrollIntoView，並以短暫藍框標示真正需要操作的位置。
+21. 系統健康詳細狀態四格也使用精準定位，不只開設定首頁。
+22. 在 GitHub Pages 網址上會自動推導目前 Repository，雲端同步頁提供「開啟 GitHub Actions」按鈕，直接開 daily-portfolio-snapshot workflow。
+23. 雲端同步頁 Firestore 路徑顯示為 qldmax / users / {目前登入 UID} / strategyDashboards / tqqq-qqq200-main。
 
-四、環境限制
-測試環境的容器 DNS 無法直接對外請求，因此實際 endpoint 可用性以線上 Web 驗證確認；App 成功、失敗、同日跳過與離線沿用流程，均使用相同回傳格式進行整合測試。
+四、策略核心未修改
+- Risk-On：SPY > 200SMA × 1.04。
+- Risk-Off：SPY < 200SMA × 0.97。
+- HOT：19% / 24% / 28%。
+- FT／複委託／台股仍不參與 IB 主策略訊號。
 
-五、上傳內容
-請解壓縮後，將以下內容覆蓋上傳到 GitHub Repository 最外層：
-- index.html
-- manifest.webmanifest
-- service-worker.js
-- .nojekyll
-- assets/
-- icons/
+五、安全／PWA
+- Service Worker APP_SHELL 對應檔案全部存在。
+- 敏感字串掃描未找到 BEGIN PRIVATE KEY、ghp_、github_pat_。
+- GitHub Actions clientAppVersion 已更新為 v6.0。
 
-看到「股票資產已有新版」後按「套用新版」。
+六、環境限制
+- 本機可重現的語法、版本、策略核心比對、健康捷徑、對話框、Bottom Sheet、Revision／Rules、Workflow 與 PWA 結構已完成檢查。
+- 此隔離環境無法取代你正式 GitHub Pages + Firebase + Samsung 手機的完整線上 E2E；部署後建議在手機實際點一次「系統健康 → 直接處理」，確認捲動位置與 GitHub Actions 外連符合你的 Repository。
+
+七、Firebase
+- 本版 firestore.rules 沒有修改。
+- v5.8 Revision Rules 已 Publish 的話，v6.0 不需再次 Publish。

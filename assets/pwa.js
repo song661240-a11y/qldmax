@@ -1,7 +1,7 @@
 (() => {
   if (!("serviceWorker" in navigator)) return;
 
-  const PWA_VERSION = "5.8.0";
+  const PWA_VERSION = "6.0.0";
   const UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
   let reloading = false;
   let lastUpdateCheck = 0;
@@ -26,7 +26,7 @@
     banner.innerHTML = `
       <div class="pwa-update-copy">
         <strong>發現新版 v${PWA_VERSION}</strong>
-        <span>新版加入資料 Revision 鎖、衝突比較、一鍵復原、同步健康狀態與 QQQI 隔離 E2E。建議立即更新後再輸入資料。</span>
+        <span>新版加入系統健康直接處理捷徑、統一 App 內確認／輸入視窗與 Bottom Sheet 固定操作列，並保留 v5.9 衝突防呆與 Revision 鎖。建議立即更新。</span>
       </div>
       <button type="button">立即更新</button>
     `;
