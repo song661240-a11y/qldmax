@@ -1,19 +1,19 @@
-const CACHE_VERSION = "stock-assets-pwa-v6.0-health-actions-dialogs-20260901";
+const CACHE_VERSION = "stock-assets-pwa-v6.1-risk-benchmark-20260902";
 const APP_CACHE = `${CACHE_VERSION}-app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./manifest.webmanifest?v=6.0.0",
-  "./assets/tailwind.css?v=6.0.0",
-  "./assets/app.css?v=6.0.0",
-  "./assets/app.js?v=6.0.0",
-  "./assets/pwa.js?v=6.0.0",
-  "./icons/icon-192.png?v=6.0.0",
-  "./icons/icon-512.png?v=6.0.0",
-  "./icons/icon-maskable-512.png?v=6.0.0",
-  "./icons/favicon-64.png?v=6.0.0"
+  "./manifest.webmanifest?v=6.1.0",
+  "./assets/tailwind.css?v=6.1.0",
+  "./assets/app.css?v=6.1.0",
+  "./assets/app.js?v=6.1.0",
+  "./assets/pwa.js?v=6.1.0",
+  "./icons/icon-192.png?v=6.1.0",
+  "./icons/icon-512.png?v=6.1.0",
+  "./icons/icon-maskable-512.png?v=6.1.0",
+  "./icons/favicon-64.png?v=6.1.0"
 ];
 
 self.addEventListener("install", event => {
@@ -35,7 +35,7 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("message", event => {
   if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
-  if (event.data && event.data.type === "GET_VERSION" && event.source) event.source.postMessage({ type: "SW_VERSION", version: "6.0.0" });
+  if (event.data && event.data.type === "GET_VERSION" && event.source) event.source.postMessage({ type: "SW_VERSION", version: "6.1.0" });
 });
 
 const isLiveDataRequest = url =>

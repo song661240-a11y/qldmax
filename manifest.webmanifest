@@ -5,7 +5,7 @@
   "description": "以 IB TQQQ 主策略為核心；支援每日盤後自動資產快照、QQQI 配息自動入現金、Revision 版本鎖、雲端／本機衝突比較、一鍵復原、同步健康狀態與直接處理捷徑、統一 App 操作視窗、QQQI 隔離 E2E、PWA 新版提示與完整備份。",
   "lang": "zh-TW",
   "dir": "ltr",
-  "start_url": "./?v=6.0.0",
+  "start_url": "./?v=6.1.0",
   "scope": "./",
   "display": "standalone",
   "display_override": [
@@ -22,19 +22,19 @@
   ],
   "icons": [
     {
-      "src": "./icons/icon-192.png?v=6.0.0",
+      "src": "./icons/icon-192.png?v=6.1.0",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./icons/icon-512.png?v=6.0.0",
+      "src": "./icons/icon-512.png?v=6.1.0",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./icons/icon-maskable-512.png?v=6.0.0",
+      "src": "./icons/icon-maskable-512.png?v=6.1.0",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

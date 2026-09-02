@@ -1,7 +1,7 @@
 (() => {
   if (!("serviceWorker" in navigator)) return;
 
-  const PWA_VERSION = "6.0.0";
+  const PWA_VERSION = "6.1.0";
   const UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
   let reloading = false;
   let lastUpdateCheck = 0;

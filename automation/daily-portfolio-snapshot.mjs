@@ -340,7 +340,7 @@ async function patchRootWithRevision(db, ref, patch, source="github-actions") {
     if(!snap.exists) throw new Error("dashboard 不存在");
     const current=snap.data()||{};
     nextRevision=Math.max(0,Math.floor(number(current.dataRevision)))+1;
-    tx.set(ref,{...patch,dataRevision:nextRevision,lastWriteId:writeId,lastWriteSource:source,lastWriteAt:writeAt,clientAppVersion:"股票資產 PWA v6.0｜系統健康捷徑＋統一操作視窗",autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()},{merge:true});
+    tx.set(ref,{...patch,dataRevision:nextRevision,lastWriteId:writeId,lastWriteSource:source,lastWriteAt:writeAt,clientAppVersion:"股票資產 PWA v6.1｜SPY／QQQ 200SMA 參考切換",autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()},{merge:true});
   });
   return {revision:nextRevision,writeId,writeAt};
 }
@@ -359,7 +359,7 @@ async function processQqqiE2eDashboard(db, ref, targetDate) {
     qqqiDividendLedger:[]
   };
   const history=[{date:entitlementDate,sharesQqqi:1000}];
-  const distribution={symbol:"QQQI",declarationDate:entitlementDate,exDate:targetDate,recordDate:targetDate,payableDate:targetDate,amountPerShare:0.6346,source:"v6.0 isolated fixture"};
+  const distribution={symbol:"QQQI",declarationDate:entitlementDate,exDate:targetDate,recordDate:targetDate,payableDate:targetDate,amountPerShare:0.6346,source:"v6.1 isolated fixture"};
   const first=planQqqiDividends(fixtureData,history,[distribution],targetDate);
   const afterCash=round4(number(fixtureData.cashUsd)+first.netAdded);
   const second=planQqqiDividends({...fixtureData,qqqiDividendLedger:first.ledger},history,[distribution],targetDate);
@@ -505,7 +505,7 @@ async function processDashboard(db, ref, targetDate, fx, dividendInfo) {
       qqqiDividendLedger:dividendPlan.ledger,qqqiDividendLastCheckAt:nowIso,
       qqqiDividendLastError:dividendError,qqqiDividendLastProcessedAt:dividendPlan.newEntries.length?nowIso:String(data.qqqiDividendLastProcessedAt||""),
       dataRevision:currentRevision+1,lastWriteId:`github-actions-${nowIso.replace(/[^0-9]/g,"").slice(0,14)}`,lastWriteSource:"github-actions-snapshot",lastWriteAt:nowIso,
-      clientAppVersion:"股票資產 PWA v6.0｜系統健康捷徑＋統一操作視窗",autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()
+      clientAppVersion:"股票資產 PWA v6.1｜SPY／QQQ 200SMA 參考切換",autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()
     };
     tx.set(ref,patch,{merge:true});
 
@@ -517,11 +517,11 @@ async function processDashboard(db, ref, targetDate, fx, dividendInfo) {
       const recordId=`dividend-qqqi-${entry.payableDate}`;
       const recordRef=ref.collection("records").doc(recordId);
       tx.set(recordRef,{
-        recordSchemaVersion:2,recordId,strategyId:"tqqq-spy200",strategyVersion:"SPY200-4-3-HOT-19-24-28-INTRO-v1.2",recordType:"dividend",createdAt:nowIso,
+        recordSchemaVersion:2,recordId,strategyId:"tqqq-spy200",strategyVersion:"RISKREF-SPY-QQQ-4-3-HOT-19-24-28-INTRO-v1.3",recordType:"dividend",createdAt:nowIso,
         dates:{marketClose:targetDate,signal:entry.exDate,execution:entry.payableDate},
         prices:{SPY:number(prices.SPY),QQQ:number(prices.QQQ),TQQQ:number(prices.TQQQ),SPYI:number(prices.SPYI),QQQI:number(prices.QQQI)},
         indicators:{SPY200:number(data.spySma),QQQ200:number(data.qqqSma)},
-        state:{marketState:String(data.marketState||"NEUTRAL"),hotRank:number(data.hotRank),hotAsset:String(data.hotAsset||"QQQ"),introAsset:String(data.introAsset||"QQQI"),strategyPhase:String(data.strategyPhase||""),dcaActive:data.dcaActive===true,dcaCompleted:number(data.dcaCompleted),riskOffCycleId:String(data.riskOffCycleId||""),riskOnCycleId:String(data.riskOnCycleId||"")},
+        state:{marketState:String(data.marketState||"NEUTRAL"),hotRank:number(data.hotRank),riskBenchmark:["SPY","QQQ"].includes(String(data.riskBenchmark||"SPY").toUpperCase())?String(data.riskBenchmark||"SPY").toUpperCase():"SPY",hotAsset:String(data.hotAsset||"QQQ"),introAsset:String(data.introAsset||"QQQI"),strategyPhase:String(data.strategyPhase||""),dcaActive:data.dcaActive===true,dcaCompleted:number(data.dcaCompleted),riskOffCycleId:String(data.riskOffCycleId||""),riskOnCycleId:String(data.riskOnCycleId||"")},
         holdings:{before,after},valuation:{totalUsd:strategyUsd,totalDisplay:`$${round2(strategyUsd)}`},
         decision:{title:"QQQI 配息入帳",allocation:"IB 現金",immediate:"",formalState:"",todayAction:`稅後配息 +$${round2(entry.netUsd)}`},
         cashflow:{type:"dividend",amountUsd:entry.netUsd,date:entry.payableDate,note:`QQQI ${entry.eligibleShares} 股 × $${entry.amountPerShare}；預扣 ${entry.taxRate}%`},
