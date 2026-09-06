@@ -556,3 +556,100 @@ button.text-slate-700{
 /* v6.0 系統健康：直接定位後短暫標示真正需要處理的控制項 */
 .health-target-flash{position:relative;z-index:1;animation:health-target-pulse 1.8s ease-out;scroll-margin-top:110px;scroll-margin-bottom:110px}
 @keyframes health-target-pulse{0%{box-shadow:0 0 0 0 rgba(37,99,235,.42);outline:3px solid rgba(37,99,235,.42)}35%{box-shadow:0 0 0 12px rgba(37,99,235,.10);outline:3px solid rgba(37,99,235,.25)}100%{box-shadow:0 0 0 18px rgba(37,99,235,0);outline:3px solid rgba(37,99,235,0)}}
+
+/* v6.3｜深藍 Portfolio Performance 首頁封面 */
+.portfolio-performance-cover{
+  min-height:70vh;
+  position:relative;
+  isolation:isolate;
+  background:
+    radial-gradient(circle at 82% 8%,rgba(45,126,255,.22),transparent 30%),
+    radial-gradient(circle at 18% 92%,rgba(16,185,129,.10),transparent 28%),
+    linear-gradient(155deg,#071428 0%,#0b1f3d 46%,#102b50 100%);
+  border:1px solid rgba(125,181,255,.18);
+  box-shadow:0 22px 58px rgba(8,23,48,.28),inset 0 1px 0 rgba(255,255,255,.08);
+}
+.portfolio-performance-cover:before{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);
+  background-size:28px 28px;mask-image:linear-gradient(to bottom,rgba(0,0,0,.45),transparent 75%);
+}
+.portfolio-networth-panel,.portfolio-mini-kpi,.portfolio-allocation-panel,.portfolio-trend-panel,.portfolio-status-strip{
+  background:linear-gradient(145deg,rgba(20,52,93,.72),rgba(12,37,72,.78));
+  border:1px solid rgba(126,174,233,.13);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 10px 24px rgba(0,0,0,.10);
+}
+.portfolio-mini-kpi{min-width:0}
+.portfolio-update-button{
+  min-height:100%;color:#dbeafe;background:linear-gradient(145deg,#1d4ed8,#2563eb);
+  box-shadow:0 8px 22px rgba(37,99,235,.28);
+}
+.portfolio-performance-cover button:active{transform:scale(.97)}
+
+.portfolio-total-value{font-size:2.15rem}
+.portfolio-allocation-grid{display:grid;grid-template-columns:112px minmax(0,1fr);gap:16px;align-items:center}
+.portfolio-donut{position:relative;width:108px;height:108px}
+.portfolio-donut-hole{position:absolute;inset:18px;background:#0b1d3a}
+.portfolio-trend-svg{height:92px}
+.portfolio-status-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+@media(min-width:640px){.portfolio-total-value{font-size:2.6rem}}
+@media(max-width:420px){
+  .portfolio-performance-cover{padding:14px!important;border-radius:24px!important}
+  .portfolio-cover-mark{display:none}
+  .portfolio-networth-panel{padding:14px!important}
+  .portfolio-mini-kpi{padding:10px!important}
+  .portfolio-mini-kpi>div:nth-child(2){font-size:15px!important}
+  .portfolio-allocation-panel,.portfolio-trend-panel{padding:13px!important}
+  .portfolio-allocation-grid{grid-template-columns:94px minmax(0,1fr)!important;gap:10px!important}
+  .portfolio-donut{width:94px!important;height:94px!important}
+  .portfolio-donut-hole{inset:16px!important}
+}
+@media(min-width:1180px){
+  .portfolio-performance-cover{min-height:650px;height:100%}
+}
+.portfolio-performance-cover.portfolio-theme-mountain{background:radial-gradient(circle at 78% 10%,rgba(148,163,184,.18),transparent 30%),linear-gradient(155deg,#07111f 0%,#142033 48%,#25364f 100%)}
+.portfolio-performance-cover.portfolio-theme-ocean{background:radial-gradient(circle at 82% 8%,rgba(56,189,248,.22),transparent 30%),linear-gradient(155deg,#061827 0%,#073b5d 48%,#075985 100%)}
+.portfolio-performance-cover.portfolio-theme-off{background:linear-gradient(155deg,#071225 0%,#0b1d3a 55%,#102747 100%)}
+.portfolio-accent-soft{color:rgba(186,230,253,.72)}
+.portfolio-hot-value{color:#fcd34d}
+.portfolio-cool-value{color:#7dd3fc}
+
+/* v7.0 FINAL｜績效儀表板定版：資料新鮮度、切換器、互動圖表、下一步摘要 */
+.portfolio-freshness-row{
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+}
+.portfolio-freshness-row::-webkit-scrollbar{display:none}
+.portfolio-segmented button{
+  transition:background-color .16s ease,color .16s ease,transform .12s ease;
+  white-space:nowrap;
+}
+.portfolio-next-panel{
+  background:linear-gradient(145deg,rgba(14,44,82,.72),rgba(10,32,61,.76));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+}
+.portfolio-next-panel:focus-visible,.portfolio-segmented button:focus-visible,.portfolio-performance-cover button:focus-visible{
+  outline:2px solid rgba(125,211,252,.9);
+  outline-offset:2px;
+}
+.portfolio-trend-svg{
+  user-select:none;
+  -webkit-user-select:none;
+  cursor:crosshair;
+  overflow:visible;
+}
+.portfolio-performance-cover .privacy-value{
+  font-variant-numeric:tabular-nums;
+}
+@media(max-width:370px){
+  .portfolio-performance-cover{padding:12px!important}
+  .portfolio-mini-kpi{padding:9px!important}
+  .portfolio-mini-kpi>div:nth-child(2){font-size:14px!important}
+  .portfolio-segmented button{padding-left:7px!important;padding-right:7px!important}
+  .portfolio-allocation-grid{grid-template-columns:88px minmax(0,1fr)!important}
+  .portfolio-donut{width:86px!important;height:86px!important}
+  .portfolio-donut-hole{inset:15px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .portfolio-segmented button{transition:none!important}
+}

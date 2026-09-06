@@ -1,0 +1,63 @@
+56/56 checks passed
+PASS JS syntax assets/app.js
+PASS JS syntax assets/pwa.js
+PASS JS syntax service-worker.js
+PASS JS syntax automation/daily-portfolio-snapshot.mjs
+PASS JSON manifest.webmanifest
+PASS JSON automation/package.json
+PASS YAML workflow
+PASS version 7.0.0 index.html
+PASS version 7.0.0 manifest.webmanifest
+PASS version 7.0.0 service-worker.js
+PASS version 7.0.0 assets/pwa.js
+PASS app version final
+PASS shell ./index.html
+PASS shell ./manifest.webmanifest
+PASS shell ./assets/tailwind.css
+PASS shell ./assets/app.css
+PASS shell ./assets/app.js
+PASS shell ./assets/pwa.js
+PASS shell ./icons/icon-192.png
+PASS shell ./icons/icon-512.png
+PASS shell ./icons/icon-maskable-512.png
+PASS shell ./icons/favicon-64.png
+PASS Modified Dietz
+PASS 1M actual base
+PASS YTD actual base
+PASS YTD first snapshot fallback
+PASS data freshness row
+PASS freshness direct navigation
+PASS account/strategy allocation
+PASS performance/networth toggle
+PASS interactive pointer chart
+PASS max drawdown
+PASS year high
+PASS current stage KPI
+PASS next strategy summary
+PASS partial record warning
+PASS nonconfigured freshness muted
+PASS privacy on trend
+PASS ui pref allocation
+PASS ui pref trend
+PASS old monthPct removed
+PASS old ytdPct removed
+PASS old spark removed
+PASS function evaluateStrategy(data) exact
+PASS function evaluateStrategy(data) hash
+PASS function applyExecutionState(data, metrics, item, now=new Date()) exact
+PASS function applyExecutionState(data, metrics, item, now=new Date()) hash
+PASS cover analytics runtime tests
+PASS CSS portfolio-freshness-row
+PASS CSS portfolio-segmented
+PASS CSS portfolio-next-panel
+PASS CSS portfolio-trend-svg
+PASS CSS prefers-reduced-motion
+PASS firestore rules unchanged
+PASS workflow unchanged
+PASS automation unchanged
+helper: cover analytics tests passed {
+  dietz: 0.09064327485380116,
+  expected: 0.09064327485380116,
+  ytdLabel: '自首筆',
+  mdd: 0
+}

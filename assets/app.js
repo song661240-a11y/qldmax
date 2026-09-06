@@ -14,7 +14,7 @@ if (HAS_FIREBASE && !firebase.apps.length)
 const auth = HAS_FIREBASE ? firebase.auth() : null;
 const db = HAS_FIREBASE ? firebase.firestore() : null;
 const DOC_PATH = ["strategyDashboards", "tqqq-qqq200-main"];
-const APP_VERSION = "股票資產 PWA v6.1｜SPY／QQQ 200SMA 參考切換";
+const APP_VERSION = "股票資產 PWA v7.0 FINAL｜整合定版儀表板";
 const STRATEGY_ID = "tqqq-spy200";
 const STRATEGY_VERSION = "RISKREF-SPY-QQQ-4-3-HOT-19-24-28-INTRO-v1.3";
 const RECORD_SCHEMA_VERSION = 2;
@@ -847,21 +847,96 @@ function evaluateStrategy(data) {
                         ? '先確認 SMA'
                         : '需要執行';
 
-        const distanceItems=valid?[
-            {key:'riskOff',label:`${riskBenchmark} Risk-Off`,value:((exitPx/riskPrice)-1)*100,price:exitPx,current:riskPrice,hint:`${riskBenchmark} 低於 $${money(exitPx,2)} 觸發`},
-            {key:'riskOn',label:`${riskBenchmark} Risk-On`,value:((entryPx/riskPrice)-1)*100,price:entryPx,current:riskPrice,hint:`${riskBenchmark} 高於 $${money(entryPx,2)} 觸發`},
-            {key:'hot1',label:`QQQ 過熱 +${data.hot1}%`,value:((qHot1/qqq)-1)*100,price:qHot1,current:qqq,hint:'60/40'},
-            {key:'hot2',label:`QQQ 過熱 +${data.hot2}%`,value:((qHot2/qqq)-1)*100,price:qHot2,current:qqq,hint:'30/70'},
-            {key:'hot3',label:`QQQ 過熱 +${data.hot3}%`,value:((qHot3/qqq)-1)*100,price:qHot3,current:qqq,hint:'0/100'}
-        ].map(item=>{
-            const abs=Math.abs(item.value);
-            return {...item,
+        // 首頁「下一步」只顯示目前策略狀態真正會改變部位／階段的門檻。
+        // 同一 Risk-On 週期 HOT 只會向上鎖定，不會因回落到較低 HOT 門檻而加回 TQQQ；
+        // 因此正式 HOT1/2/3 的向下下一步一律是 Risk-Off，而不是較低 HOT。
+        const hotAllocationLabel = rank => rank>=3
+            ? `HOT3｜100% ${hotAsset}`
+            : rank===2
+                ? `HOT2｜30% TQQQ / 70% ${hotAsset}`
+                : rank===1
+                    ? `HOT1｜60% TQQQ / 40% ${hotAsset}`
+                    : 'HOT0｜100% TQQQ';
+        const makeNextStep = (key,direction,label,price,current,action,hint='') => {
+            const hasPrice=Number.isFinite(price)&&price>0&&Number.isFinite(current)&&current>0;
+            const value=hasPrice?((price/current)-1)*100:null;
+            const abs=value==null?999:Math.abs(value);
+            return {
+                key,direction,label,price:hasPrice?price:null,current,value,action,hint,
                 statusTone:abs<=2?'red':abs<=5?'amber':'green',
-                statusText:abs<=2?'即將觸發':abs<=5?'接近':'尚有距離',
-                valueTone:item.value<=0?'text-red-600':'text-slate-900',
-                displayText:signedPctText(item.value)
+                statusText:value==null?'維持目前階段':abs<=2?'即將觸發':abs<=5?'接近':'尚有距離',
+                valueTone:direction==='down'?'text-red-600':direction==='up'?'text-emerald-700':'text-slate-900',
+                displayText:value==null?'—':signedPctText(value)
             };
-        }):[];
+        };
+        const nextActionItems=[];
+        let introHotNote='';
+        if(valid){
+            const addRiskOff = () => nextActionItems.push(makeNextStep(
+                'riskOff','down',`${riskBenchmark} Risk-Off`,exitPx,riskPrice,
+                introMode
+                    ? `跌破並執行後：賣出首次導入的 ${introAsset}，建立 6 期 QQQ DCA；當期投入資金池 1/6。`
+                    : (storedDcaActive || storedMarket==='RISK_OFF')
+                        ? '跌破後仍維持 Risk-Off／DCA；不會重開新的 DCA 資金池。'
+                        : '跌破並執行後：策略 ETF 全部退出，建立 6 期 QQQ DCA；第一期投入資金池 1/6。',
+                `${riskBenchmark} < 自身 200SMA -${data.exitBuffer}%`
+            ));
+            const addRiskOn = (context='normal') => nextActionItems.push(makeNextStep(
+                'riskOn','up',`${riskBenchmark} Risk-On`,entryPx,riskPrice,
+                context==='intro'
+                    ? `站上後：首次導入仍持有 ${introAsset}；此時可人工「開啟正式 HOT」，並依當下 QQQ 即時 HOT 階級起跑。`
+                    : '站上並執行後：停止剩餘 DCA／等待狀態，依當時 QQQ HOT 階級進入 Risk-On 配置。',
+                `${riskBenchmark} > 自身 200SMA +${data.entryBuffer}%`
+            ));
+            const hotBaseRank=introMode?thresholdRank:Math.max(storedHot,effectiveRank);
+            const nextHotRank=Math.min(3,hotBaseRank+1);
+            const nextHotPrice=nextHotRank===1?qHot1:nextHotRank===2?qHot2:qHot3;
+            const nextHotPct=nextHotRank===1?data.hot1:nextHotRank===2?data.hot2:data.hot3;
+            const addNextHot = () => {
+                if(hotBaseRank>=3){
+                    nextActionItems.push(makeNextStep(
+                        'hotMax','up','QQQ HOT3 已最高階',NaN,qqq,
+                        introMode
+                            ? `首次導入仍持有 ${introAsset}；若現在人工開啟正式 HOT，會直接以 ${hotAllocationLabel(3)} 起跑。`
+                            : `本輪已鎖定最高 HOT3；QQQ 再上漲不會新增更高 HOT 階級，維持 ${hotAllocationLabel(3)}。`,
+                        '向上沒有下一個 HOT 階級'
+                    ));
+                    return;
+                }
+                nextActionItems.push(makeNextStep(
+                    `hot${nextHotRank}`,'up',`QQQ HOT${nextHotRank}`,nextHotPrice,qqq,
+                    introMode
+                        ? `到達 HOT${nextHotRank} 時首次導入仍維持 100% ${introAsset}；若此時人工「開啟正式 HOT」，會直接以 ${hotAllocationLabel(nextHotRank)} 起跑。`
+                        : `觸發並執行後：本輪 HOT 升為 HOT${nextHotRank}，配置改為 ${hotAllocationLabel(nextHotRank)}；之後回落不加回 TQQQ。`,
+                    `QQQ > 自身 200SMA +${nextHotPct}%`
+                ));
+            };
+
+            if(introMode){
+                // 首次導入有兩條可能路徑：向下完整經歷 Risk-Off；向上則先滿足 +4%，之後 HOT 門檻決定人工啟用時的起始階級。
+                addRiskOff();
+                if(riskOnNow){
+                    addNextHot();
+                    introHotNote=`首次導入目前已符合人工啟用條件：若現在開啟正式 HOT，會以 ${hotAllocationLabel(thresholdRank)} 起跑；若繼續等待，上方 HOT 門檻只會改變未來人工啟用時的起始配置，不會自動換倉。`;
+                } else {
+                    addRiskOn('intro');
+                    introHotNote=`首次導入尚未符合人工啟用條件；必須先讓 ${riskBenchmark} 高於自身 200SMA +${data.entryBuffer}%。`;
+                }
+            } else if(waitingFirstReentry || storedDcaActive || storedMarket==='RISK_OFF'){
+                // 已在 Risk-Off／DCA 週期時，真正會結束此階段的是重新站上 +4%。
+                if(riskDev>0) addRiskOff();
+                addRiskOn('reentry');
+            } else if(storedMarket==='RISK_ON' || strategyActive){
+                // 正式 Risk-On：向下只看 Risk-Off；向上只看比本輪正式 HOT 更高的下一階。
+                addRiskOff();
+                addNextHot();
+            } else {
+                // 尚未建立正式方向時，兩側遲滯門檻都可能成為下一個狀態切換。
+                addRiskOff();
+                addRiskOn('normal');
+            }
+        }
+        const distanceItems=nextActionItems;
         const scenarioMove=(getNum(data.scenarioSign)||-1)*Math.abs(getNum(data.scenarioAbsPct));
         const scenarioQqq=qqq>0?qqq*(1+scenarioMove/100):0, scenarioTqqq=tqqq>0?Math.max(0,tqqq*(1+scenarioMove*3/100)):0;
         const scenarioTotalUsd=getNum(data.sharesTqqq)*scenarioTqqq+getNum(data.sharesQqq)*scenarioQqq+getNum(data.sharesSpy)*spy+getNum(data.sharesSpyi)*spyi+getNum(data.sharesQqqi)*qqqi+getNum(data.cashUsd)+getNum(data.otherUsd);
@@ -869,7 +944,7 @@ function evaluateStrategy(data) {
         const scenarioFlags=[];
         if(valid){if(scenarioQqq>=qHot3)scenarioFlags.push(`QQQ 過熱三階 +${data.hot3}%`);else if(scenarioQqq>=qHot2)scenarioFlags.push(`QQQ 過熱二階 +${data.hot2}%`);else if(scenarioQqq>=qHot1)scenarioFlags.push(`QQQ 過熱一階 +${data.hot1}%`);if(!scenarioFlags.length)scenarioFlags.push('QQQ 未新增過熱觸發');}else scenarioFlags.push('資料不足');
         const scenario={movePct:scenarioMove,qqq:scenarioQqq,tqqq:scenarioTqqq,totalUsd:scenarioTotalUsd,totalTwd:scenarioTotalUsd*rate,pnlUsd:scenarioPnlUsd,pnlPct:scenarioPnlPct,flags:scenarioFlags};
-        return {valid,canExecute:valid && validationErrors.length===0,validationErrors,signal,tone,title,instruction,alloc,riskBenchmark,riskPrice,riskSma,riskDev,spyDev,qqqDev,entryPx,exitPx,qHot1,qHot2,qHot3,rows,totalUsd,totalDisplay,targetRows,assetHighUsd,drawdown,actionLines,distanceItems,scenario,marketState,effectiveRank,storedHot,storedMarket,thresholdRank,thresholdRankLabel,storedHotLabel,effectiveHotLabel,hotPullbackLocked,hotCompareMessage,immediateSignal,formalStateText,todayAction,riskOffNow,riskOnNow,dcaActiveEffective,dcaCyclePresent,dcaActiveBefore,dcaWillStop,dcaDue,dcaPool,dcaInstallment,dcaCompleted:dcaCompletedBefore,plannedCompleted,dcaBuyUsd,dcaBuyShares,dcaTargetQqq,dcaTargetCash,nextDue,startingNewCycle,investableUsd,strategyPhase,introMode,waitingFirstReentry,strategyActive,paramsLocked,positionAsset,introAsset,smaFreshForExecution,smaFreshnessText,spySmaAge,qqqSmaAge};
+        return {valid,canExecute:valid && validationErrors.length===0,validationErrors,signal,tone,title,instruction,alloc,riskBenchmark,riskPrice,riskSma,riskDev,spyDev,qqqDev,entryPx,exitPx,qHot1,qHot2,qHot3,rows,totalUsd,totalDisplay,targetRows,assetHighUsd,drawdown,actionLines,distanceItems,nextActionItems,introHotNote,scenario,marketState,effectiveRank,storedHot,storedMarket,thresholdRank,thresholdRankLabel,storedHotLabel,effectiveHotLabel,hotPullbackLocked,hotCompareMessage,immediateSignal,formalStateText,todayAction,riskOffNow,riskOnNow,dcaActiveEffective,dcaCyclePresent,dcaActiveBefore,dcaWillStop,dcaDue,dcaPool,dcaInstallment,dcaCompleted:dcaCompletedBefore,plannedCompleted,dcaBuyUsd,dcaBuyShares,dcaTargetQqq,dcaTargetCash,nextDue,startingNewCycle,investableUsd,strategyPhase,introMode,waitingFirstReentry,strategyActive,paramsLocked,positionAsset,introAsset,smaFreshForExecution,smaFreshnessText,spySmaAge,qqqSmaAge};
 
 }
 
@@ -926,6 +1001,158 @@ function buildPreviewData(data, scenario) {
     if(scenario==='DCA') return setRiskLevel({...withBaseline,strategyPhase:'ACTIVE',marketState:'RISK_OFF',hotRank:0,qqq:qqqSma*0.95,dcaActive:true,dcaCompleted:2,dcaPoolUsd:getNum(base.dcaPoolUsd)>0?base.dcaPoolUsd:Math.max(6000,getNum(base.cashUsd)),dcaLastDate:todayStr(),dcaNextDueDate:addTradingDays(todayStr(),21),riskOffCycleId:'PREVIEW-DCA'},1);
     return base;
 }
+
+// v7.0 FINAL｜首頁績效分析：Modified Dietz、資料新鮮度、配置與互動趨勢。
+const coverSignedFlow = (type, amount) => (String(type || '').toLowerCase() === 'withdrawal' ? -1 : 1) * Math.abs(getNum(amount));
+const coverCompactAmount = (value, currency='USD') => {
+    const n=getNum(value), abs=Math.abs(n), prefix=String(currency).toUpperCase()==='USD'?'US$':'NT$';
+    if(abs>=1e9) return `${prefix}${(n/1e9).toFixed(2)}B`;
+    if(abs>=1e6) return `${prefix}${(n/1e6).toFixed(2)}M`;
+    if(abs>=1e3) return `${prefix}${(n/1e3).toFixed(abs>=1e5?0:1)}K`;
+    return `${prefix}${money(n,String(currency).toUpperCase()==='USD'?0:0)}`;
+};
+const coverCalendarDays = (fromText,toText) => {
+    const a=parseDateLocal(fromText), b=parseDateLocal(toText);
+    if(!a||!b) return null;
+    return Math.max(0,Math.round((b-a)/86400000));
+};
+const buildCoverAnalytics = (source, portfolio, metrics, displayCurrency='TWD') => {
+    const data=source||{};
+    const currentDate=todayStr();
+    const currency=String(displayCurrency||'TWD').toUpperCase()==='USD'?'USD':'TWD';
+    const currentValue=currency==='USD'?getNum(portfolio?.totalUsd):getNum(portfolio?.totalTwd);
+    const raw=(Array.isArray(data.portfolioHistory)?data.portfolioHistory:[])
+        .filter(x=>x&&x.date&&getNum(x.totalTwd)>=0)
+        .slice().sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+    const rateForDate=date=>{
+        const prior=raw.filter(x=>String(x.date||'').slice(0,10)<=date).slice(-1)[0];
+        return getNum(prior?.rate)||getNum(portfolio?.rate)||getNum(data.usdtwd)||1;
+    };
+    const pointValue=x=>currency==='USD'?(getNum(x.totalTwd)/(getNum(x.rate)||getNum(portfolio?.rate)||1)):getNum(x.totalTwd);
+    const pointMap=new Map();
+    raw.forEach(x=>{
+        const date=String(x.date||'').slice(0,10), value=pointValue(x);
+        if(date&&value>0) pointMap.set(date,{date,value,source:x.source||'',quality:x.quality||''});
+    });
+    if(currentValue>0) pointMap.set(currentDate,{date:currentDate,value:currentValue,source:'live',quality:'live'});
+    const points=[...pointMap.values()].sort((a,b)=>a.date.localeCompare(b.date));
+    const flows=[];
+    (Array.isArray(data.history)?data.history:[]).filter(r=>r.recordType==='cashflow').forEach(r=>{
+        const date=String(r.cashflowDate||r.executionDate||r.cashflow?.date||'').slice(0,10);
+        const type=r.cashflowType||r.cashflow?.type||'';
+        const amount=getNum(r.cashflowAmountUsd||r.cashflow?.amountUsd);
+        if(date&&amount) flows.push({date,amountUsd:coverSignedFlow(type,amount),source:'IB'});
+    });
+    (Array.isArray(data.externalCashflows)?data.externalCashflows:[]).forEach(r=>{
+        const date=String(r.date||'').slice(0,10), amount=getNum(r.amountUsd);
+        if(date&&amount) flows.push({date,amountUsd:coverSignedFlow(r.type,amount),source:String(r.account||'EXT')});
+    });
+    const flowDisplay=f=>currency==='USD'?f.amountUsd:f.amountUsd*rateForDate(f.date);
+    const nearestBase = cutoff => {
+        const eligible=points.filter(x=>x.date<currentDate);
+        if(!eligible.length) return null;
+        const target=parseDateLocal(cutoff);
+        if(!target) return eligible[0];
+        return eligible.slice().sort((a,b)=>{
+            const da=Math.abs((parseDateLocal(a.date)-target)/86400000), db=Math.abs((parseDateLocal(b.date)-target)/86400000);
+            if(da!==db) return da-db;
+            return a.date.localeCompare(b.date);
+        })[0];
+    };
+    const modifiedDietz = (base,end) => {
+        if(!base||!end||base.value<=0||end.value<=0||base.date>=end.date) return {ready:false,returnPct:null,netFlow:0,profit:0,weightedFlow:0};
+        const startDate=parseDateLocal(base.date), endDate=parseDateLocal(end.date);
+        const totalDays=Math.max(1,(endDate-startDate)/86400000);
+        let netFlow=0, weightedFlow=0;
+        flows.forEach(f=>{
+            if(!f.date||f.date<=base.date||f.date>end.date) return;
+            const fd=parseDateLocal(f.date); if(!fd) return;
+            const amount=flowDisplay(f); netFlow+=amount;
+            const weight=Math.max(0,Math.min(1,(endDate-fd)/86400000/totalDays));
+            weightedFlow+=amount*weight;
+        });
+        const profit=end.value-base.value-netFlow, denominator=base.value+weightedFlow;
+        return {ready:true,returnPct:Math.abs(denominator)>1e-9?profit/denominator:null,netFlow,profit,weightedFlow};
+    };
+    const endPoint=points.slice(-1)[0]||null;
+    const now=parseDateLocal(currentDate)||new Date();
+    const monthAgo=new Date(now); monthAgo.setMonth(monthAgo.getMonth()-1);
+    const monthCutoff=formatDateLocal(monthAgo), ytdCutoff=`${now.getFullYear()}-01-01`;
+    const buildPeriod=(cutoff,kind)=>{
+        const base=nearestBase(cutoff), stat=modifiedDietz(base,endPoint);
+        if(!base||!stat.ready) return {ready:false,returnPct:null,baseDate:'',targetDate:cutoff,label:kind};
+        const target=parseDateLocal(cutoff), actual=parseDateLocal(base.date);
+        const diff=target&&actual?Math.abs((actual-target)/86400000):999;
+        const isYtd=kind==='YTD', isLateYtd=isYtd&&base.date>`${now.getFullYear()}-01-10`;
+        return {...stat,ready:true,baseDate:base.date,targetDate:cutoff,approx:diff>2,label:isLateYtd?'自首筆':kind};
+    };
+    const month=buildPeriod(monthCutoff,'1M'), ytd=buildPeriod(ytdCutoff,'YTD');
+    const trendBase=nearestBase(ytdCutoff)||points[0]||null;
+    const trendData=trendBase?points.filter(x=>x.date>=trendBase.date).map(p=>{
+        if(p.date===trendBase.date) return {...p,performancePct:0};
+        const stat=modifiedDietz(trendBase,p);
+        return {...p,performancePct:stat.ready&&Number.isFinite(stat.returnPct)?stat.returnPct*100:null};
+    }).filter(x=>Number.isFinite(x.value)):[];
+    let peakIndex=1,maxDrawdown=0;
+    trendData.forEach(p=>{
+        const idx=Number.isFinite(p.performancePct)?1+p.performancePct/100:1;
+        if(idx>peakIndex) peakIndex=idx;
+        if(peakIndex>0) maxDrawdown=Math.min(maxDrawdown,idx/peakIndex-1);
+    });
+    const yearValues=points.filter(x=>x.date>=ytdCutoff);
+    const yearHighPoint=(yearValues.length?yearValues:points).reduce((best,p)=>!best||p.value>best.value?p:best,null);
+    const colors=['#60a5fa','#34d399','#fbbf24','#c084fc','#fb7185','#22d3ee','#a3e635'];
+    const withGradient=list=>{
+        const items=list.filter(x=>x.value>0.0001).map((x,i)=>({...x,color:colors[i%colors.length]}));
+        const total=items.reduce((s,x)=>s+x.value,0);
+        let cursor=0;
+        const allocation=items.map(x=>({...x,pct:total>0?x.value/total*100:0}));
+        const gradient=allocation.length?`conic-gradient(${allocation.map(x=>{const start=cursor;cursor+=x.pct;return `${x.color} ${start.toFixed(2)}% ${cursor.toFixed(2)}%`;}).join(',')})`:'conic-gradient(#334155 0 100%)';
+        return {allocation,gradient};
+    };
+    const account=withGradient((portfolio?.cards||[]).map(x=>({key:x.key,label:x.label,value:Math.max(0,getNum(x.ratio))})));
+    const strategy=withGradient((metrics?.rows||[]).filter(x=>getNum(x.value)>0.01).map(x=>({key:x.name,label:x.name,value:getNum(x.value)})));
+    const marketDate=String(data.marketCloseDate||data.marketDate||'').slice(0,10);
+    const autoDate=String(data.autoSnapshotMarketDate||'').slice(0,10);
+    const ftDate=String(data.ftUpdatedAt||'').slice(0,10);
+    const marketAge=marketDate?tradingDayDistance(marketDate,currentDate):999;
+    const autoAge=autoDate?tradingDayDistance(autoDate,currentDate):999;
+    const ftAge=ftDate?coverCalendarDays(ftDate,currentDate):999;
+    const autoConfigured=Boolean(autoDate||data.autoSnapshotSource||data.autoSnapshotUpdatedAt);
+    const ftConfigured=Boolean(ftDate||getNum(data.ftUsd)>0);
+    const freshness=[
+        {key:'market',label:'行情',date:marketDate,age:marketAge,tone:marketDate?(marketAge<=1?'green':marketAge<=2?'amber':'red'):'red'},
+        {key:'auto',label:'快照',date:autoDate,age:autoAge,tone:!autoConfigured?'muted':(autoAge<=1?'green':autoAge<=2?'amber':'red')},
+        {key:'ft',label:'FT',date:ftDate,age:ftAge,tone:!ftConfigured?'muted':(ftAge<=7?'green':ftAge<=10?'amber':'red')}
+    ];
+    const quality=String(data.autoSnapshotQuality||'').toLowerCase();
+    if(autoConfigured&&quality==='incomplete') freshness.find(x=>x.key==='auto').tone='red';
+    else if(autoConfigured&&quality==='estimated'&&freshness.find(x=>x.key==='auto').tone==='green') freshness.find(x=>x.key==='auto').tone='amber';
+    const activeFreshness=freshness.filter(x=>x.tone!=='muted');
+    const overallTone=activeFreshness.some(x=>x.tone==='red')?'red':activeFreshness.some(x=>x.tone==='amber')?'amber':'green';
+    const stageLabel=metrics?.introMode?'首次導入':metrics?.waitingFirstReentry?'等待 Risk-On':metrics?.storedMarket==='RISK_OFF'?(metrics?.dcaActiveEffective?'DCA':'Risk-Off'):(metrics?.storedHotLabel||metrics?.thresholdRankLabel||'HOT0');
+    const stageSub=metrics?.valid?`${metrics.riskBenchmark} ${signedPctText(metrics.riskDev*100,1)}｜QQQ ${signedPctText(metrics.qqqDev*100,1)}`:'等待市場資料';
+    return {currentDate,currency,currentValue,points,flows,month,ytd,trendData,maxDrawdown,yearHighPoint,account,strategy,freshness,overallTone,stageLabel,stageSub,compactAmount:v=>coverCompactAmount(v,currency)};
+};
+const buildCoverTrendGeometry = (trendData, mode='performance', width=320, height=96) => {
+    const rows=(Array.isArray(trendData)?trendData:[]).filter(x=>mode==='performance'?Number.isFinite(x.performancePct):Number.isFinite(x.value));
+    if(rows.length<2) return {ready:false,points:[],polyline:'',area:'',zeroY:null,min:0,max:0};
+    const vals=rows.map(x=>mode==='performance'?x.performancePct:x.value);
+    let min=Math.min(...vals), max=Math.max(...vals);
+    if(mode==='performance'){min=Math.min(min,0);max=Math.max(max,0);}
+    let span=max-min;
+    if(!(span>0)){span=Math.max(1,Math.abs(max)*0.02);min-=span/2;max+=span/2;span=max-min;}
+    const padY=7, usable=height-padY*2;
+    const points=rows.map((row,i)=>{
+        const value=mode==='performance'?row.performancePct:row.value;
+        return {...row,value,x:rows.length===1?width/2:i*(width/(rows.length-1)),y:height-padY-((value-min)/span)*usable};
+    });
+    const polyline=points.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    const area=`0,${height} ${polyline} ${width},${height}`;
+    const zeroY=mode==='performance'&&min<=0&&max>=0?height-padY-((0-min)/span)*usable:null;
+    return {ready:true,points,polyline,area,zeroY,min,max};
+};
+
 const App = () => {
     const [data, setData] = useState(() => {
         const stored = readStoredObject("");
@@ -940,6 +1167,9 @@ const App = () => {
         const saved=String(readUiPreferences().historyCurrency||"USD").toUpperCase();
         return saved==="TWD"?"TWD":"USD";
     });
+    const [coverTrendMode,setCoverTrendMode] = useState(() => String(readUiPreferences().coverTrendMode||"performance")==="networth"?"networth":"performance");
+    const [coverAllocationMode,setCoverAllocationMode] = useState(() => String(readUiPreferences().coverAllocationMode||"account")==="strategy"?"strategy":"account");
+    const [coverChartIndex,setCoverChartIndex] = useState(null);
     const [settingsView, setSettingsView] = useState("menu");
     const [settingsMotion, setSettingsMotion] = useState("forward");
     const [showAccountSheet, setShowAccountSheet] = useState(false);
@@ -1756,6 +1986,18 @@ const App = () => {
     const previewData = useMemo(() => buildPreviewData(data, previewScenario), [data, previewScenario]);
     const metrics = useMemo(() => evaluateStrategy(previewData), [previewData]);
     const portfolio = useMemo(() => computePortfolioSummary(previewData, metrics.totalUsd, historyCurrency), [previewData.ftUsd, previewData.subUsd, previewData.subSymbol, previewData.subShares, previewData.subCashUsd, previewData.subAvgCostUsd, previewData.subPriceUsd, previewData.twStockTwd, previewData.otherTotalTwd, previewData.usdtwd, metrics.totalUsd, historyCurrency]);
+    const coverStats = useMemo(() => buildCoverAnalytics(previewData,portfolio,metrics,historyCurrency), [previewData,portfolio,metrics,historyCurrency]);
+    const coverTrendGeometry = useMemo(() => buildCoverTrendGeometry(coverStats.trendData,coverTrendMode), [coverStats.trendData,coverTrendMode]);
+    const coverAllocation = coverAllocationMode==='strategy' ? coverStats.strategy : coverStats.account;
+    const selectedCoverTrendIndex = coverTrendGeometry.ready ? Math.max(0,Math.min(coverTrendGeometry.points.length-1,coverChartIndex==null?coverTrendGeometry.points.length-1:coverChartIndex)) : null;
+    const selectedCoverTrendPoint = selectedCoverTrendIndex==null ? null : coverTrendGeometry.points[selectedCoverTrendIndex];
+    const chooseCoverTrendPoint = useCallback((event) => {
+        if(!coverTrendGeometry.ready||!event?.currentTarget)return;
+        const rect=event.currentTarget.getBoundingClientRect();
+        if(!(rect.width>0))return;
+        const ratio=Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width));
+        setCoverChartIndex(Math.round(ratio*(coverTrendGeometry.points.length-1)));
+    },[coverTrendGeometry]);
     const scrollHomeTo = useCallback((idx) => {
         const el = homeSliderRef.current;
         if (!el) return;
@@ -2137,7 +2379,7 @@ const App = () => {
         React.createElement("div", { className:"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2" },
             React.createElement("div", { className:"bg-slate-50 border border-slate-100 rounded-2xl p-3" }, React.createElement("div", { className:"text-[10px] font-black text-slate-500" }, "股價更新"), React.createElement("div", { className:"font-mono text-sm font-black text-slate-900 mt-1" }, data.priceUpdatedAt ? new Date(data.priceUpdatedAt).toLocaleString('zh-TW') : (data.marketCloseDate || data.marketDate || '-')), React.createElement(Pill, { tone:freshnessInfo.price.tone }, freshnessInfo.price.text)),
             React.createElement("div", { className:"bg-slate-50 border border-slate-100 rounded-2xl p-3" }, React.createElement("div", { className:"text-[10px] font-black text-slate-500" }, `200SMA 更新｜Risk 參考 ${metrics.riskBenchmark}`), React.createElement("div", { className:"font-mono text-xs font-black text-slate-900 mt-1" }, `SPY ${data.spySmaUpdatedDate||'-'}｜QQQ ${data.qqqSmaUpdatedDate||'-'}`), React.createElement(Pill, { tone:freshnessInfo.sma.tone }, freshnessInfo.sma.text)),
-            React.createElement("div", { id:"health-market-fx", className:"bg-blue-50 border border-blue-100 rounded-2xl p-3" },
+            React.createElement("div", { id:"health-market-fx", className:"bg-blue-50 border border-sky-200 rounded-2xl p-3" },
                 React.createElement("div", { className:"flex items-center justify-between gap-2" },
                     React.createElement("div", { className:"text-[10px] font-black text-blue-700" }, "USD/TWD 匯率"),
                     React.createElement("button", { onClick:()=>updateExchangeRate({force:true,silent:false}), disabled:loadingFx, className:"px-2.5 py-1.5 rounded-xl bg-blue-700 text-white text-[10px] font-black disabled:opacity-50 active:scale-95" }, loadingFx?"更新中":"立即更新")),
@@ -2237,38 +2479,122 @@ const App = () => {
     };
     const Home = () => {
         const slideSectionClass = "home-slide snap-center snap-always shrink-0 w-full";
-        const closestSignal = (metrics.distanceItems || []).slice().sort((a,b)=>Math.abs(a.value)-Math.abs(b.value))[0] || null;
-        const closestSignalText = closestSignal ? `${closestSignal.label}｜$${money(closestSignal.price,2)}｜距離 ${signedPctText(closestSignal.value,1)}` : "資料不足";
+        const nextStepItems = metrics.nextActionItems || metrics.distanceItems || [];
+
+        const freshnessClass = tone => tone==='red'?'bg-red-400/15 text-red-200 border-red-300/20':tone==='amber'?'bg-amber-300/15 text-amber-100 border-amber-200/20':tone==='muted'?'bg-white/5 text-white/35 border-white/8':'bg-emerald-300/10 text-emerald-100 border-emerald-200/15';
+        const monthValue=coverStats.month?.ready?signedPctText(coverStats.month.returnPct*100,2):'—';
+        const ytdValue=coverStats.ytd?.ready?signedPctText(coverStats.ytd.returnPct*100,2):'—';
+        const monthTone=coverStats.month?.ready?(coverStats.month.returnPct>=0?'text-emerald-300':'text-red-300'):'text-white/45';
+        const ytdTone=coverStats.ytd?.ready?(coverStats.ytd.returnPct>=0?'text-emerald-300':'text-red-300'):'text-white/45';
+        const selectedTrendValue=selectedCoverTrendPoint?(coverTrendMode==='performance'?signedPctText(selectedCoverTrendPoint.performancePct,2):coverStats.compactAmount(selectedCoverTrendPoint.value)):'—';
+        const selectedTrendDate=selectedCoverTrendPoint?.date||'';
+        const coverNextSteps=nextStepItems.slice(0,2);
+        const coverTrendColor=coverTrendMode==='performance'&&coverStats.ytd?.ready&&coverStats.ytd.returnPct<0?'#f87171':'#6ee7b7';
 
         const overviewSlide = React.createElement("section", { className: slideSectionClass },
-            React.createElement(Card, { className:"p-4 min-h-[70vh] bg-gradient-to-br from-white/90 to-sky-50/80 flex flex-col justify-between" },
-                React.createElement("div", null,
-                    React.createElement("div", { className:`cover-hero cover-${data.coverTheme||'aurora'} rounded-[26px] min-h-[170px] p-5 text-white flex flex-col justify-between shadow-lg` },
-                        React.createElement("div", { className:"relative z-10 text-xs font-black tracking-[.18em] text-white/70" }, "股票資產總覽"),
-                        React.createElement("div", { className:"relative z-10" },
-                            React.createElement("div", { className:"text-[11px] font-black text-white/65" }, "全部總資產"),
-                            React.createElement("div", { className:"mt-2 text-[2.35rem] leading-none font-black privacy-value" }, portfolio.totalDisplay),
-                            React.createElement("div", { className:"mt-2 text-sm font-bold text-white/70 privacy-value" }, `IB 策略帳戶 ${portfolio.strategyDisplay}｜匯率 ${money(portfolio.rate,2)}`))),
-                    React.createElement("div", { className:"grid grid-cols-2 gap-3 mt-4" },
-                        React.createElement("div", { className:"rounded-[24px] bg-white/75 border border-white/80 p-4" },
-                            React.createElement("div", { className:"text-[10px] font-black text-slate-500" }, "正式策略"),
-                            React.createElement("div", { className:"text-xl font-black text-slate-950 mt-1 leading-tight" }, metrics.title),
-                            React.createElement("div", { className:"text-xs font-bold text-slate-500 mt-2" }, metrics.formalStateText)),
-                        React.createElement("div", { className:"rounded-[24px] bg-white/75 border border-white/80 p-4" },
-                            React.createElement("div", { className:"text-[10px] font-black text-slate-500" }, "今日動作"),
-                            React.createElement("div", { className:"text-xl font-black text-slate-950 mt-1" }, metrics.canExecute ? "需要確認" : "先補資料"),
-                            React.createElement("div", { className:"text-xs font-bold text-slate-500 mt-2" }, metrics.actionLines?.[0] || "目前沒有立即動作。"))),
-                    StatusWarnings()),
-                React.createElement("div", { className:"grid grid-cols-2 gap-3 mt-6" },
-                    React.createElement("div", { className:"rounded-[24px] bg-slate-950 text-white p-4" },
-                        React.createElement("div", { className:"text-[10px] font-black text-white/60" }, "IB 策略資產"),
-                        React.createElement("div", { className:"mt-2 text-lg font-black privacy-value" }, portfolio.strategyDisplay),
-                        React.createElement("div", { className:"mt-1 text-[10px] font-bold text-white/60" }, "唯一參與 TQQQ 策略")),
-                    React.createElement("button", { onClick:()=>setShowAccountSheet(true), className:"rounded-[24px] bg-white/75 border border-white/90 p-4 text-left active:scale-[.98]" },
-                        React.createElement("div", { className:"text-[10px] font-black text-slate-500" }, "其他帳戶合計　›"),
-                        React.createElement("div", { className:"mt-2 text-lg font-black text-slate-950 privacy-value" }, portfolio.externalDisplay),
-                        React.createElement("div", { className:"mt-1 text-[10px] font-bold text-slate-500" }, "點開查看 FT、複委託、台股與其他"))),
-                    React.createElement("button", { onClick:openQuickUpdateSheet, className:"action-blue-button quick-update-home-button w-full mt-3 py-4 rounded-[22px] bg-blue-600 text-white font-black shadow-lg" }, "↻ 快速更新 FT／複委託資產")));
+            React.createElement("div", { className:`portfolio-performance-cover portfolio-theme-${data.coverTheme||'aurora'} rounded-[28px] p-4 sm:p-5 text-white shadow-2xl overflow-hidden` },
+                React.createElement("div", { className:"portfolio-cover-top flex items-start justify-between gap-3" },
+                    React.createElement("div", {className:"min-w-0"},
+                        React.createElement("div", { className:"text-[10px] font-black tracking-[.12em] portfolio-accent-soft" }, "PORTFOLIO PERFORMANCE"),
+                        React.createElement("div", { className:"mt-1 text-2xl leading-none font-black tracking-tight" }, "股票資產儀表板"),
+                        React.createElement("div", { className:"mt-2 text-[10px] font-bold text-white/45" }, `${metrics.riskBenchmark} 200SMA +${data.entryBuffer}/-${data.exitBuffer}｜${metrics.formalStateText}`)),
+                    React.createElement("div", { className:"portfolio-cover-mark text-right shrink-0" },
+                        React.createElement("div", { className:`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[9px] font-black ${freshnessClass(coverStats.overallTone)}` },
+                            React.createElement("span", {className:`w-1.5 h-1.5 rounded-full ${coverStats.overallTone==='red'?'bg-red-300':coverStats.overallTone==='amber'?'bg-amber-200':'bg-emerald-300'}`}),
+                            coverStats.overallTone==='green'?'資料正常':coverStats.overallTone==='amber'?'部分待更新':'資料需更新'))),
+
+                React.createElement("div", { className:"portfolio-freshness-row mt-3 flex gap-1.5 overflow-x-auto pb-0.5" },
+                    coverStats.freshness.map(item=>React.createElement("button", {key:item.key,type:"button",onClick:()=>item.key==='market'?goToHealthTarget('market','health-market-prices'):item.key==='auto'?goToHealthTarget('sync','health-sync-snapshot'):goToHealthTarget('accounts','health-accounts-ft'),className:`shrink-0 rounded-full border px-2.5 py-1 min-h-[30px] text-[9px] font-black ${freshnessClass(item.tone)}`,"aria-label":`前往更新${item.label}資料`}, `${item.label} ${item.date||(item.tone==='muted'?'未設定':'—')} ›`))),
+
+                React.createElement("div", { className:"portfolio-networth-panel mt-3 rounded-2xl p-4" },
+                    React.createElement("div", { className:"text-[10px] font-black tracking-[.12em] text-white/55" }, "股票資產總額"),
+                    React.createElement("div", { className:"portfolio-total-value mt-2 leading-none font-black tracking-tight privacy-value" }, portfolio.totalDisplay),
+                    React.createElement("div", { className:"grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-white/10" },
+                        React.createElement("div", null,
+                            React.createElement("div", { className:"text-[9px] font-black text-white/40" }, "IB 策略資產"),
+                            React.createElement("div", { className:"mt-1 text-sm font-black portfolio-cool-value privacy-value" }, portfolio.strategyDisplay)),
+                        React.createElement("button", { onClick:()=>setShowAccountSheet(true), className:"text-left min-h-[44px]", "aria-label":"查看其他帳戶明細" },
+                            React.createElement("div", { className:"text-[9px] font-black text-white/40" }, "其他帳戶合計　›"),
+                            React.createElement("div", { className:"mt-1 text-sm font-black text-emerald-300 privacy-value" }, portfolio.externalDisplay)))),
+
+                React.createElement("div", { className:"grid grid-cols-3 gap-2 mt-3" },
+                    React.createElement("div", { className:"portfolio-mini-kpi rounded-[18px] p-3" },
+                        React.createElement("div", { className:"text-[9px] font-black text-white/45" }, "近 1 月"),
+                        React.createElement("div", { className:`mt-2 text-lg font-black ${monthTone}` }, monthValue),
+                        React.createElement("div", { className:"mt-1 text-[8px] font-bold text-white/35 truncate" }, coverStats.month?.baseDate?`基準 ${coverStats.month.baseDate.slice(5)}${recordsHasMore?' · 部分紀錄':''}`:'資料不足')),
+                    React.createElement("div", { className:"portfolio-mini-kpi rounded-[18px] p-3" },
+                        React.createElement("div", { className:"text-[9px] font-black text-white/45" }, coverStats.ytd?.label||"YTD"),
+                        React.createElement("div", { className:`mt-2 text-lg font-black ${ytdTone}` }, ytdValue),
+                        React.createElement("div", { className:"mt-1 text-[8px] font-bold text-white/35 truncate" }, coverStats.ytd?.baseDate?`基準 ${coverStats.ytd.baseDate.slice(5)}${recordsHasMore?' · 部分紀錄':''}`:'資料不足')),
+                    React.createElement("div", { className:"portfolio-mini-kpi rounded-[18px] p-3" },
+                        React.createElement("div", { className:"text-[9px] font-black text-white/45" }, "目前階段"),
+                        React.createElement("div", { className:"mt-2 text-[15px] leading-tight font-black portfolio-hot-value truncate" }, coverStats.stageLabel),
+                        React.createElement("div", { className:"mt-1 text-[8px] font-bold text-white/35 leading-tight" }, coverStats.stageSub))),
+
+                React.createElement("div", { className:"portfolio-allocation-panel mt-3 rounded-2xl p-4" },
+                    React.createElement("div", { className:"flex items-center justify-between gap-3" },
+                        React.createElement("div", null,
+                            React.createElement("div", { className:"text-sm font-black" }, "資產配置"),
+                            React.createElement("div", { className:"text-[9px] font-bold text-white/40 mt-0.5" }, coverAllocationMode==='account'?"全部帳戶占比":"IB 策略實際部位")),
+                        React.createElement("div", {className:"portfolio-segmented flex rounded-full bg-white/8 p-0.5 border border-white/10"},
+                            [["account","帳戶"],["strategy","IB 策略"]].map(([id,label])=>React.createElement("button",{key:id,onClick:()=>{setCoverAllocationMode(id);writeUiPreference('coverAllocationMode',id);},className:`min-h-[32px] px-2.5 rounded-full text-[9px] font-black ${coverAllocationMode===id?'bg-white text-slate-900':'text-white/55'}`,"aria-pressed":coverAllocationMode===id},label)))),
+                    React.createElement("div", { className:"portfolio-allocation-grid mt-3" },
+                        React.createElement("div", { className:"portfolio-donut mx-auto rounded-full", style:{background:coverAllocation.gradient} },
+                            React.createElement("div", { className:"portfolio-donut-hole rounded-full border border-white/10 flex flex-col items-center justify-center" },
+                                React.createElement("div", { className:"text-xl font-black" }, coverAllocation.allocation.length),
+                                React.createElement("div", { className:"text-[8px] font-bold text-white/45" }, coverAllocationMode==='account'?"資產帳戶":"策略部位"))),
+                        React.createElement("div", { className:"grid grid-cols-1 gap-1.5 min-w-0" },
+                            coverAllocation.allocation.slice(0,6).map(x=>React.createElement("div", { key:x.key, className:"flex items-center justify-between gap-2 text-[10px]" },
+                                React.createElement("div", { className:"flex items-center gap-2 min-w-0" },
+                                    React.createElement("span", { className:"w-2 h-2 rounded-full shrink-0", style:{background:x.color} }),
+                                    React.createElement("span", { className:"font-bold text-white/65 truncate" }, x.label)),
+                                React.createElement("span", { className:"font-mono font-black text-white/70 shrink-0" }, `${money(x.pct,1)}%`))))))),
+
+                React.createElement("div", { className:"portfolio-trend-panel mt-3 rounded-2xl p-4" },
+                    React.createElement("div", { className:"flex items-start justify-between gap-3" },
+                        React.createElement("div", {className:"min-w-0"},
+                            React.createElement("div", { className:"text-sm font-black" }, "今年表現"),
+                            React.createElement("div", { className:"mt-1 text-[9px] font-bold text-white/40" }, recordsHasMore?"績效使用 Modified Dietz；目前僅依已載入的資金流紀錄計算":"績效使用 Modified Dietz；依 App 已記錄入出金調整")),
+                        React.createElement("div", {className:"portfolio-segmented flex rounded-full bg-white/8 p-0.5 border border-white/10 shrink-0"},
+                            [["performance","績效 %"],["networth","淨值"]].map(([id,label])=>React.createElement("button",{key:id,onClick:()=>{setCoverTrendMode(id);setCoverChartIndex(null);writeUiPreference('coverTrendMode',id);},className:`min-h-[32px] px-2.5 rounded-full text-[9px] font-black ${coverTrendMode===id?'bg-white text-slate-900':'text-white/55'}`,"aria-pressed":coverTrendMode===id},label)))),
+                    React.createElement("div", {className:"mt-2 flex items-center justify-between gap-3"},
+                        React.createElement("div", {className:"min-w-0"},
+                            React.createElement("div", {className:"text-[9px] font-black text-white/40"}, selectedTrendDate||"—"),
+                            React.createElement("div", {className:`mt-0.5 text-base font-black privacy-value ${coverTrendMode==='performance'&&selectedCoverTrendPoint?.performancePct<0?'text-red-300':'text-emerald-300'}`}, selectedTrendValue)),
+                        React.createElement("div", {className:"text-[8px] font-bold text-white/35 text-right"}, "點按或拖曳圖表查看日期")),
+                    coverTrendGeometry.ready
+                        ? React.createElement("svg", { viewBox:"0 0 320 96", className:"portfolio-trend-svg w-full mt-1", role:"img", "aria-label":coverTrendMode==='performance'?"今年資金流調整後績效走勢":"今年股票資產淨值走勢", onPointerDown:chooseCoverTrendPoint, onPointerMove:chooseCoverTrendPoint, style:{touchAction:'pan-y'} },
+                            React.createElement("defs", null, React.createElement("linearGradient", { id:"coverTrendFillFinal", x1:"0", y1:"0", x2:"0", y2:"1" },
+                                React.createElement("stop", { offset:"0%", stopColor:coverTrendColor, stopOpacity:".24" }),
+                                React.createElement("stop", { offset:"100%", stopColor:coverTrendColor, stopOpacity:"0" }))),
+                            coverTrendGeometry.zeroY!=null&&React.createElement("line", { x1:"0", x2:"320", y1:coverTrendGeometry.zeroY, y2:coverTrendGeometry.zeroY, stroke:"rgba(255,255,255,.12)", strokeWidth:"1", strokeDasharray:"4 4" }),
+                            React.createElement("polygon", {points:coverTrendGeometry.area,fill:"url(#coverTrendFillFinal)"}),
+                            React.createElement("polyline", { points:coverTrendGeometry.polyline, fill:"none", stroke:coverTrendColor, strokeWidth:"3.5", strokeLinecap:"round", strokeLinejoin:"round" }),
+                            selectedCoverTrendPoint&&React.createElement(React.Fragment,null,
+                                React.createElement("line",{x1:selectedCoverTrendPoint.x,x2:selectedCoverTrendPoint.x,y1:"4",y2:"92",stroke:"rgba(255,255,255,.20)",strokeWidth:"1"}),
+                                React.createElement("circle",{cx:selectedCoverTrendPoint.x,cy:selectedCoverTrendPoint.y,r:"4.5",fill:"#d1fae5",stroke:"#0f766e",strokeWidth:"2"})))
+                        : React.createElement("div", { className:"h-[80px] flex items-center justify-center text-[10px] font-bold text-white/40" }, "累積至少 2 筆資產快照後顯示走勢"),
+                    React.createElement("div", {className:"grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-white/10"},
+                        React.createElement("div",null,React.createElement("div",{className:"text-[8px] font-black text-white/35"},coverStats.ytd?.label||"YTD"),React.createElement("div",{className:`mt-1 text-xs font-black ${ytdTone}`},ytdValue)),
+                        React.createElement("div",null,React.createElement("div",{className:"text-[8px] font-black text-white/35"},"最大回撤"),React.createElement("div",{className:"mt-1 text-xs font-black text-red-300"},coverStats.trendData.length>=2?signedPctText(coverStats.maxDrawdown*100,1):'—')),
+                        React.createElement("div",null,React.createElement("div",{className:"text-[8px] font-black text-white/35"},"今年資產高點"),React.createElement("div",{className:"mt-1 text-xs font-black text-sky-200 privacy-value"},coverStats.yearHighPoint?coverStats.compactAmount(coverStats.yearHighPoint.value):'—'),coverStats.yearHighPoint&&React.createElement("div",{className:"text-[7px] font-bold text-white/30"},coverStats.yearHighPoint.date.slice(5))))),
+
+                React.createElement("button", { onClick:()=>scrollHomeTo(1), className:"portfolio-next-panel mt-3 w-full text-left rounded-2xl p-3 border border-white/10 bg-white/5", "aria-label":"查看下一步策略詳情" },
+                    React.createElement("div", {className:"flex items-center justify-between gap-3"},
+                        React.createElement("div", {className:"text-[9px] font-black text-white/40"}, "下一步策略"),
+                        React.createElement("div", {className:"text-[9px] font-black text-sky-200"}, "查看詳情 ›")),
+                    coverNextSteps.length?React.createElement("div",{className:"mt-2 grid gap-1.5"},coverNextSteps.map(step=>React.createElement("div",{key:step.key,className:"flex items-center justify-between gap-3 text-[10px]"},
+                        React.createElement("span",{className:`font-black ${step.direction==='down'?'text-red-300':'text-emerald-300'}`},`${step.direction==='down'?'↓':'↑'} ${step.label}`),
+                        React.createElement("span",{className:"font-mono font-black text-white/75 shrink-0"},step.price!=null?`$${money(step.price,2)}${step.displayText?` · ${step.displayText}`:''}`:(step.displayText||'—')))))
+                    :React.createElement("div",{className:"mt-2 text-[10px] font-bold text-white/40"},"目前資料不足，尚無法計算下一步。")),
+
+                React.createElement("div", { className:"portfolio-status-row mt-3" },
+                    React.createElement("div", { className:"portfolio-status-strip rounded-[18px] px-3 py-2.5 min-w-0" },
+                        React.createElement("div", { className:"text-[9px] font-black text-white/40" }, "目前策略"),
+                        React.createElement("div", { className:"mt-0.5 text-[11px] font-black text-white/70 truncate" }, metrics.title),
+                        React.createElement("div", { className:"mt-0.5 text-[9px] font-bold text-white/40 truncate" }, metrics.actionLines?.[0]||"目前沒有立即動作。")),
+                    React.createElement("button", { onClick:openQuickUpdateSheet, className:"portfolio-update-button rounded-[18px] px-4 text-[11px] font-black min-h-[52px]", "aria-label":"快速更新市場與帳戶資料" }, "↻ 更新")),
+                StatusWarnings());
 
         const signalSlide = React.createElement("section", { className: slideSectionClass },
             React.createElement(Card, { className:`p-6 min-h-[70vh] flex flex-col justify-between ${SignalSkin()}` },
@@ -2284,15 +2610,28 @@ const App = () => {
                     React.createElement("div", { className:`mt-4 rounded-[24px] p-4 border ${metrics.hotPullbackLocked ? 'bg-purple-50 border-purple-200' : 'bg-white/75 border-white/80'}` },
                         React.createElement("div", { className:"text-xs font-black text-slate-900" }, `QQQ 即時 ${metrics.thresholdRankLabel}｜正式 ${metrics.storedHotLabel}`),
                         React.createElement("div", { className:"mt-2 text-sm font-bold leading-relaxed text-slate-600" }, metrics.hotCompareMessage))),
-                React.createElement("div", { className:"grid grid-cols-2 gap-3 mt-6" },
-                    React.createElement("div", { className:"rounded-[24px] bg-slate-950 text-white p-4" },
-                        React.createElement("div", { className:"text-[10px] font-black text-white/60" }, "下一個關鍵價位"),
-                        React.createElement("div", { className:"mt-2 text-base font-black" }, closestSignalText),
-                        React.createElement("div", { className:"mt-2 text-[10px] font-bold text-white/60" }, nextCheckText().replace('美股收盤後',''))),
-                    React.createElement("div", { className:"rounded-[24px] bg-white/75 border border-white/80 p-4" },
-                        React.createElement("div", { className:"text-[10px] font-black text-slate-500" }, "資料日期"),
-                        React.createElement("div", { className:"mt-2 text-base font-black text-slate-950" }, data.marketDate || '-'),
-                        React.createElement("div", { className:"mt-2 text-[10px] font-bold text-slate-500" }, `過熱替代標的：${data.hotAsset||'QQQ'}`)))));
+                React.createElement("div", { className:"mt-6" },
+                    React.createElement("div", { className:"flex items-end justify-between gap-3 mb-3" },
+                        React.createElement("div", null,
+                            React.createElement("div", { className:"text-[10px] font-black tracking-[.16em] text-slate-500" }, "下一步策略路徑"),
+                            React.createElement("div", { className:"mt-1 text-xs font-bold text-slate-500" }, "只顯示目前狀態下一個真正會改變階段／配置的門檻")),
+                        React.createElement("div", { className:"text-right text-[10px] font-bold text-slate-400 shrink-0" }, data.marketDate || '-')),
+                    nextStepItems.length
+                        ? React.createElement("div", { className:`grid gap-3 ${nextStepItems.length>1?'grid-cols-1 sm:grid-cols-2':'grid-cols-1'}` },
+                            nextStepItems.map(step=>React.createElement("div", { key:step.key, className:`rounded-[24px] border p-4 ${step.direction==='down'?'bg-red-50 border-red-200':'bg-emerald-50 border-emerald-200'}` },
+                                React.createElement("div", { className:`text-[10px] font-black ${step.direction==='down'?'text-red-600':'text-emerald-700'}` }, step.direction==='down'?'↓ 往下':'↑ 往上'),
+                                React.createElement("div", { className:"mt-1 text-sm font-black text-slate-950 leading-tight" }, step.label),
+                                step.price!=null && React.createElement("div", { className:"mt-2 font-mono text-lg font-black text-slate-950" }, `${step.label.startsWith('QQQ')?'QQQ':metrics.riskBenchmark} $${money(step.price,2)}`),
+                                React.createElement("div", { className:`mt-1 text-xs font-black ${step.direction==='down'?'text-red-600':'text-emerald-700'}` }, step.value==null?'沒有更高階':`距離 ${step.displayText}`),
+                                step.hint && React.createElement("div", { className:"mt-2 text-[10px] font-bold text-slate-500 leading-relaxed" }, step.hint),
+                                React.createElement("div", { className:"mt-3 pt-3 border-t border-black/5 text-[11px] font-bold text-slate-700 leading-relaxed" }, step.action))))
+                        : React.createElement("div", { className:"rounded-[24px] bg-white/75 border border-white/80 p-4 text-sm font-bold text-slate-500" }, "資料不足，暫時無法計算下一步。"),
+                    metrics.introHotNote && React.createElement("div", { className:"mt-3 rounded-2xl bg-blue-50 border border-sky-200 p-3" },
+                        React.createElement("div", { className:"text-[10px] font-black text-blue-700" }, "首次導入 HOT 提醒"),
+                        React.createElement("div", { className:"mt-1 text-[11px] font-bold text-sky-800 leading-relaxed" }, metrics.introHotNote)),
+                    React.createElement("div", { className:"mt-3 flex items-center justify-between gap-3 text-[10px] font-bold text-slate-400" },
+                        React.createElement("span", null, nextCheckText().replace('美股收盤後','')),
+                        React.createElement("span", null, `過熱替代：${data.hotAsset||'QQQ'}`)))));
 
         const tradeSlide = React.createElement("section", { className: slideSectionClass },
             React.createElement(Card, { className:"trade-slide-card p-6 min-h-[70vh] bg-gradient-to-br from-slate-950 to-slate-800 text-white flex flex-col justify-between" },
@@ -2902,7 +3241,7 @@ const App = () => {
             React.createElement("div", { className:"mt-2 text-sm font-bold text-slate-500 leading-relaxed" }, syncText),
             React.createElement("div",{className:"mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3"},
                 React.createElement("div",{className:"rounded-2xl bg-emerald-50 border border-emerald-100 p-3"},React.createElement("div",{className:"text-[10px] font-black text-emerald-700"},"前景自動同步"),React.createElement("div",{className:"mt-1 text-sm font-black text-emerald-950"},"已啟用"),React.createElement("div",{className:"mt-1 text-[10px] font-bold text-emerald-700"},"回到 App 自動重新讀雲端")),
-                React.createElement("div",{className:"rounded-2xl bg-blue-50 border border-blue-100 p-3"},React.createElement("div",{className:"text-[10px] font-black text-blue-700"},"資料版本鎖"),React.createElement("div",{className:"mt-1 text-sm font-black text-blue-950"},`Revision ${Math.max(getNum(data.dataRevision),getNum(cloudSyncMeta.revision))}`),React.createElement("div",{className:"mt-1 text-[10px] font-bold text-blue-700"},"儲存瞬間再次驗證版本，避免競態覆蓋")),
+                React.createElement("div",{className:"rounded-2xl bg-blue-50 border border-sky-200 p-3"},React.createElement("div",{className:"text-[10px] font-black text-blue-700"},"資料版本鎖"),React.createElement("div",{className:"mt-1 text-sm font-black text-blue-950"},`Revision ${Math.max(getNum(data.dataRevision),getNum(cloudSyncMeta.revision))}`),React.createElement("div",{className:"mt-1 text-[10px] font-bold text-blue-700"},"儲存瞬間再次驗證版本，避免競態覆蓋")),
                 React.createElement("div",{className:`rounded-2xl border p-3 ${syncHealthy?'bg-emerald-50 border-emerald-100':'bg-amber-50 border-amber-100'}`},React.createElement("div",{className:`text-[10px] font-black ${syncHealthy?'text-emerald-700':'text-amber-700'}`},"最近成功同步"),React.createElement("div",{className:"mt-1 text-sm font-black text-slate-950"},cloudSyncMeta.lastAt?new Date(cloudSyncMeta.lastAt).toLocaleString('zh-TW'):'尚無成功紀錄'),React.createElement("div",{className:"mt-1 text-[10px] font-bold text-slate-600"},cloudSyncMeta.lastAt?`${cloudSyncMeta.reason||'雲端同步'}${syncHealthy?'':'｜已超過 18 小時'}`:'登入後會開始記錄'))),
             React.createElement("div", { className:"mt-5 rounded-[24px] bg-slate-950 text-white p-4" },
                 React.createElement("div", { className:"text-[10px] font-black text-white/60" }, "資料位置"),
@@ -2918,7 +3257,7 @@ const App = () => {
             React.createElement("div",{className:"text-[10px] font-black tracking-[.14em] text-purple-600"},"自動化／GitHub Actions"),
             React.createElement("div",{className:"mt-2 text-lg font-black text-slate-950"},data.autoSnapshotMarketDate?`最近自動快照 ${data.autoSnapshotMarketDate}`:"尚未完成盤後自動快照"),
             React.createElement("div",{className:"mt-2 text-xs font-bold text-slate-500 leading-relaxed"},data.autoSnapshotLastError?`最近錯誤：${data.autoSnapshotLastError}`:data.qqqiE2eTestAt?`QQQI E2E 已通過｜${new Date(data.qqqiE2eTestAt).toLocaleString('zh-TW')}`:"可直接開啟 GitHub Actions 檢查／手動執行。"),
-            githubActionsUrl&&React.createElement("a",{href:githubActionsUrl,target:"_blank",rel:"noreferrer",className:"mt-4 w-full inline-flex items-center justify-center rounded-[20px] bg-slate-950 text-white px-4 py-3 font-black text-sm"},"開啟 GitHub Actions ↗"),
+            githubActionsUrl&&React.createElement("a",{href:githubActionsUrl,target:"_blank",rel:"noreferrer",className:"mt-4 w-full inline-flex items-center justify-center rounded-2xl bg-slate-950 text-white px-4 py-3 font-black text-sm"},"開啟 GitHub Actions ↗"),
             data.qqqiE2eTestStatus&&React.createElement("div",{className:"mt-3 rounded-2xl bg-purple-50 border border-purple-100 p-3 text-xs font-black text-purple-800"},data.qqqiE2eTestStatus))),
         React.createElement("div", { className:"mt-8" },React.createElement("div", { className:"text-xs font-black tracking-[.15em] text-red-700 mb-3 ml-2" }, "系統維護"),React.createElement("button", { onClick:resetAllCloudData, disabled:resettingCloud||!user||user.isAnonymous, className:"settings-row w-full text-left disabled:opacity-40" },React.createElement("span", { className:"settings-icon text-red-600" }, "□"),React.createElement("span", { className:"flex-1" }, React.createElement("span", { className:"block text-[17px] font-black text-red-700" }, resettingCloud?"正在重置…":"重置全部雲端與本機資料"), React.createElement("span", { className:"block text-xs font-bold text-red-500 mt-1 leading-relaxed" }, "永久刪除正式策略狀態與全部紀錄；建議先備份 JSON")),React.createElement("span", { className:"text-2xl text-red-300" }, "›")))
     );
@@ -2983,7 +3322,7 @@ const App = () => {
                     React.createElement("div",{className:"text-[10px] font-black text-white/55"},"股票資產總覽"),
                     React.createElement("div",{className:"mt-2 text-2xl font-black privacy-value"},portfolio.totalDisplay),
                     React.createElement("div",{className:"mt-1 text-xs font-bold text-white/60 privacy-value"},`IB 主策略 ${portfolio.strategyDisplay}｜其他帳戶不參與策略`)),
-                React.createElement("div",{className:"rounded-[24px] bg-blue-50 border border-blue-100 p-4"},
+                React.createElement("div",{className:"rounded-[24px] bg-blue-50 border border-sky-200 p-4"},
                     React.createElement("div",{className:"font-black text-blue-950"},"IB 主策略保護"),
                     React.createElement("div",{className:"text-xs font-bold text-blue-700 mt-1 leading-relaxed"},"本頁只會更新 FT、複委託、台股、其他資產與其歷史快照，不會修改 IB 持股、Risk-On／Off、HOT、DCA 或交易紀錄。"))),
             React.createElement("div",{id:"health-accounts-ft"},React.createElement(Card,{className:"p-5 mb-4"},
@@ -3043,7 +3382,7 @@ const App = () => {
             React.createElement("button",{onClick:manualSave,className:"w-full mt-4 py-4 rounded-[22px] bg-brand-600 text-white font-black"},"儲存正式參數")));
     const AppearanceSettingsPage = () => {
         const themes=[['aurora','極光'],['mountain','山景'],['ocean','海洋'],['off','純色']];
-        return React.createElement(SettingsPage,{eyebrow:"外觀與隱私",title:"首頁封面",desc:"封面使用內建輕量圖層，不需要下載圖片，也不會影響滑動效能。"},
+        return React.createElement(SettingsPage,{eyebrow:"外觀與隱私",title:"首頁儀表板風格",desc:"第一頁改為深藍績效儀表板；這裡可切換底色氛圍，不會影響任何策略或資料。"},
             React.createElement(Card,{className:"p-5"},
                 React.createElement("button",{onClick:()=>setUiPreference('privacyMode',!data.privacyMode),className:"settings-row w-full text-left"},
                     React.createElement("span",{className:"settings-icon text-blue-600"},data.privacyMode?"◉":"◎"),
@@ -3118,7 +3457,7 @@ const App = () => {
                     React.createElement("div",{className:"flex items-center justify-between gap-3 mb-3"},
                         React.createElement("div",null,React.createElement("div",{className:"font-black text-slate-950"},"槓桿倍率"),React.createElement("div",{className:"text-xs font-bold text-slate-500 mt-1"},"例如 TSLL 可輸入 2；反向 ETF 也可輸入負倍率。")),
                         React.createElement("div",{className:"w-28"},calcField("倍率","leverage","x",{signed:true}))),
-                    React.createElement("div",{className:"rounded-2xl bg-blue-50 border border-blue-100 px-4 py-3 text-xs font-black text-blue-800"},"換算：槓桿股票漲跌幅 ≈ 原型股票漲跌幅 × 槓桿倍率")),
+                    React.createElement("div",{className:"rounded-2xl bg-blue-50 border border-sky-200 px-4 py-3 text-xs font-black text-blue-800"},"換算：槓桿股票漲跌幅 ≈ 原型股票漲跌幅 × 槓桿倍率")),
                 React.createElement("div",{className:"grid grid-cols-1 md:grid-cols-2 gap-4"},
                     React.createElement(Card,{className:"p-5"},
                         React.createElement("div",{className:"flex items-center justify-between gap-3 mb-4"},React.createElement("div",null,React.createElement("div",{className:"text-[10px] font-black tracking-[.14em] text-blue-600"},"原型股票"),React.createElement("div",{className:"text-2xl font-black text-slate-950"},c.baseSymbol||"—")),React.createElement("span",{className:"px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 text-xs font-black"},"可反推")),
@@ -3144,7 +3483,7 @@ const App = () => {
         React.createElement("div",null,
             React.createElement(Card,{className:"p-5 mb-4"},
                 React.createElement("button",{onClick:createBackupCard,className:"w-full py-4 rounded-[22px] bg-slate-950 text-white font-black"},"建立新的備份卡片"),
-                React.createElement("button",{onClick:restoreUndoCheckpoint,disabled:!undoCheckpoint,className:"w-full mt-3 py-3 rounded-[20px] bg-amber-50 border border-amber-100 text-amber-800 text-sm font-black disabled:opacity-40"},undoCheckpoint?`↶ 復原上一次正式儲存｜${new Date(undoCheckpoint.createdAt).toLocaleString('zh-TW')}`:"目前沒有可復原的上一版"),
+                React.createElement("button",{onClick:restoreUndoCheckpoint,disabled:!undoCheckpoint,className:"w-full mt-3 py-3 rounded-2xl bg-amber-50 border border-amber-100 text-amber-800 text-sm font-black disabled:opacity-40"},undoCheckpoint?`↶ 復原上一次正式儲存｜${new Date(undoCheckpoint.createdAt).toLocaleString('zh-TW')}`:"目前沒有可復原的上一版"),
                 React.createElement("div",{className:"grid grid-cols-2 gap-2 mt-3"},React.createElement("button",{onClick:exportRecordsJson,className:"py-3 rounded-2xl bg-blue-50 text-blue-700 text-xs font-black"},"完整 JSON"),React.createElement("button",{onClick:()=>importInputRef.current?.click(),className:"py-3 rounded-2xl bg-emerald-50 text-emerald-700 text-xs font-black"},"還原 JSON"),React.createElement("button",{onClick:exportRecordsCsv,className:"py-3 rounded-2xl bg-purple-50 text-purple-700 text-xs font-black"},"策略紀錄 CSV"),React.createElement("button",{onClick:exportPortfolioCsv,className:"py-3 rounded-2xl bg-amber-50 text-amber-700 text-xs font-black"},"每日淨值 CSV")),
                 React.createElement("input",{ref:importInputRef,type:"file",accept:"application/json,.json",onChange:importRecordsJson,className:"hidden"})),
             React.createElement("div",{className:"space-y-3"},backupCards.length?backupCards.map(card=>React.createElement(Card,{key:card.id,className:"p-4"},
@@ -3195,7 +3534,7 @@ const App = () => {
                         React.createElement("button",{onClick:()=>setShowQuickUpdateSheet(false),className:"w-11 h-11 rounded-full bg-slate-100 text-xl text-slate-500"},"×"))),
                 React.createElement("div",{className:"unified-sheet-scroll"},
                     React.createElement("div",{className:"rounded-[24px] bg-slate-950 text-white p-4"},React.createElement("div",{className:"text-[10px] font-black text-white/55"},"目前全部股票總資產"),React.createElement("div",{className:"mt-2 text-2xl font-black privacy-value"},portfolio.totalDisplay),React.createElement("div",{className:"mt-1 text-xs font-bold text-white/60"},"本面板只更新外部帳戶與歷史快照")),
-                    React.createElement("div",{className:"mt-4 rounded-[26px] bg-blue-50 border border-blue-100 p-4"},React.createElement(SectionTitle,{title:"Firstrade",desc:"輸入券商顯示的 Total Account Value；短線買賣不用逐筆記。"}),stableNum("ftUsd","FT 帳戶總資產","USD","輸入完成後按最下方一次儲存。")),
+                    React.createElement("div",{className:"mt-4 rounded-[26px] bg-blue-50 border border-sky-200 p-4"},React.createElement(SectionTitle,{title:"Firstrade",desc:"輸入券商顯示的 Total Account Value；短線買賣不用逐筆記。"}),stableNum("ftUsd","FT 帳戶總資產","USD","輸入完成後按最下方一次儲存。")),
                     React.createElement("div",{className:"mt-4 rounded-[26px] bg-slate-50 border border-slate-100 p-4"},
                         React.createElement(SectionTitle,{title:"複委託",desc:sub.holdingMode?`${sub.symbol}｜${money(getNum(draft.subShares),3)} 股`:'尚未設定有效股票代號與股數'}),
                         React.createElement("div",{className:"grid grid-cols-1 sm:grid-cols-2 gap-3"},stableNum("subPriceUsd","目前股價","USD",`最後更新：${lastPriceTime}`),stableNum("subCashUsd","帳戶現金","USD","股數與成本等低頻資料仍放在完整設定。")),
@@ -3203,7 +3542,7 @@ const App = () => {
                         React.createElement("div",{className:"mt-3 rounded-2xl bg-white border border-slate-200 p-3 flex items-center justify-between gap-3"},React.createElement("div",null,React.createElement("div",{className:"text-[10px] font-black text-slate-500"},"目前複委託估值"),React.createElement("div",{className:"mt-1 text-xs font-bold text-slate-500"},sub.holdingMode?"股票市值＋帳戶現金":"使用手動備援淨值")),React.createElement("div",{className:"font-mono text-lg font-black text-slate-950 privacy-value"},`US$ ${money(sub.valueUsd,2)}`)))),
                 React.createElement("div",{className:"unified-sheet-footer grid grid-cols-1 gap-2"},
                     React.createElement("button",{onClick:saveQuickUpdate,disabled:quickSaving,className:"w-full py-4 rounded-[22px] bg-slate-950 text-white font-black disabled:opacity-50"},quickSaving?"正在儲存今日快照…":"儲存今日 FT＋複委託快照"),
-                    React.createElement("button",{onClick:()=>{setShowQuickUpdateSheet(false);openSettingsView('accounts');setPage('settings');},className:"w-full py-3 rounded-[20px] bg-slate-100 text-slate-700 text-xs font-black"},"修改股票代號、股數、成本或記錄入金／出金"))));
+                    React.createElement("button",{onClick:()=>{setShowQuickUpdateSheet(false);openSettingsView('accounts');setPage('settings');},className:"w-full py-3 rounded-2xl bg-slate-100 text-slate-700 text-xs font-black"},"修改股票代號、股數、成本或記錄入金／出金"))));
     };
     const AccountSheet = () => {
         if(!showAccountSheet)return null;
