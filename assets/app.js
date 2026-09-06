@@ -147,10 +147,10 @@ const formatDateLocal = d => { if(!d || Number.isNaN(d.getTime())) return ''; re
 const nthWeekdayOfMonth = (year, monthIndex, weekday, nth) => { const d=new Date(year,monthIndex,1,12); let shift=(weekday-d.getDay()+7)%7; d.setDate(1+shift+(nth-1)*7); return d; };
 const lastWeekdayOfMonth = (year, monthIndex, weekday) => { const d=new Date(year,monthIndex+1,0,12); let shift=(d.getDay()-weekday+7)%7; d.setDate(d.getDate()-shift); return d; };
 const easterSunday = year => { const a=year%19,b=Math.floor(year/100),c=year%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),month=Math.floor((h+l-7*m+114)/31)-1,day=((h+l-7*m+114)%31)+1; return new Date(year,month,day,12); };
-const observedFixedHoliday = (year, monthIndex, day) => { const d=new Date(year,monthIndex,day,12), w=d.getDay(); if(w===6)d.setDate(d.getDate()-1); else if(w===0)d.setDate(d.getDate()+1); return d; };
+const observedFixedHoliday = (year, monthIndex, day, options={}) => { const d=new Date(year,monthIndex,day,12), w=d.getDay(); if(w===6&&!options.skipSaturdayObservation)d.setDate(d.getDate()-1); else if(w===0)d.setDate(d.getDate()+1); return d; };
 const US_MARKET_HOLIDAY_CACHE=new Map();
 const usMarketHolidaySet = year => { if(US_MARKET_HOLIDAY_CACHE.has(year)) return US_MARKET_HOLIDAY_CACHE.get(year); const set=new Set(), add=d=>set.add(formatDateLocal(d));
-    add(observedFixedHoliday(year,0,1));
+    add(observedFixedHoliday(year,0,1,{skipSaturdayObservation:true}));
     add(nthWeekdayOfMonth(year,0,1,3));
     add(nthWeekdayOfMonth(year,1,1,3));
     const goodFriday=easterSunday(year); goodFriday.setDate(goodFriday.getDate()-2); add(goodFriday);
@@ -165,7 +165,11 @@ const usMarketHolidaySet = year => { if(US_MARKET_HOLIDAY_CACHE.has(year)) retur
 const isUsTradingDay = dateOrText => { const d=typeof dateOrText==='string'?parseDateLocal(dateOrText):new Date(dateOrText); if(!d||Number.isNaN(d.getTime()))return false; const w=d.getDay(); if(w===0||w===6)return false; return !usMarketHolidaySet(d.getFullYear()).has(formatDateLocal(d)); };
 const addTradingDays = (dateText, count=21) => { const d=parseDateLocal(dateText)||new Date(); let left=Math.max(0,Math.floor(count)); while(left>0){ d.setDate(d.getDate()+1); if(isUsTradingDay(d))left--; } return formatDateLocal(d); };
 const tradingDayDistance = (fromText, toText=todayStr()) => { const from=parseDateLocal(fromText), to=parseDateLocal(toText); if(!from||!to)return Infinity; if(from>to)return 0; let n=0,d=new Date(from); while(formatDateLocal(d)<formatDateLocal(to)){ d.setDate(d.getDate()+1); if(isUsTradingDay(d))n++; if(n>5000)break; } return n; };
-const latestCompletedUsTradingDay = (now=new Date()) => { const d=new Date(now); d.setHours(12,0,0,0); const today=formatDateLocal(d); const nyParts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(now); const hh=Number(nyParts.find(x=>x.type==='hour')?.value||0), mm=Number(nyParts.find(x=>x.type==='minute')?.value||0); if(!isUsTradingDay(d) || hh<16 || (hh===16&&mm<15)){ do{d.setDate(d.getDate()-1);}while(!isUsTradingDay(d)); return formatDateLocal(d); } return today; };
+const nyDateTimeParts = (now=new Date()) => { const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(now); const get=t=>parts.find(x=>x.type===t)?.value||''; return {date:`${get('year')}-${get('month')}-${get('day')}`,hour:Number(get('hour')),minute:Number(get('minute'))}; };
+const previousUsTradingDay = text => { const d=parseDateLocal(text); if(!d)return ''; do{d.setDate(d.getDate()-1);}while(!isUsTradingDay(d)); return formatDateLocal(d); };
+const latestCompletedUsTradingDay = (now=new Date()) => { const ny=nyDateTimeParts(now); if(!isUsTradingDay(ny.date)) return previousUsTradingDay(ny.date); if(ny.hour<16||(ny.hour===16&&ny.minute<15)) return previousUsTradingDay(ny.date); return ny.date; };
+const nyDateFromUnix = ts => { if(!(Number(ts)>0))return ''; const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(Number(ts)*1000)); const get=t=>parts.find(x=>x.type===t)?.value||''; return `${get('year')}-${get('month')}-${get('day')}`; };
+const calendarDateAgeDays = iso => { const raw=new Date(String(iso||'')); if(Number.isNaN(raw.getTime()))return Infinity; const a=parseDateLocal(formatDateLocal(raw)), b=parseDateLocal(todayStr()); if(!a||!b)return Infinity; return Math.max(0,Math.floor((b-a)/86400000)); };
 const DEFAULT = {
     schemaVersion: 2,
     dataRevision: 0, lastWriteId: "", lastWriteSource: "", lastWriteAt: "",
@@ -452,6 +456,8 @@ const computePortfolioSummary = (data, strategyUsdValue, displayCurrency='TWD') 
     const totalUsd=rate>0?totalTwd/rate:0;
     const externalTwd=Math.max(0,totalTwd-strategyUsd*rate);
     const externalUsd=rate>0?externalTwd/rate:0;
+    const ibFtUsd=Math.max(0,strategyUsd)+Math.max(0,ftUsd);
+    const ibFtTwd=ibFtUsd*rate;
     const display=(usd,twd,digitsUsd=2)=>currency==='USD'?`US$ ${money(usd,digitsUsd)}`:`NT$ ${money(twd,0)}`;
     const cards=[
         {key:'ib',label:'IB 策略帳戶',amountText:display(strategyUsd,strategyUsd*rate),note:'唯一參與 TQQQ 策略',ratio:totalTwd>0?strategyUsd*rate/totalTwd:0},
@@ -460,7 +466,7 @@ const computePortfolioSummary = (data, strategyUsdValue, displayCurrency='TWD') 
         {key:'tw',label:'台股',amountText:display(rate>0?twStockTwd/rate:0,twStockTwd),note:'只計入總資產',ratio:totalTwd>0?twStockTwd/totalTwd:0},
         {key:'other',label:'其他股票資產',amountText:display(rate>0?otherTotalTwd/rate:0,otherTotalTwd),note:'其他券商、證券或投資現金',ratio:totalTwd>0?otherTotalTwd/totalTwd:0}
     ];
-    return {rate,currency,strategyUsd,ftUsd,subUsd,subAccount,twStockTwd,otherTotalTwd,externalTwd,externalUsd,totalTwd,totalUsd,totalDisplay:display(totalUsd,totalTwd),strategyDisplay:display(strategyUsd,strategyUsd*rate),externalDisplay:display(externalUsd,externalTwd),cards};
+    return {rate,currency,strategyUsd,ftUsd,subUsd,subAccount,twStockTwd,otherTotalTwd,externalTwd,externalUsd,ibFtUsd,ibFtTwd,totalTwd,totalUsd,totalDisplay:display(totalUsd,totalTwd),strategyDisplay:display(strategyUsd,strategyUsd*rate),ftDisplay:display(ftUsd,ftUsd*rate),ibFtDisplay:display(ibFtUsd,ibFtTwd),externalDisplay:display(externalUsd,externalTwd),cards};
 };
 const withPortfolioSnapshot = (raw, reason='save') => {
     const normalized=normalizeData(raw);
@@ -550,18 +556,29 @@ const SectionTitle = ({ title, desc, right }) => React.createElement("div", { cl
         React.createElement("h2", { className: "font-black text-slate-900" }, title),
         desc && React.createElement("p", { className: "text-xs text-slate-500 mt-1 leading-relaxed" }, desc)),
     right);
-async function fetchFinnhubQuote(symbol, keyOverride="") {
+async function fetchFinnhubQuote(symbol, keyOverride="", targetDate="") {
     const key = isValidFinnhubKey(keyOverride) ? String(keyOverride).trim() : getFinnhubKey();
     const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(key)}`, { cache: "no-store", referrerPolicy:"no-referrer" });
     if (r.status === 429) throw new Error("Finnhub API 額度暫時用完（HTTP 429）");
     if (!r.ok) throw new Error(`Finnhub HTTP ${r.status}`);
     const d = await r.json();
-    const close = getNum(d.c);
-    if (close <= 0) throw new Error(symbol + " Finnhub 報價無資料");
-    return { symbol, close, date: todayStr(), quoteSource: "Finnhub" };
+    const quoteDate=nyDateFromUnix(getNum(d.t));
+    if(!targetDate){
+        const live=getNum(d.c);
+        if(live<=0) throw new Error(symbol + " Finnhub 報價無資料");
+        return {symbol,close:round2(live),date:quoteDate||todayStr(),quoteSource:"Finnhub｜即時"};
+    }
+    let close=0, resolvedDate=targetDate, quoteSource="Finnhub｜完成交易日";
+    if(quoteDate===targetDate){ close=getNum(d.c); }
+    else if(quoteDate>targetDate && previousUsTradingDay(quoteDate)===targetDate){ close=getNum(d.pc); quoteSource="Finnhub｜前一收盤"; }
+    else if(!quoteDate){ close=getNum(d.pc)||getNum(d.c); quoteSource="Finnhub｜日期未回傳"; }
+    else if(quoteDate<targetDate){ throw new Error(`${symbol} 最新報價日期 ${quoteDate}，尚未到目標交易日 ${targetDate}`); }
+    else { throw new Error(`${symbol} 報價日期 ${quoteDate} 無法安全對應目標交易日 ${targetDate}`); }
+    if (close <= 0) throw new Error(symbol + " Finnhub 完成交易日報價無資料");
+    return { symbol, close:round2(close), date:resolvedDate, quoteSource };
 }
-async function fetchSymbol(symbol, keyOverride="") {
-    return await fetchFinnhubQuote(symbol, keyOverride);
+async function fetchSymbol(symbol, keyOverride="", targetDate="") {
+    return await fetchFinnhubQuote(symbol, keyOverride, targetDate);
 }
 
 const LEVERAGE_CALC_LOCAL_KEY = "stockAssetsLeverageCalcV1";
@@ -1202,6 +1219,7 @@ const App = () => {
     const [previewScenario, setPreviewScenario] = useState("LIVE");
     const homeSliderRef = useRef(null);
     const homeScrollTimerRef = useRef(null);
+    const toastTimerRef = useRef(null);
     const pullStartRef = useRef({x:0,y:0,active:false});
     const [collapsed, setCollapsed] = useState({ marketData: true, holdings: true, scenario: true, marketStatus: true, strategyParams: true, hotCycle: true, previewScenarios: true, strategyText: true, assetAccounts: true, recordData: true, cashFlow: true });
     const [hasDraftChanges, setHasDraftChanges] = useState(false);
@@ -1250,7 +1268,11 @@ const App = () => {
     const updateExternalDraft = useCallback((key,value) => { externalDraftRef.current={...externalDraftRef.current,[key]:value}; externalDraftDirtyRef.current=true; }, []);
     const collectExternalDraft = useCallback(() => normalizeData({...data,...externalDraftRef.current}), [data]);
     const toggleCollapse = useCallback(id => setCollapsed(prev => ({ ...prev, [id]: !prev[id] })), []);
-    const showToast = useCallback(txt => { setToast(txt); setTimeout(() => setToast(""), 2600); }, []);
+    const showToast = useCallback(txt => {
+        if(toastTimerRef.current) clearTimeout(toastTimerRef.current);
+        setToast(txt);
+        toastTimerRef.current=setTimeout(() => { setToast(""); toastTimerRef.current=null; }, 2600);
+    }, []);
     const openAppDialog = useCallback(options => new Promise(resolve => {
         if(appDialogResolverRef.current){ try{appDialogResolverRef.current(null);}catch(e){} }
         appDialogResolverRef.current=resolve;
@@ -1738,11 +1760,12 @@ const App = () => {
         const ok = await saveFormalData(data, "已手動同步目前正式狀態");
         showToast(ok ? "已同步目前正式狀態" : (saveConflictRef.current||"同步失敗"));
     };
-    const saveExternalAccounts = async (source=data, successText="已儲存其他券商與今日快照") => {
+    const saveExternalAccounts = async (source=data, successText="已儲存其他券商與今日快照", options={}) => {
         const nowIso=new Date().toISOString();
         let prepared=normalizeData(source);
         const ftChanged=getNum(prepared?.ftUsd)!==getNum(committedDataRef.current?.ftUsd);
-        prepared=normalizeData({...prepared,ftUpdatedAt:ftChanged||!prepared?.ftUpdatedAt?nowIso:prepared.ftUpdatedAt,subUsd:computeSubAccountValue(prepared).valueUsd});
+        const touchFt=options.touchFt===true || ftChanged || !prepared?.ftUpdatedAt;
+        prepared=normalizeData({...prepared,ftUpdatedAt:touchFt&&getNum(prepared.ftUsd)>0?nowIso:prepared.ftUpdatedAt,subUsd:computeSubAccountValue(prepared).valueUsd});
         let cloudBase=normalizeData(committedDataRef.current||{}); let expectedRevision=null;
         if(docRef()){
             try{
@@ -1815,14 +1838,14 @@ const App = () => {
         if(!externalFlowDate){showToast('請選擇資金流日期');return;}
         const flow={id:makeRecordId(),account:externalFlowAccount,type:externalFlowType,amountUsd:amount,date:externalFlowDate,note:externalFlowNote.trim(),createdAt:new Date().toISOString()};
         const next=normalizeData({...collectExternalDraft(),externalCashflows:[flow,...(Array.isArray(data.externalCashflows)?data.externalCashflows:[])]});
-        const ok=await saveExternalAccounts(next,`${externalFlowAccount==='FT'?'Firstrade':'複委託'}${externalFlowType==='withdrawal'?'出金':'入金'}已記錄`);
+        const ok=await saveExternalAccounts(next,`${externalFlowAccount==='FT'?'Firstrade':'複委託'}${externalFlowType==='withdrawal'?'出金':'入金'}已記錄`,{touchFt:externalFlowAccount==='FT'});
         if(ok){setExternalFlowAmount('');setExternalFlowNote('');}
     };
     const saveQuickUpdate = async () => {
         if(quickSaving)return;
         setQuickSaving(true);
         try{
-            const ok=await saveExternalAccounts(collectExternalDraft(),'FT、複委託與今日快照已儲存');
+            const ok=await saveExternalAccounts(collectExternalDraft(),'FT、複委託與今日快照已儲存',{touchFt:true});
             if(ok){
                 setShowQuickUpdateSheet(false);
                 flashUpdateSuccess();
@@ -2017,6 +2040,7 @@ const App = () => {
     }, []);
     useEffect(() => () => {
         if (homeScrollTimerRef.current) clearTimeout(homeScrollTimerRef.current);
+        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     }, []);
     const previewActive = previewScenario !== "LIVE";
     const fetchPriceUpdates = async ({ force = false } = {}) => {
@@ -2030,7 +2054,8 @@ const App = () => {
         const syms = ["SPY", "QQQ", "TQQQ", ...extraSymbols].filter((v,i,a)=>a.indexOf(v)===i);
         try {
             const key=await ensureFinnhubKey();
-            const results = await Promise.allSettled(syms.map(sym=>fetchSymbol(sym,key)));
+            const targetMarketDate=latestCompletedUsTradingDay();
+            const results = await Promise.allSettled(syms.map(sym=>fetchSymbol(sym,key,targetMarketDate)));
             const updates = { lastFetchAttemptAt: attemptedAt }, failed = [], priceSources = { ...(data.priceSources || {}) };
             results.forEach((res, idx) => {
                 const sym = syms[idx];
@@ -2330,7 +2355,7 @@ const App = () => {
         const date=data.autoSnapshotMarketDate||'';
         const age=date?tradingDayDistance(date,expected):999;
         const quality=['complete','estimated','incomplete'].includes(data.autoSnapshotQuality)?data.autoSnapshotQuality:(data.autoSnapshotLastError?'estimated':date?'complete':'incomplete');
-        const ftAge=getNum(data.ftUsd)>0?(data.ftUpdatedAt?Math.max(0,Math.floor((Date.now()-Date.parse(data.ftUpdatedAt))/86400000)):999):0;
+        const ftAge=getNum(data.ftUsd)>0?(data.ftUpdatedAt?calendarDateAgeDays(data.ftUpdatedAt):999):0;
         const latestDividend=(Array.isArray(data.qqqiDividendLedger)?data.qqqiDividendLedger:[])[0]||null;
         const syncAgeHours=cloudSyncMeta.lastAt?Math.max(0,(Date.now()-Date.parse(cloudSyncMeta.lastAt))/3600000):Infinity;
         const upToDate=age===0;
@@ -2340,22 +2365,37 @@ const App = () => {
         const syncBad=Boolean(user&&!user.isAnonymous)&&syncAgeHours>18;
         const dividendBad=Boolean(String(data.qqqiDividendLastError||'').trim());
         const fxBad=Boolean(data.exchangeRateLastError&&data.exchangeRateLastAttemptDate===todayStr());
+
+        // v7.0 FINAL hotfix：自動快照的 quality 描述的是「當時」資料品質。
+        // 使用者之後若已針對同一交易日人工補正（例如更新 FT），不要再把歷史原因誤報成目前問題。
+        const historyForAuto=(Array.isArray(data.portfolioHistory)?data.portfolioHistory:[]).find(x=>String(x?.date||'').slice(0,10)===String(date||'').slice(0,10));
+        const sameDayManualCorrection=Boolean(historyForAuto&&historyForAuto.auto===false&&String(historyForAuto.quality||'').toLowerCase()==='manual');
+        const estimateReasons=String(data.autoSnapshotQualityNote||'').split('；').map(x=>x.trim()).filter(Boolean);
+        const unresolvedEstimateReasons=estimateReasons.filter(reason=>{
+            if(reason.includes('FT 淨值超過 7 天未更新'))return ftBad;
+            if(reason.includes('匯率沿用既有值'))return fxBad;
+            if(reason.startsWith('舊價：'))return priceBad;
+            return true;
+        });
+        const estimatedResolved=quality==='estimated'&&sameDayManualCorrection&&estimateReasons.length>0&&unresolvedEstimateReasons.length===0;
+        const effectiveQuality=estimatedResolved?'complete':quality;
+        const correctionNote=estimatedResolved?`${date} 自動快照當時為估算（${data.autoSnapshotQualityNote||'資料品質估算'}）；同日已由人工快照補正，目前資料狀態已恢復正常。`:'';
         const issues=[];
         const add=(id,severity,title,detail,target,action,anchor='')=>{if(!issues.some(x=>x.id===id))issues.push({id,severity,title,detail,target,action,anchor});};
         if(smaBad)add('sma','red',`${metrics.riskBenchmark} 參考所需 200SMA 要確認`,metrics.riskBenchmark==='SPY'?`SPY ${data.spySmaUpdatedDate||'-'}｜QQQ ${data.qqqSmaUpdatedDate||'-'}`:`QQQ ${data.qqqSmaUpdatedDate||'-'}（SPY 不影響 Risk-On／Off）`,'market','更新 200SMA','health-market-sma');
         if(priceBad)add('price','red','股價資料已過期',freshnessInfo.price.text,'market','更新股價','health-market-prices');
         if(!date)add('snapshot','red','尚未完成自動記帳','請查看 GitHub Actions／雲端同步狀態','sync','查看自動快照','health-sync-snapshot');
         else if(!upToDate)add('snapshot','red',`自動記帳落後 ${age} 個交易日`,`最近應有 ${expected}｜實際 ${date}`,'sync','查看自動快照','health-sync-snapshot');
-        else if(quality==='incomplete')add('snapshot','red','自動記帳資料不完整',data.autoSnapshotQualityNote||data.autoSnapshotLastError||'請查看雲端同步狀態','sync','查看原因','health-sync-snapshot');
-        else if(quality==='estimated')add('snapshot-est','amber','部分自動記帳資料為估算',data.autoSnapshotQualityNote||'可查看自動快照詳細狀態','sync','查看估算原因','health-sync-snapshot');
+        else if(effectiveQuality==='incomplete')add('snapshot','red','自動記帳資料不完整',data.autoSnapshotQualityNote||data.autoSnapshotLastError||'請查看雲端同步狀態','sync','查看原因','health-sync-snapshot');
+        else if(effectiveQuality==='estimated')add('snapshot-est','amber','部分自動記帳資料為估算',unresolvedEstimateReasons.join('；')||data.autoSnapshotQualityNote||'可查看自動快照詳細狀態','sync','查看估算原因','health-sync-snapshot');
         if(ftBad)add('ft','amber',`FT 已 ${ftAge} 天未更新`,'更新 Firstrade Total Account Value 後重新儲存今日快照','accounts','更新 FT','health-accounts-ft');
         if(syncBad)add('sync','amber','雲端同步已超過 18 小時',cloudSyncMeta.lastAt?`最近同步 ${new Date(cloudSyncMeta.lastAt).toLocaleString('zh-TW')}`:'尚無成功同步紀錄','sync','立即檢查同步','health-sync-now');
         if(dividendBad)add('dividend','amber','QQQI 配息自動化有錯誤',String(data.qqqiDividendLastError).slice(0,160),'dividends','查看 QQQI 配息','health-dividends-status');
         if(fxBad)add('fx','amber','今日匯率更新失敗',String(data.exchangeRateLastError).slice(0,160),'market','更新匯率','health-market-fx');
         const tone=issues.some(x=>x.severity==='red')?'red':issues.length?'amber':'green';
         const label=issues.length?(issues[0].severity==='red'?'🔴 ':'🟡 ')+issues[0].title:'🟢 全部正常';
-        return {expected,date,age,quality,ftAge,latestDividend,upToDate,tone,label,issues,syncAgeHours};
-    },[data.autoSnapshotMarketDate,data.autoSnapshotQuality,data.autoSnapshotQualityNote,data.autoSnapshotLastError,data.ftUsd,data.ftUpdatedAt,data.qqqiDividendLedger,data.qqqiDividendLastError,data.exchangeRateLastError,data.exchangeRateLastAttemptDate,data.spySmaUpdatedDate,data.qqqSmaUpdatedDate,data.riskBenchmark,metrics.riskBenchmark,metrics.smaFreshForExecution,freshnessInfo.price.tradingAge,freshnessInfo.price.text,cloudSyncMeta.lastAt,user]);
+        return {expected,date,age,quality:effectiveQuality,rawQuality:quality,estimatedResolved,correctionNote,ftAge,latestDividend,upToDate,tone,label,issues,syncAgeHours};
+    },[data.autoSnapshotMarketDate,data.autoSnapshotQuality,data.autoSnapshotQualityNote,data.autoSnapshotLastError,data.portfolioHistory,data.ftUsd,data.ftUpdatedAt,data.qqqiDividendLedger,data.qqqiDividendLastError,data.exchangeRateLastError,data.exchangeRateLastAttemptDate,data.spySmaUpdatedDate,data.qqqSmaUpdatedDate,data.riskBenchmark,metrics.riskBenchmark,metrics.smaFreshForExecution,freshnessInfo.price.tradingAge,freshnessInfo.price.text,cloudSyncMeta.lastAt,user]);
     const HealthActionButton = ({issue}) => React.createElement("button",{type:"button",onClick:()=>goToHealthTarget(issue.target,issue.anchor),className:`health-action-button ${issue.severity==='red'?'is-red':'is-amber'}`},
         React.createElement("span",{className:"min-w-0 text-left"},React.createElement("span",{className:"block text-xs font-black"},issue.title),React.createElement("span",{className:"block mt-1 text-[10px] font-bold opacity-75 leading-relaxed"},issue.detail)),
         React.createElement("span",{className:"shrink-0 text-xs font-black whitespace-nowrap"},`${issue.action} ›`));
@@ -2373,7 +2413,7 @@ const App = () => {
                 React.createElement("button",{type:"button",onClick:()=>goToHealthTarget('accounts','health-accounts-ft'),className:"health-detail-tile text-left"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"FT 淨值"),React.createElement("div",{className:`mt-1 text-sm font-black ${autoHealth.ftAge>7?'text-amber-700':'text-slate-900'}`},getNum(data.ftUsd)<=0?'未使用':autoHealth.ftAge>=999?'未標記更新':autoHealth.ftAge===0?'今日更新':`${autoHealth.ftAge} 天前`),React.createElement("div",{className:"health-detail-link"},"FT 設定 ›")),
                 React.createElement("button",{type:"button",onClick:()=>goToHealthTarget('market','health-market-sma'),className:"health-detail-tile text-left"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},`${metrics.riskBenchmark} 參考 SMA`),React.createElement("div",{className:`mt-1 text-sm font-black ${metrics.smaFreshForExecution?'text-emerald-700':'text-red-700'}`},metrics.smaFreshForExecution?'可用':'需重新確認'),React.createElement("div",{className:"health-detail-link"},"更新 SMA ›")),
                 React.createElement("button",{type:"button",onClick:()=>goToHealthTarget('dividends','health-dividends-status'),className:"health-detail-tile text-left"},React.createElement("div",{className:"text-[10px] font-black text-slate-400"},"QQQI 配息"),React.createElement("div",{className:"mt-1 text-sm font-black text-slate-900"},autoHealth.latestDividend?`最近 ${autoHealth.latestDividend.payableDate}`:'尚無入帳'),React.createElement("div",{className:"health-detail-link"},"配息設定 ›"))),
-            (data.autoSnapshotQualityNote||data.autoSnapshotLastError)&&React.createElement("button",{type:"button",onClick:()=>goToHealthTarget('sync','health-sync-snapshot'),className:"mt-3 w-full text-left text-xs font-bold text-slate-600 leading-relaxed underline decoration-dotted"},`${data.autoSnapshotQualityNote||data.autoSnapshotLastError}｜查看雲端同步 ›`)));
+            autoHealth.correctionNote?React.createElement("div",{className:"mt-3 w-full rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2 text-left text-xs font-bold text-emerald-800 leading-relaxed"},autoHealth.correctionNote):(data.autoSnapshotQualityNote||data.autoSnapshotLastError)&&React.createElement("button",{type:"button",onClick:()=>goToHealthTarget('sync','health-sync-snapshot'),className:"mt-3 w-full text-left text-xs font-bold text-slate-600 leading-relaxed underline decoration-dotted"},`${data.autoSnapshotQualityNote||data.autoSnapshotLastError}｜查看雲端同步 ›`)));
     const FreshnessCard = () => React.createElement(Card, { className:"p-4 mt-4" },
         React.createElement(SectionTitle, { title:"市場資料狀態", desc:`依美股交易日判斷；最近應有資料日期：${freshnessInfo.expected}。匯率每天最多自動連線一次。` }),
         React.createElement("div", { className:"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2" },
@@ -2391,7 +2431,7 @@ const App = () => {
             React.createElement("div", { className:"bg-emerald-50 border border-emerald-100 rounded-2xl p-3" },
                 React.createElement("div", { className:"text-[10px] font-black text-emerald-700" }, "盤後自動快照"),
                 React.createElement("div", { className:"font-black text-sm text-slate-900 mt-1" }, data.autoSnapshotMarketDate||"尚未由雲端執行"),
-                React.createElement(Pill, { tone:data.autoSnapshotQuality==='complete'?'green':data.autoSnapshotMarketDate?'amber':'slate' }, data.autoSnapshotQuality==='complete'?'完整':data.autoSnapshotMarketDate?'已記錄／有估算':'待設定'),
+                React.createElement(Pill, { tone:autoHealth.quality==='complete'?'green':data.autoSnapshotMarketDate?'amber':'slate' }, autoHealth.quality==='complete'?(autoHealth.estimatedResolved?'已人工補正':'完整'):data.autoSnapshotMarketDate?'已記錄／有估算':'待設定'),
                 React.createElement("div", { className:"text-[10px] font-bold text-slate-500 mt-2 leading-relaxed" }, data.autoSnapshotUpdatedAt?`更新：${new Date(data.autoSnapshotUpdatedAt).toLocaleString('zh-TW')}｜FT 使用最後手動淨值`:'需完成 GitHub Actions 一次性設定；登入後手動更新會覆蓋同一美股交易日。'),
                 data.autoSnapshotLastError&&React.createElement("div", { className:"text-[10px] font-bold text-amber-700 mt-2" }, data.autoSnapshotLastError)),
             React.createElement("div", { className:"rounded-2xl bg-sky-50 border border-sky-100 p-3" },
@@ -2509,7 +2549,12 @@ const App = () => {
                 React.createElement("div", { className:"portfolio-networth-panel mt-3 rounded-2xl p-4" },
                     React.createElement("div", { className:"text-[10px] font-black tracking-[.12em] text-white/55" }, "股票資產總額"),
                     React.createElement("div", { className:"portfolio-total-value mt-2 leading-none font-black tracking-tight privacy-value" }, portfolio.totalDisplay),
-                    React.createElement("div", { className:"grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-white/10" },
+                    React.createElement("div", { className:"portfolio-ibft-strip mt-4 rounded-xl border border-sky-300/15 bg-sky-300/[.06] px-3 py-2.5 flex items-center justify-between gap-3" },
+                        React.createElement("div", { className:"min-w-0" },
+                            React.createElement("div", { className:"text-[9px] font-black tracking-[.08em] text-sky-100/55" }, "IB + FT 資產合計"),
+                            React.createElement("div", { className:"mt-1 text-[9px] font-bold text-white/35 truncate privacy-value" }, `IB ${portfolio.strategyDisplay} ＋ FT ${portfolio.ftDisplay}`)),
+                        React.createElement("div", { className:"shrink-0 text-base font-black text-sky-200 privacy-value" }, portfolio.ibFtDisplay)),
+                    React.createElement("div", { className:"grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-white/10" },
                         React.createElement("div", null,
                             React.createElement("div", { className:"text-[9px] font-black text-white/40" }, "IB 策略資產"),
                             React.createElement("div", { className:"mt-1 text-sm font-black portfolio-cool-value privacy-value" }, portfolio.strategyDisplay)),
@@ -3315,7 +3360,7 @@ const App = () => {
         const sub=computeSubAccountValue(preview);
         const recentFlows=(Array.isArray(data.externalCashflows)?data.externalCashflows:[]).slice(0,6);
         const stableNum=(field,label,suffix="",hint="")=>React.createElement(StableDraftNumInput,{key:field,label,value:draft[field],onDraft:v=>updateExternalDraft(field,v),suffix,hint});
-        const saveDraft=(text)=>saveExternalAccounts(collectExternalDraft(),text);
+        const saveDraft=(text,options={})=>saveExternalAccounts(collectExternalDraft(),text,options);
         const content=React.createElement(React.Fragment,null,
             React.createElement(Card,{className:"p-5 mb-4 border-2 border-blue-100"},
                 React.createElement("div",{className:"rounded-[24px] bg-slate-950 text-white p-4 mb-4"},
@@ -3328,9 +3373,9 @@ const App = () => {
             React.createElement("div",{id:"health-accounts-ft"},React.createElement(Card,{className:"p-5 mb-4"},
                 React.createElement(SectionTitle,{title:"Firstrade｜帳戶淨值模式",desc:"短線切換不用逐筆記錄，只輸入券商顯示的 Total Account Value。"}),
                 stableNum("ftUsd","Firstrade Total Account Value","USD","輸入時只更新這個欄位，不會整頁重繪或跳回上方。"),
-                getNum(draft.ftUsd)>0&&React.createElement("div",{className:`mt-3 rounded-2xl border p-3 text-xs font-bold leading-relaxed ${!data.ftUpdatedAt||Math.floor((Date.now()-Date.parse(data.ftUpdatedAt))/86400000)>7?'bg-amber-50 border-amber-100 text-amber-800':'bg-emerald-50 border-emerald-100 text-emerald-800'}`},data.ftUpdatedAt?`最後人工更新：${new Date(data.ftUpdatedAt).toLocaleString('zh-TW')}｜${Math.max(0,Math.floor((Date.now()-Date.parse(data.ftUpdatedAt))/86400000))} 天前${Math.floor((Date.now()-Date.parse(data.ftUpdatedAt))/86400000)>7?'；已超過 7 天，全部資產淨值會標記為估算。':''}`:"尚未標記 FT 更新時間；儲存一次今日淨值後會開始追蹤。"),
+                getNum(draft.ftUsd)>0&&React.createElement("div",{className:`mt-3 rounded-2xl border p-3 text-xs font-bold leading-relaxed ${!data.ftUpdatedAt||calendarDateAgeDays(data.ftUpdatedAt)>7?'bg-amber-50 border-amber-100 text-amber-800':'bg-emerald-50 border-emerald-100 text-emerald-800'}`},data.ftUpdatedAt?`最後人工確認：${new Date(data.ftUpdatedAt).toLocaleString('zh-TW')}｜${calendarDateAgeDays(data.ftUpdatedAt)===0?'今天':`${calendarDateAgeDays(data.ftUpdatedAt)} 天前`}${calendarDateAgeDays(data.ftUpdatedAt)>7?'；已超過 7 天，全部資產淨值會標記為估算。':''}`:"尚未標記 FT 更新時間；儲存一次今日淨值後會開始追蹤。"),
                 React.createElement("div",{className:"mt-3 rounded-2xl bg-slate-50 border border-slate-100 p-3 text-xs font-bold text-slate-600 leading-relaxed"},"交易再頻繁也不用輸入持股；更新淨值並儲存今日快照即可。入金／出金請在下方另行記錄，避免績效失真。"),
-                React.createElement("button",{onClick:()=>saveDraft('Firstrade 今日淨值已儲存'),className:"w-full mt-4 py-4 rounded-[22px] bg-slate-950 text-white font-black"},"儲存 FT 今日淨值"))),
+                React.createElement("button",{onClick:()=>saveDraft('Firstrade 今日淨值已儲存',{touchFt:true}),className:"w-full mt-4 py-4 rounded-[22px] bg-slate-950 text-white font-black"},"儲存 FT 今日淨值"))),
             React.createElement(Card,{className:"p-5 mb-4"},
                 React.createElement(SectionTitle,{title:"複委託｜單一股票模式",desc:"輸入股票代號、股數與帳戶現金；股價可自動抓取或手動修正。"}),
                 React.createElement("div",{className:"grid grid-cols-1 sm:grid-cols-2 gap-3"},
@@ -3650,11 +3695,11 @@ class ErrorBoundary extends React.Component {
         return React.createElement("div", { style:{minHeight:"100vh",background:"#f1f5f9",padding:"24px",fontFamily:"system-ui"} },
             React.createElement("div", { style:{maxWidth:"480px",margin:"40px auto",background:"white",borderRadius:"24px",padding:"24px",boxShadow:"0 12px 30px rgba(15,23,42,.12)"} },
                 React.createElement("h1", { style:{fontSize:"22px",fontWeight:900,color:"#0f172a"} }, "系統保護模式"),
-                React.createElement("p", { style:{color:"#475569",lineHeight:1.7} }, "網頁發生錯誤，資料仍保留在本機。可先重新載入；若仍失敗，再使用安全模式清除介面快取，不會刪除正式歷史紀錄。"),
+                React.createElement("p", { style:{color:"#475569",lineHeight:1.7} }, "網頁發生錯誤，資料仍保留在本機。可先重新載入；若仍失敗，可清除這個 App 的介面快取後重載；不會刪除正式資產、歷史、備份或回收區。"),
                 React.createElement("pre", { style:{whiteSpace:"pre-wrap",fontSize:"11px",color:"#b91c1c",background:"#fff1f2",padding:"12px",borderRadius:"12px"} }, String(this.state.error?.message || this.state.error)),
                 React.createElement("div", { style:{display:"grid",gap:"10px"} },
                     React.createElement("button", { onClick:()=>location.reload(), style:{padding:"12px",border:0,borderRadius:"14px",background:"#0f172a",color:"white",fontWeight:800} }, "重新載入"),
-                    React.createElement("button", { onClick:()=>{location.reload();}, style:{padding:"12px",border:0,borderRadius:"14px",background:"#e2e8f0",color:"#0f172a",fontWeight:800} }, "使用本機安全模式"))));
+                    React.createElement("button", { onClick:async()=>{try{if("caches" in window){const keys=await caches.keys();await Promise.all(keys.filter(k=>k.startsWith("stock-assets-pwa-")).map(k=>caches.delete(k)));}}catch(e){}location.reload();}, style:{padding:"12px",border:0,borderRadius:"14px",background:"#e2e8f0",color:"#0f172a",fontWeight:800} }, "清除介面快取後重載"))));
     }
 }
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(ErrorBoundary, null, React.createElement(App, null)));

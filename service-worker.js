@@ -1,19 +1,19 @@
-const CACHE_VERSION = "stock-assets-pwa-v7.0-final-dashboard-20260906";
+const CACHE_VERSION = "stock-assets-pwa-v7.0-final-maintenance-20260906-b703";
 const APP_CACHE = `${CACHE_VERSION}-app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./manifest.webmanifest?v=7.0.0",
-  "./assets/tailwind.css?v=7.0.0",
-  "./assets/app.css?v=7.0.0",
-  "./assets/app.js?v=7.0.0",
-  "./assets/pwa.js?v=7.0.0",
-  "./icons/icon-192.png?v=7.0.0",
-  "./icons/icon-512.png?v=7.0.0",
-  "./icons/icon-maskable-512.png?v=7.0.0",
-  "./icons/favicon-64.png?v=7.0.0"
+  "./manifest.webmanifest?v=7.0.3",
+  "./assets/tailwind.css?v=7.0.3",
+  "./assets/app.css?v=7.0.3",
+  "./assets/app.js?v=7.0.3",
+  "./assets/pwa.js?v=7.0.3",
+  "./icons/icon-192.png?v=7.0.3",
+  "./icons/icon-512.png?v=7.0.3",
+  "./icons/icon-maskable-512.png?v=7.0.3",
+  "./icons/favicon-64.png?v=7.0.3"
 ];
 
 self.addEventListener("install", event => {
@@ -26,7 +26,7 @@ self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(key => ![APP_CACHE, RUNTIME_CACHE].includes(key))
+        keys.filter(key => key.startsWith("stock-assets-pwa-") && ![APP_CACHE, RUNTIME_CACHE].includes(key))
           .map(key => caches.delete(key))
       ))
       .then(() => self.clients.claim())
@@ -35,7 +35,7 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("message", event => {
   if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
-  if (event.data && event.data.type === "GET_VERSION" && event.source) event.source.postMessage({ type: "SW_VERSION", version: "7.0.0" });
+  if (event.data && event.data.type === "GET_VERSION" && event.source) event.source.postMessage({ type: "SW_VERSION", version: "7.0.3" });
 });
 
 const isLiveDataRequest = url =>
@@ -64,10 +64,9 @@ const isAppEntryNavigation = url =>
 async function networkFirst(request, cacheName = APP_CACHE) {
   try {
     const response = await fetch(request, { cache: "no-store" });
-    if (response && response.ok) {
-      const copy = response.clone();
-      caches.open(cacheName).then(cache => cache.put(request, copy));
-    }
+    if (!response || !response.ok) throw new Error(`HTTP ${response?.status || 0}`);
+    const copy = response.clone();
+    caches.open(cacheName).then(cache => cache.put(request, copy));
     return response;
   } catch (error) {
     return (await caches.match(request)) || new Response("Not available offline", { status: 503 });
@@ -145,8 +144,10 @@ self.addEventListener("fetch", event => {
     if (cached) return cached;
     try {
       const response = await fetch(request);
-      const copy = response.clone();
-      caches.open(RUNTIME_CACHE).then(cache => cache.put(request, copy));
+      if (response && response.ok) {
+        const copy = response.clone();
+        caches.open(RUNTIME_CACHE).then(cache => cache.put(request, copy));
+      }
       return response;
     } catch (error) {
       return new Response("External resource unavailable", { status: 503 });

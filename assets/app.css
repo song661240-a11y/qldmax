@@ -653,3 +653,12 @@ button.text-slate-700{
 @media(prefers-reduced-motion:reduce){
   .portfolio-segmented button{transition:none!important}
 }
+
+/* v7.0 FINAL maintenance build 7.0.3｜首頁新增 IB + FT 合計 */
+.portfolio-ibft-strip{
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+}
+@media(max-width:370px){
+  .portfolio-ibft-strip{padding:9px 10px!important;gap:8px!important}
+  .portfolio-ibft-strip>div:last-child{font-size:14px!important}
+}

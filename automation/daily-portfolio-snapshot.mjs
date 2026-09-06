@@ -58,16 +58,16 @@ function easterSunday(year) {
   const a=year%19,b=Math.floor(year/100),c=year%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),month=Math.floor((h+l-7*m+114)/31)-1,day=((h+l-7*m+114)%31)+1;
   return new Date(Date.UTC(year,month,day,12));
 }
-function observedFixedHoliday(year, monthIndex, day) {
+function observedFixedHoliday(year, monthIndex, day, options={}) {
   const d=new Date(Date.UTC(year,monthIndex,day,12));
   const w=d.getUTCDay();
-  if(w===6)d.setUTCDate(d.getUTCDate()-1);
+  if(w===6 && !options.skipSaturdayObservation)d.setUTCDate(d.getUTCDate()-1);
   else if(w===0)d.setUTCDate(d.getUTCDate()+1);
   return d;
 }
 function holidaySet(year) {
   const set=new Set(), add=d=>set.add(ymd(d));
-  add(observedFixedHoliday(year,0,1));
+  add(observedFixedHoliday(year,0,1,{skipSaturdayObservation:true}));
   add(nthWeekdayOfMonth(year,0,1,3));
   add(nthWeekdayOfMonth(year,1,1,3));
   const goodFriday=easterSunday(year); goodFriday.setUTCDate(goodFriday.getUTCDate()-2); add(goodFriday);
@@ -86,7 +86,7 @@ function isTradingDay(text) {
 function nyDateTime(now = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone:"America/New_York", year:"numeric", month:"2-digit", day:"2-digit",
-    hour:"2-digit", minute:"2-digit", hour12:false
+    hour:"2-digit", minute:"2-digit", hourCycle:"h23"
   }).formatToParts(now);
   const get=t=>parts.find(x=>x.type===t)?.value||"";
   return { date:`${get("year")}-${get("month")}-${get("day")}`, hour:Number(get("hour")), minute:Number(get("minute")) };
@@ -152,10 +152,15 @@ async function quote(symbol, targetDate) {
   if(quoteCache.has(cacheKey)) return quoteCache.get(cacheKey);
   const promise=retry(clean,async()=>{
     const body=await fetchJson(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(clean)}&token=${encodeURIComponent(FINNHUB_API_KEY)}`);
-    const price=number(body?.c), timestamp=number(body?.t), priceDate=nyDateFromUnix(timestamp);
-    if(price<=0) throw new Error(`${clean} 無有效收盤價`);
-    if(priceDate && priceDate < targetDate) throw new Error(`${clean} 最新報價日期 ${priceDate}，目標交易日 ${targetDate}`);
-    return {symbol:clean,price:round2(price),timestamp,priceDate:priceDate||targetDate};
+    const timestamp=number(body?.t), priceDate=nyDateFromUnix(timestamp);
+    let price=0, source="Finnhub｜完成交易日";
+    if(priceDate===targetDate) price=number(body?.c);
+    else if(priceDate>targetDate && previousTradingDay(priceDate)===targetDate){ price=number(body?.pc); source="Finnhub｜前一收盤"; }
+    else if(!priceDate){ price=number(body?.pc)||number(body?.c); source="Finnhub｜日期未回傳"; }
+    else if(priceDate<targetDate) throw new Error(`${clean} 最新報價日期 ${priceDate}，目標交易日 ${targetDate}`);
+    else throw new Error(`${clean} 報價日期 ${priceDate} 無法安全對應目標交易日 ${targetDate}`);
+    if(price<=0) throw new Error(`${clean} 無有效完成交易日收盤價`);
+    return {symbol:clean,price:round2(price),timestamp,priceDate:targetDate,source};
   });
   quoteCache.set(cacheKey,promise);
   return promise;
@@ -196,7 +201,7 @@ async function resolvePrices(data, targetDate) {
     const symbol=symbols[index];
     if(result.status==="fulfilled" && result.value?.price>0){
       prices[symbol]=result.value.price;
-      priceMeta[symbol]={source:"Finnhub",date:result.value.priceDate||targetDate,attempts:result.value.attempts||1,fresh:true};
+      priceMeta[symbol]={source:result.value.source||"Finnhub",date:result.value.priceDate||targetDate,attempts:result.value.attempts||1,fresh:true};
     } else {
       stale.push(symbol);
       priceMeta[symbol]={source:"fallback",date:"",attempts:QUOTE_ATTEMPTS,fresh:false,error:String(result.reason?.message||"失敗").slice(0,160)};
@@ -340,7 +345,7 @@ async function patchRootWithRevision(db, ref, patch, source="github-actions") {
     if(!snap.exists) throw new Error("dashboard 不存在");
     const current=snap.data()||{};
     nextRevision=Math.max(0,Math.floor(number(current.dataRevision)))+1;
-    tx.set(ref,{...patch,dataRevision:nextRevision,lastWriteId:writeId,lastWriteSource:source,lastWriteAt:writeAt,clientAppVersion:"股票資產 PWA v6.2｜狀態感知雙向下一步",autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()},{merge:true});
+    tx.set(ref,{...patch,dataRevision:nextRevision,lastWriteId:writeId,lastWriteSource:source,lastWriteAt:writeAt,clientAppVersion:"股票資產 PWA v7.0 FINAL｜整合定版儀表板",autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()},{merge:true});
   });
   return {revision:nextRevision,writeId,writeAt};
 }
@@ -505,7 +510,7 @@ async function processDashboard(db, ref, targetDate, fx, dividendInfo) {
       qqqiDividendLedger:dividendPlan.ledger,qqqiDividendLastCheckAt:nowIso,
       qqqiDividendLastError:dividendError,qqqiDividendLastProcessedAt:dividendPlan.newEntries.length?nowIso:String(data.qqqiDividendLastProcessedAt||""),
       dataRevision:currentRevision+1,lastWriteId:`github-actions-${nowIso.replace(/[^0-9]/g,"").slice(0,14)}`,lastWriteSource:"github-actions-snapshot",lastWriteAt:nowIso,
-      clientAppVersion:"股票資產 PWA v6.2｜狀態感知雙向下一步",autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()
+      clientAppVersion:"股票資產 PWA v7.0 FINAL｜整合定版儀表板",autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()
     };
     tx.set(ref,patch,{merge:true});
 

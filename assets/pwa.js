@@ -1,7 +1,7 @@
 (() => {
   if (!("serviceWorker" in navigator)) return;
 
-  const PWA_VERSION = "7.0.0";
+  const PWA_VERSION = "7.0.3";
   const UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
   let reloading = false;
   let lastUpdateCheck = 0;
@@ -25,8 +25,8 @@
     banner.id = "pwa-update-banner";
     banner.innerHTML = `
       <div class="pwa-update-copy">
-        <strong>發現新版 v${PWA_VERSION}</strong>
-        <span>新版加入系統健康直接處理捷徑、統一 App 內確認／輸入視窗與 Bottom Sheet 固定操作列，並保留 v5.9 衝突防呆與 Revision 鎖。建議立即更新。</span>
+        <strong>發現 v7.0 FINAL 維護更新</strong>
+        <span>包含首頁 IB＋FT 資產合計，以及 FT 健康狀態、交易日／收盤價保護與 PWA 可靠性修正；策略與資料結構不變。</span>
       </div>
       <button type="button">立即更新</button>
     `;
