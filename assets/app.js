@@ -16,7 +16,7 @@ const db = HAS_FIREBASE ? firebase.firestore() : null;
 const DOC_PATH = ["strategyDashboards", "tqqq-qqq200-main"];
 const APP_VERSION = "股票資產 PWA v7.0 FINAL｜整合定版儀表板";
 const STRATEGY_ID = "tqqq-spy200";
-const STRATEGY_VERSION = "RISKREF-SPY-QQQ-4-3-HOT-19-24-HOT3OPT-DCAOPT-INTRO-v1.5";
+const STRATEGY_VERSION = "RISKREF-SPY-QQQ-4-3-HOT-19-24-HOT3OPT-DCAOPT-MANUALHOT-INTRO-v1.6";
 const RECORD_SCHEMA_VERSION = 2;
 const LOCAL_KEY = "tqqqSpy200PermanentV7";
 const BACKUP_KEY = LOCAL_KEY + "_backupCardsV1";
@@ -485,7 +485,7 @@ const withPortfolioSnapshot = (raw, reason='save') => {
 const STRATEGY_TEXT = `TQQQ｜可切換 SPY／QQQ 200SMA +4/-3＋QQQ 過熱鎖定策略（正式版 v1.5）
 
 一、首次導入保護
-首次啟用本策略時，不立即切換成 100% TQQQ。首次導入標的可選 QQQ 或 QQQI，預設為 QQQI；導入期間持有 100% 所選標的。正常情況下需先完整經歷一次所選「主風險參考」的 Risk-Off，之後再重新站上 200SMA +4% 才正式啟用。若使用者確認市場已完成降溫，也可在所選參考已符合 Risk-On 時，按「開啟新一輪 HOT」人工啟用；人工操作會留下歷史紀錄。
+首次啟用本策略時，不立即切換成 100% TQQQ。首次導入標的可選 QQQ 或 QQQI，預設為 QQQI；導入期間持有 100% 所選標的。正常情況下需先完整經歷一次所選「主風險參考」的 Risk-Off，之後再重新站上 200SMA +4% 才正式啟用。若使用者確認市場已完成降溫，也可在所選參考已符合 Risk-On 時，按「開啟新一輪 HOT」人工啟用；會先開啟表單選擇合法的起始 HOT 階級，人工操作會留下歷史紀錄。
 
 二、主風險訊號
 主風險參考可在策略參數頁選擇 SPY 或 QQQ，預設 SPY；此選項與正式門檻一起受「策略參數鎖」保護。所有交易於下一個交易日執行。
@@ -508,7 +508,7 @@ HOT3 設為 0 時完全停用，最高只到 HOT2；若未來把 HOT3 設為高�
 過熱替代標的可在參數頁選擇 QQQ、SPY、SPYI 或 QQQI，只影響 HOT 配置。首次導入標的可另外選擇 QQQ 或 QQQI；若 DCA 開啟，Risk-Off 後六期 DCA 固定使用 QQQ；若 DCA 關閉則維持現金。
 
 六、過熱鎖定
-同一個 Risk-On 週期內，過熱階級只能向上鎖定，不能自動反向加回槓桿。HOT3 停用時只會 0→1→2；QQQ 從 HOT2 回落到較低區間時，仍維持已鎖定配置。所選主風險參考觸發 Risk-Off 後會自動重置；若使用者確認上一輪過熱已結束，也可按「開啟新一輪 HOT」，把正式 HOT 重設為當下即時階級並留下人工操作紀錄。
+同一個 Risk-On 週期內，過熱階級只能向上鎖定，不能自動反向加回槓桿。HOT3 停用時只會 0→1→2；QQQ 從 HOT2 回落到較低區間時，仍維持已鎖定配置。所選主風險參考觸發 Risk-Off 後會自動重置；若使用者確認上一輪過熱已結束，也可按「開啟新一輪 HOT」，由表單選擇新週期起始階級並留下人工操作紀錄。起始階級不得低於當下 QQQ 即時 HOT 門檻；正式回落重開時也必須低於上一輪鎖定。之後仍維持 HOT0 → HOT1 → HOT2（HOT3 啟用時再 → HOT3）的單向升級順序。
 
 七、訊號優先順序
 1. 所選主風險參考 Risk-Off。
@@ -916,7 +916,7 @@ function evaluateStrategy(data) {
             const addRiskOn = (context='normal') => nextActionItems.push(makeNextStep(
                 'riskOn','up',`${riskBenchmark} Risk-On`,entryPx,riskPrice,
                 context==='intro'
-                    ? `站上後：首次導入仍持有 ${introAsset}；此時可人工「開啟正式 HOT」，並依當下 QQQ 即時 HOT 階級起跑。`
+                    ? `站上後：首次導入仍持有 ${introAsset}；此時可人工「開啟正式 HOT」，並在表單選擇合法起始階級。`
                     : (dcaEnabled?'站上並執行後：停止剩餘 DCA／等待狀態，依當時 QQQ HOT 階級進入 Risk-On 配置。':'站上並執行後：由 100% 現金等待狀態，依當時 QQQ HOT 階級進入 Risk-On 配置。'),
                 `${riskBenchmark} > 自身 200SMA +${data.entryBuffer}%`
             ));
@@ -930,7 +930,7 @@ function evaluateStrategy(data) {
                     nextActionItems.push(makeNextStep(
                         'hotMax','up',`QQQ ${maxLabel} 已最高階${hot3Enabled?'':'（HOT3 已停用）'}`,NaN,qqq,
                         introMode
-                            ? `首次導入仍持有 ${introAsset}；若現在人工開啟正式 HOT，會直接以 ${hotAllocationLabel(maxHotRank)} 起跑。`
+                            ? `首次導入仍持有 ${introAsset}；若現在人工開啟正式 HOT，表單會從當下即時 HOT 階級起提供可選起點。`
                             : `本輪已鎖定最高 ${maxLabel}；QQQ 再上漲不會新增更高 HOT 階級，維持 ${hotAllocationLabel(maxHotRank)}。`,
                         hot3Enabled?'向上沒有下一個 HOT 階級':'HOT3 = 0，第三階已停用'
                     ));
@@ -939,7 +939,7 @@ function evaluateStrategy(data) {
                 nextActionItems.push(makeNextStep(
                     `hot${nextHotRank}`,'up',`QQQ HOT${nextHotRank}`,nextHotPrice,qqq,
                     introMode
-                        ? `到達 HOT${nextHotRank} 時首次導入仍維持 100% ${introAsset}；若此時人工「開啟正式 HOT」，會直接以 ${hotAllocationLabel(nextHotRank)} 起跑。`
+                        ? `到達 HOT${nextHotRank} 時首次導入仍維持 100% ${introAsset}；若此時人工「開啟正式 HOT」，表單會以 HOT${nextHotRank} 作為最低可選起點。`
                         : `觸發並執行後：本輪 HOT 升為 HOT${nextHotRank}，配置改為 ${hotAllocationLabel(nextHotRank)}；之後回落不加回 TQQQ。`,
                     `QQQ > 自身 200SMA +${nextHotPct}%`
                 ));
@@ -950,7 +950,7 @@ function evaluateStrategy(data) {
                 addRiskOff();
                 if(riskOnNow){
                     addNextHot();
-                    introHotNote=`首次導入目前已符合人工啟用條件：若現在開啟正式 HOT，會以 ${hotAllocationLabel(thresholdRank)} 起跑；若繼續等待，上方 HOT 門檻只會改變未來人工啟用時的起始配置，不會自動換倉。`;
+                    introHotNote=`首次導入目前已符合人工啟用條件：若現在開啟正式 HOT，表單最低可從 ${hotAllocationLabel(thresholdRank)} 起選；也可選更高的已啟用 HOT 階級作為較保守起點。若繼續等待，上方 HOT 門檻只會改變最低可選起點，不會自動換倉。`;
                 } else {
                     addRiskOn('intro');
                     introHotNote=`首次導入尚未符合人工啟用條件；必須先讓 ${riskBenchmark} 高於自身 200SMA +${data.entryBuffer}%。`;
@@ -1209,6 +1209,8 @@ const App = () => {
     const [settingsMotion, setSettingsMotion] = useState("forward");
     const [showAccountSheet, setShowAccountSheet] = useState(false);
     const [showQuickUpdateSheet, setShowQuickUpdateSheet] = useState(false);
+    const [showHotCycleSheet, setShowHotCycleSheet] = useState(false);
+    const [hotCycleRank, setHotCycleRank] = useState(0);
     const [quickSaving, setQuickSaving] = useState(false);
     const [calendarMonth, setCalendarMonth] = useState(todayStr().slice(0,7));
     const [selectedCalendarDay, setSelectedCalendarDay] = useState("");
@@ -1873,6 +1875,25 @@ const App = () => {
             setQuickSaving(false);
         }
     };
+    const hotRankAllocationText = rank => {
+        const asset=String(data.hotAsset||'QQQ').toUpperCase();
+        if(rank>=3) return `100% ${asset}`;
+        if(rank===2) return `30% TQQQ / 70% ${asset}`;
+        if(rank===1) return `60% TQQQ / 40% ${asset}`;
+        return '100% TQQQ';
+    };
+    const getHotCycleSelectionRange = () => {
+        const phase=String(data.strategyPhase||'INTRO_QQQ').toUpperCase();
+        const isIntro=phase==='INTRO_QQQ';
+        const maxHotRank=metrics.hot3Enabled?3:2;
+        const threshold=Math.max(0,Math.min(maxHotRank,metrics.thresholdRank));
+        const oldHot=Math.max(0,Math.min(maxHotRank,metrics.storedHot));
+        // 不允許選到低於即時門檻，否則 evaluateStrategy 會立刻再升回來；
+        // 正式週期重開時也必須低於上一輪鎖定，才算真正建立新週期。
+        const minRank=threshold;
+        const maxRank=isIntro?maxHotRank:Math.max(minRank,oldHot-1);
+        return {phase,isIntro,maxHotRank,threshold,oldHot,minRank,maxRank};
+    };
     const openNewHotCycle = async () => {
         if(previewScenario!=="LIVE"){
             showToast('請先回到正式資料再開啟新一輪 HOT');
@@ -1886,46 +1907,63 @@ const App = () => {
             showToast('目前已觸發 Risk-Off，不能開啟新一輪 HOT');
             return;
         }
-        const phase=String(data.strategyPhase||'INTRO_QQQ').toUpperCase();
-        const isIntro=phase==='INTRO_QQQ';
-        const canResetActive=phase==='ACTIVE' && metrics.storedHot>metrics.thresholdRank;
-        if(isIntro && !metrics.riskOnNow){
+        const range=getHotCycleSelectionRange();
+        const canResetActive=range.phase==='ACTIVE' && metrics.storedHot>metrics.thresholdRank;
+        if(range.isIntro && !metrics.riskOnNow){
             showToast(`首次人工開啟 HOT 前，${metrics.riskBenchmark} 必須高於自身 200SMA +${data.entryBuffer}%`);
             return;
         }
-        if(!isIntro && !canResetActive){
+        if(!range.isIntro && !canResetActive){
             showToast('目前不符合開啟新一輪 HOT 的條件');
             return;
         }
-        const maxHotRank=metrics.hot3Enabled?3:2;
-        const newHot=Math.max(0,Math.min(maxHotRank,metrics.thresholdRank));
-        const oldHot=Math.max(0,Math.min(maxHotRank,metrics.storedHot));
-        const warning=isIntro
-            ? `⚠️ 確定人工開啟正式 HOT 策略嗎？\n\n目前 ${metrics.riskBenchmark} 已符合 Risk-On，QQQ 即時門檻為 HOT${newHot}。確認後會跳過首次導入等待，正式階段改為 ACTIVE，並依 HOT${newHot} 產生配置建議。\n\n此操作不會自動修改股數，但可能立即出現買入 TQQQ 或替代標的的交易建議。`
-            : `⚠️ 確定開啟新一輪 HOT 嗎？\n\n目前本輪正式鎖定 HOT${oldHot}，QQQ 即時門檻已回落至 HOT${newHot}。確認後會把正式 HOT 重設為 HOT${newHot}，建立新的 Risk-On 週期，之後可再次由 HOT${newHot} 向上升階。\n\n這可能產生加回 TQQQ 的交易建議，請確認你認為上一輪過熱已結束。`;
-        if(!await askConfirm(warning,{title:isIntro?"開啟正式 HOT 策略":"開啟新一輪 HOT",confirmText:"確定開啟",danger:true}))return;
+        setHotCycleRank(range.minRank);
+        setShowHotCycleSheet(true);
+    };
+    const confirmNewHotCycle = async () => {
+        if(previewScenario!=="LIVE" || !metrics.valid || metrics.riskOffNow){
+            setShowHotCycleSheet(false);
+            showToast('市場狀態已改變，請重新開啟表單確認');
+            return;
+        }
+        const range=getHotCycleSelectionRange();
+        const canResetActive=range.phase==='ACTIVE' && metrics.storedHot>metrics.thresholdRank;
+        if((range.isIntro && !metrics.riskOnNow) || (!range.isIntro && !canResetActive)){
+            setShowHotCycleSheet(false);
+            showToast('目前狀態已不符合開啟新一輪 HOT 的條件');
+            return;
+        }
+        const newHot=Math.max(0,Math.min(range.maxHotRank,parseInt(hotCycleRank)||0));
+        if(newHot<range.minRank || newHot>range.maxRank){
+            showToast('所選 HOT 階級已不符合目前市場狀態，請重新選擇');
+            setHotCycleRank(range.minRank);
+            return;
+        }
+        const oldHot=range.oldHot;
         const now=new Date();
         const before={TQQQ:getNum(data.sharesTqqq),QQQ:getNum(data.sharesQqq),SPY:getNum(data.sharesSpy),SPYI:getNum(data.sharesSpyi),QQQI:getNum(data.sharesQqqi),cashUsd:getNum(data.cashUsd),otherUsd:getNum(data.otherUsd)};
         const cycleId=`ON-MANUAL-${data.marketDate||todayStr()}-${Date.now()}`;
         const next=normalizeData({...data,strategyPhase:'ACTIVE',marketState:'RISK_ON',hotRank:newHot,riskOnCycleId:cycleId});
         const nextMetrics=evaluateStrategy(next);
+        const transitionText=range.isIntro?`首次導入 → HOT${newHot}`:`HOT${oldHot} → HOT${newHot}`;
         const recDraft=normalizeRecord({
             recordSchemaVersion:RECORD_SCHEMA_VERSION,recordId:makeRecordId(),strategyId:STRATEGY_ID,strategyVersion:STRATEGY_VERSION,
             recordType:'manual_hot_cycle',createdAt:now.toISOString(),
             dates:{marketClose:data.marketCloseDate||data.marketDate||'',signal:todayStr(),execution:todayStr()},
             prices:{SPY:getNum(data.spy),QQQ:getNum(data.qqq),TQQQ:getNum(data.tqqq),SPYI:getNum(data.spyi),QQQI:getNum(data.qqqi)},
             indicators:{SPY200:getNum(data.spySma),QQQ200:getNum(data.qqqSma)},
-            state:{marketState:'RISK_ON',hotRank:newHot,riskBenchmark:data.riskBenchmark||'SPY',hotAsset:data.hotAsset||'QQQ',introAsset:data.introAsset||'QQQI',strategyPhase:'ACTIVE',dcaActive:false,dcaCompleted:0,riskOffCycleId:data.riskOffCycleId||'',riskOnCycleId:cycleId},
+            state:{marketState:'RISK_ON',hotRank:newHot,riskBenchmark:data.riskBenchmark||'SPY',hotAsset:data.hotAsset||'QQQ',introAsset:data.introAsset||'QQQI',strategyPhase:'ACTIVE',dcaEnabled:data.dcaEnabled!==false,dcaActive:false,dcaCompleted:0,riskOffCycleId:data.riskOffCycleId||'',riskOnCycleId:cycleId},
             holdings:{before,after:before},
             valuation:{totalUsd:nextMetrics.totalUsd,totalDisplay:nextMetrics.totalDisplay},
-            decision:{title:'人工開啟新一輪 HOT',allocation:nextMetrics.alloc.label,immediate:`HOT${oldHot} → HOT${newHot}`,formalState:`Risk-On｜HOT${newHot}`,todayAction:nextMetrics.todayAction},
-            actions:[isIntro?'人工跳過首次導入並開啟正式 HOT':`人工重設本輪 HOT：HOT${oldHot} → HOT${newHot}`,'未自動修改持股；依新狀態產生交易建議'],notes:'使用者人工確認開啟新一輪 HOT',deletedAt:null
+            decision:{title:'人工開啟新一輪 HOT',allocation:nextMetrics.alloc.label,immediate:transitionText,formalState:`Risk-On｜HOT${newHot}`,todayAction:nextMetrics.todayAction},
+            actions:[range.isIntro?`人工跳過首次導入，表單指定從 HOT${newHot} 開始`:`人工重設本輪 HOT：HOT${oldHot} → HOT${newHot}`,`新週期起點：HOT${newHot}｜${hotRankAllocationText(newHot)}`,'只設定本輪起點；HOT 自動升級順序與門檻完全不變','未自動修改持股；依新狀態產生交易建議'],notes:`使用者透過表單人工選擇 HOT${newHot} 作為新週期起點`,deletedAt:null
         });
         const rec=prepareSameDayRecord(recDraft,data.history);
         const formal=normalizeData({...next,history:replaceSameDayHistory(data.history,rec)});
         setData(formal);
+        setShowHotCycleSheet(false);
         const ok=await saveFormalData(formal,'已開啟新一輪 HOT',rec);
-        showToast(ok?`已開啟 HOT${newHot} 新週期`:(saveConflictRef.current||'已存本機，但雲端同步失敗'));
+        showToast(ok?`已從 HOT${newHot} 開啟新週期`:(saveConflictRef.current||'已存本機，但雲端同步失敗'));
     };
     const loginGoogle = async () => {
         if (!auth || typeof firebase === "undefined") { showToast("Firebase 未載入，無法 Google 登入"); return; }
@@ -2838,15 +2876,15 @@ const App = () => {
                         React.createElement("div", { className:"text-sm font-black text-slate-900" }, "開啟新一輪 HOT"),
                         React.createElement("div", { className:"text-xs font-bold mt-1 leading-relaxed text-slate-600" },
                             String(data.strategyPhase||'INTRO_QQQ').toUpperCase()==='INTRO_QQQ'
-                                ? `首次導入可在 ${metrics.riskBenchmark} 已高於自身 200SMA +${data.entryBuffer}% 時人工啟用；會依當下 QQQ 即時門檻開始。`
+                                ? `首次導入可在 ${metrics.riskBenchmark} 已高於自身 200SMA +${data.entryBuffer}% 時人工啟用；按下後可在表單選擇新週期起始 HOT。`
                                 : (metrics.strategyActive&&metrics.storedHot>metrics.thresholdRank&&!metrics.riskOffNow
-                                    ? `本輪已鎖定 HOT${metrics.storedHot}，即時已回落至 HOT${metrics.thresholdRank}；可人工重開新週期。`
+                                    ? `本輪已鎖定 HOT${metrics.storedHot}，即時已回落至 HOT${metrics.thresholdRank}；可在表單選擇合法的重開起點。`
                                     : "只有首次導入已符合 Risk-On，或正式 HOT 已回落低於本輪鎖定時，才可使用。"))),
                     ((String(data.strategyPhase||'INTRO_QQQ').toUpperCase()==='INTRO_QQQ'&&metrics.riskOnNow&&!metrics.riskOffNow)||(metrics.strategyActive&&metrics.storedHot>metrics.thresholdRank&&!metrics.riskOffNow))
                         && React.createElement("button", { onClick:openNewHotCycle, className:"shrink-0 px-4 py-3 rounded-2xl bg-amber-600 text-white text-sm font-black active:scale-95" }, "開啟新一輪 HOT")),
                 React.createElement("div", { className:"mt-3 bg-purple-50 border border-purple-100 rounded-2xl p-3" },
                     React.createElement("div", { className:"text-sm font-black text-purple-900" }, "過熱重置規則"),
-                    React.createElement("div", { className:"text-xs font-bold text-purple-700 mt-1 leading-relaxed" }, `同一個 Risk-On 週期只會往更低槓桿移動。${metrics.riskBenchmark} 觸發 Risk-Off 後會自動重置；若 QQQ 已由高階 HOT 回落，也可由使用者按「開啟新一輪 HOT」人工重設為當下即時階級。`))) }),
+                    React.createElement("div", { className:"text-xs font-bold text-purple-700 mt-1 leading-relaxed" }, `同一個 Risk-On 週期只會依 HOT0 → HOT1 → HOT2${metrics.hot3Enabled?" → HOT3":""} 單向升級，不會自動降級。人工開啟新週期只改「起始鎖定階級」，不改任何 HOT 門檻或升級順序；低於當下即時門檻的階級不可選。`))) }),
         Collapsible({ id: "previewScenarios", title: "模擬情境", desc: "預覽首頁訊號、配置與交易清單，不修改正式資料。", children:
             React.createElement("div", { className:"bg-sky-50 border border-sky-200 rounded-2xl p-3" },
                 React.createElement("div", { className:"flex items-center justify-between gap-2" },
@@ -3601,6 +3639,67 @@ const App = () => {
             React.createElement(Card,{className:"p-6 mb-5 bg-gradient-to-br from-white/92 to-indigo-50/80"},React.createElement("div",{className:"text-[11px] font-black tracking-[.2em] text-brand-600"},"設定"),React.createElement("div",{className:"mt-3 text-3xl font-black text-slate-950"},"每一項都是獨立頁面"),React.createElement("div",{className:"mt-2 text-sm font-bold text-slate-500 privacy-value"},`全部 ${portfolio.totalDisplay}｜IB ${portfolio.strategyDisplay}`)),
             React.createElement("div",{className:"settings-menu-grid space-y-3"},menuItems.map(([id,icon,title,desc])=>React.createElement("button",{key:id,onClick:()=>openSettingsView(id),className:"settings-row w-full text-left"},React.createElement("span",{className:"settings-icon text-blue-600 text-sm font-black"},icon),React.createElement("span",{className:"flex-1"},React.createElement("span",{className:"block text-[17px] font-black text-slate-900"},title),React.createElement("span",{className:"block text-xs font-bold text-slate-500 mt-1"},desc)),React.createElement("span",{className:"text-2xl text-slate-400"},"›")))));
     };
+    const HotCycleSheet = () => {
+        if(!showHotCycleSheet)return null;
+        const range=getHotCycleSelectionRange();
+        const ranks=Array.from({length:range.maxHotRank+1},(_,i)=>i);
+        const selected=Math.max(0,Math.min(range.maxHotRank,parseInt(hotCycleRank)||0));
+        const selectedValid=selected>=range.minRank&&selected<=range.maxRank;
+        const options=ranks.map(rank=>{
+            const disabled=rank<range.minRank||rank>range.maxRank;
+            const isSelected=selected===rank;
+            const reason=rank<range.minRank
+                ? `低於目前即時 HOT${range.threshold}，會被策略立即升回，故不可選。`
+                : (!range.isIntro&&rank>range.maxRank?`新週期必須低於上一輪鎖定 HOT${range.oldHot}。`:"");
+            const badges=[];
+            if(rank===range.threshold) badges.push(React.createElement("span",{key:"threshold",className:"px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-[9px] font-black"},"即時門檻"));
+            if(!range.isIntro&&rank===range.oldHot) badges.push(React.createElement("span",{key:"old",className:"px-2 py-1 rounded-full bg-slate-200 text-slate-600 text-[9px] font-black"},"上一輪鎖定"));
+            if(isSelected&&!disabled) badges.push(React.createElement("span",{key:"selected",className:"px-2 py-1 rounded-full bg-amber-500 text-white text-[9px] font-black"},"已選擇"));
+            return React.createElement("button",{
+                key:rank,type:"button",role:"radio","aria-checked":isSelected,disabled,
+                onClick:()=>setHotCycleRank(rank),
+                className:`w-full text-left rounded-2xl border p-3 transition ${disabled?"bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed":isSelected?"bg-amber-50 border-amber-400 ring-2 ring-amber-100":"bg-white border-slate-200 text-slate-900 active:scale-[.99]"}`
+            },
+                React.createElement("div",{className:"flex items-start justify-between gap-3"},
+                    React.createElement("div",{className:"min-w-0"},
+                        React.createElement("div",{className:"flex flex-wrap items-center gap-2"},
+                            React.createElement("span",{className:"text-base font-black"},`HOT${rank}`),...badges),
+                        React.createElement("div",{className:"text-xs font-bold mt-1"},hotRankAllocationText(rank)),
+                        reason&&React.createElement("div",{className:"text-[10px] font-bold mt-1 leading-relaxed text-slate-400"},reason)),
+                    React.createElement("div",{className:`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected&&!disabled?"border-amber-500":"border-slate-300"}`},
+                        isSelected&&!disabled&&React.createElement("div",{className:"w-3 h-3 rounded-full bg-amber-500"}))));
+        });
+        return React.createElement("div",{
+                className:"fixed inset-0 z-[84] sheet-backdrop sheet-animate-backdrop flex items-end sm:items-center justify-center unified-sheet-backdrop",
+                role:"presentation",onClick:()=>setShowHotCycleSheet(false)
+            },
+            React.createElement("div",{
+                    className:"sheet-panel unified-sheet-panel w-full max-w-lg bg-white shadow-2xl",role:"dialog","aria-modal":"true","aria-labelledby":"hot-cycle-sheet-title",onClick:e=>e.stopPropagation()
+                },
+                React.createElement("div",{className:"unified-sheet-header"},
+                    React.createElement("div",{className:"mx-auto w-12 h-1.5 rounded-full bg-slate-200 mb-4"}),
+                    React.createElement("div",{className:"flex items-start justify-between gap-3"},
+                        React.createElement("div",{className:"min-w-0"},
+                            React.createElement("div",{className:"text-[10px] font-black tracking-[.18em] text-amber-600"},range.isIntro?"首次導入人工啟用":"人工重開 HOT 週期"),
+                            React.createElement("div",{id:"hot-cycle-sheet-title",className:"text-2xl font-black text-slate-950 mt-1"},range.isIntro?"選擇正式 HOT 起點":"選擇新一輪 HOT 起點"),
+                            React.createElement("div",{className:"text-xs font-bold text-slate-500 mt-2 leading-relaxed"},range.isIntro
+                                ? `目前即時門檻 HOT${range.threshold}；可從 HOT${range.minRank} 到 HOT${range.maxRank} 選一個起點。`
+                                : `上一輪鎖定 HOT${range.oldHot}，目前即時門檻 HOT${range.threshold}；可重設到 HOT${range.minRank}${range.maxRank>range.minRank?`～HOT${range.maxRank}`:""}。`)),
+                        React.createElement("button",{type:"button",onClick:()=>setShowHotCycleSheet(false),className:"w-11 h-11 rounded-full bg-slate-100 text-xl text-slate-500 shrink-0","aria-label":"關閉 HOT 起點表單"},"×"))),
+                React.createElement("div",{className:"unified-sheet-scroll space-y-3"},
+                    React.createElement("div",{className:"rounded-2xl bg-purple-50 border border-purple-100 p-3"},
+                        React.createElement("div",{className:"text-sm font-black text-purple-900"},"升級順序不變"),
+                        React.createElement("div",{className:"text-xs font-bold text-purple-700 mt-1 leading-relaxed"},`這裡只指定「新週期起始鎖定」。之後仍固定依 HOT0 → HOT1 → HOT2${range.maxHotRank===3?" → HOT3":""} 單向升級，不會自動降級，也不會改 HOT 門檻。`)),
+                    React.createElement("div",{className:"text-xs font-black text-slate-500"},"選擇起始 HOT 階級"),
+                    React.createElement("div",{className:"space-y-2",role:"radiogroup","aria-label":"新一輪 HOT 起始階級"},...options),
+                    React.createElement("div",{className:"rounded-2xl bg-slate-50 border border-slate-100 p-3"},
+                        React.createElement("div",{className:"text-[10px] font-black text-slate-500"},"選定後"),
+                        React.createElement("div",{className:"text-sm font-black text-slate-950 mt-1"},selectedValid?`HOT${selected}｜${hotRankAllocationText(selected)}`:"請重新選擇可用階級"),
+                        React.createElement("div",{className:"text-xs font-bold text-slate-500 mt-1 leading-relaxed"},"只改正式策略狀態並產生相應交易建議；不會自動修改任何股數。"))),
+                React.createElement("div",{className:"unified-sheet-footer grid grid-cols-2 gap-2"},
+                    React.createElement("button",{type:"button",onClick:()=>setShowHotCycleSheet(false),className:"py-4 rounded-[22px] bg-slate-100 text-slate-700 font-black"},"取消"),
+                    React.createElement("button",{type:"button",disabled:!selectedValid,onClick:confirmNewHotCycle,className:`py-4 rounded-[22px] text-white font-black ${selectedValid?"bg-amber-600 active:scale-[.99]":"bg-slate-300"}`},selectedValid?`以 HOT${selected} 開啟`:"不可使用"))));
+    };
     const QuickUpdateSheet = () => {
         if(!showQuickUpdateSheet)return null;
         const draft={...pickExternalAccountState(data),...externalDraftRef.current};
@@ -3695,11 +3794,12 @@ const App = () => {
         page === 'home' && Home(),
         page === 'logs' && Logs(),
         page === 'settings' && Settings(),
-        !conflictDialog && !appDialog && BottomNav(),
+        !conflictDialog && !appDialog && !showHotCycleSheet && BottomNav(),
         MonthSheet(),
         CalendarDaySheet(),
         AccountSheet(),
         QuickUpdateSheet(),
+        HotCycleSheet(),
         TrashSheet(),
         ExecutionModal(),
         AppDialog(),
