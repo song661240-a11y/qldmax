@@ -1,19 +1,19 @@
-const CACHE_VERSION = "stock-assets-pwa-v7.0-final-maintenance-20260906-b703";
+const CACHE_VERSION = "stock-assets-pwa-v7.0-final-maintenance-20260927-b705";
 const APP_CACHE = `${CACHE_VERSION}-app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./manifest.webmanifest?v=7.0.3",
-  "./assets/tailwind.css?v=7.0.3",
-  "./assets/app.css?v=7.0.3",
-  "./assets/app.js?v=7.0.3",
-  "./assets/pwa.js?v=7.0.3",
-  "./icons/icon-192.png?v=7.0.3",
-  "./icons/icon-512.png?v=7.0.3",
-  "./icons/icon-maskable-512.png?v=7.0.3",
-  "./icons/favicon-64.png?v=7.0.3"
+  "./manifest.webmanifest?v=7.0.5",
+  "./assets/tailwind.css?v=7.0.5",
+  "./assets/app.css?v=7.0.5",
+  "./assets/app.js?v=7.0.5",
+  "./assets/pwa.js?v=7.0.5",
+  "./icons/icon-192.png?v=7.0.5",
+  "./icons/icon-512.png?v=7.0.5",
+  "./icons/icon-maskable-512.png?v=7.0.5",
+  "./icons/favicon-64.png?v=7.0.5"
 ];
 
 self.addEventListener("install", event => {
@@ -35,7 +35,7 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("message", event => {
   if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
-  if (event.data && event.data.type === "GET_VERSION" && event.source) event.source.postMessage({ type: "SW_VERSION", version: "7.0.3" });
+  if (event.data && event.data.type === "GET_VERSION" && event.source) event.source.postMessage({ type: "SW_VERSION", version: "7.0.5" });
 });
 
 const isLiveDataRequest = url =>

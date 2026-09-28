@@ -654,7 +654,7 @@ button.text-slate-700{
   .portfolio-segmented button{transition:none!important}
 }
 
-/* v7.0 FINAL maintenance build 7.0.3｜首頁新增 IB + FT 合計 */
+/* v7.0 FINAL maintenance build 7.0.5｜HOT3 與 Risk-Off DCA 可獨立停用；保留 IB + FT 合計 */
 .portfolio-ibft-strip{
   box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
 }

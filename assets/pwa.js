@@ -1,7 +1,7 @@
 (() => {
   if (!("serviceWorker" in navigator)) return;
 
-  const PWA_VERSION = "7.0.3";
+  const PWA_VERSION = "7.0.5";
   const UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
   let reloading = false;
   let lastUpdateCheck = 0;
@@ -26,7 +26,7 @@
     banner.innerHTML = `
       <div class="pwa-update-copy">
         <strong>發現 v7.0 FINAL 維護更新</strong>
-        <span>包含首頁 IB＋FT 資產合計，以及 FT 健康狀態、交易日／收盤價保護與 PWA 可靠性修正；策略與資料結構不變。</span>
+        <span>新增 Risk-Off DCA 開關：可選六期 QQQ DCA 或 100% 現金等待；保留 HOT3 停用、IB＋FT 合計與既有可靠性修正。</span>
       </div>
       <button type="button">立即更新</button>
     `;
