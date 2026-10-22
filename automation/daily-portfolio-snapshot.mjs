@@ -8,6 +8,7 @@ const FORCE = String(process.env.FORCE || "").toLowerCase() === "true";
 const RUN_MODE = String(process.env.RUN_MODE || "normal_snapshot").toLowerCase();
 const FX_ENDPOINT = "https://open.er-api.com/v6/latest/USD";
 const QQQI_DISTRIBUTION_URL = "https://neosfunds.com/qqqi/";
+const SPYI_DISTRIBUTION_URL = "https://neosfunds.com/spyi/";
 const QUOTE_ATTEMPTS = 3;
 
 function fail(message) {
@@ -175,15 +176,18 @@ async function fxRate() {
 
 function heldSymbols(data) {
   const pairs=[
-    ["TQQQ",data.sharesTqqq],["QQQ",data.sharesQqq],["SPY",data.sharesSpy],
+    ["TQQQ",data.sharesTqqq],["UPRO",data.sharesUpro],["QQQ",data.sharesQqq],["SPY",data.sharesSpy],
     ["SPYI",data.sharesSpyi],["QQQI",data.sharesQqqi]
   ];
-  const symbols=new Set(["SPY","QQQ","TQQQ"]);
+  const leverage=["TQQQ","UPRO"].includes(String(data.leverageAsset||"TQQQ").toUpperCase())
+    ? String(data.leverageAsset||"TQQQ").toUpperCase()
+    : "TQQQ";
+  const symbols=new Set(["SPY","QQQ",leverage]);
   for(const [symbol,shares] of pairs) if(number(shares)>0) symbols.add(symbol);
   const hot=String(data.hotAsset||"").toUpperCase();
-  if(["SPYI","QQQI"].includes(hot)) symbols.add(hot);
+  if(["SPY","QQQ","SPYI","QQQI"].includes(hot)) symbols.add(hot);
   const intro=String(data.introAsset||"QQQI").toUpperCase();
-  if(["QQQI"].includes(intro)) symbols.add(intro);
+  if(["SPY","QQQ","SPYI","QQQI"].includes(intro)) symbols.add(intro);
   const sub=String(data.subSymbol||"").toUpperCase();
   if(sub && number(data.subShares)>0) symbols.add(sub);
   return [...symbols];
@@ -193,7 +197,7 @@ async function resolvePrices(data, targetDate) {
   const symbols=heldSymbols(data);
   const settled=await Promise.allSettled(symbols.map(symbol=>quote(symbol,targetDate)));
   const prices={
-    SPY:number(data.spy), QQQ:number(data.qqq), TQQQ:number(data.tqqq),
+    SPY:number(data.spy), QQQ:number(data.qqq), TQQQ:number(data.tqqq), UPRO:number(data.upro),
     SPYI:number(data.spyi), QQQI:number(data.qqqi)
   };
   const stale=[], priceMeta={};
@@ -212,6 +216,7 @@ async function resolvePrices(data, targetDate) {
 
 function strategyValue(data, prices) {
   return number(data.sharesTqqq)*number(prices.TQQQ)
+    + number(data.sharesUpro)*number(prices.UPRO)
     + number(data.sharesQqq)*number(prices.QQQ)
     + number(data.sharesSpy)*number(prices.SPY)
     + number(data.sharesSpyi)*number(prices.SPYI)
@@ -256,8 +261,9 @@ function cellText(html) {
     .replace(/<[^>]+>/g," "))
     .replace(/\s+/g," ").trim();
 }
-function parseQqqiDistributions(html) {
+function parseNeosDistributions(html, symbol, sourceUrl) {
   const rows=[];
+  const ticker=String(symbol||"").toUpperCase();
   const trMatches=String(html||"").match(/<tr\b[\s\S]*?<\/tr>/gi)||[];
   for(const tr of trMatches){
     const cells=[...tr.matchAll(/<(?:td|th)\b[^>]*>([\s\S]*?)<\/(?:td|th)>/gi)].map(m=>cellText(m[1]));
@@ -266,63 +272,78 @@ function parseQqqiDistributions(html) {
     const amountMatch=String(cells[4]||"").replace(/,/g,"").match(/\$?\s*([0-9]+(?:\.[0-9]+)?)/);
     const amountPerShare=amountMatch?number(amountMatch[1]):0;
     if(declarationDate&&exDate&&recordDate&&payableDate&&amountPerShare>0){
-      rows.push({symbol:"QQQI",declarationDate,exDate,recordDate,payableDate,amountPerShare:round4(amountPerShare),source:QQQI_DISTRIBUTION_URL});
+      rows.push({symbol:ticker,declarationDate,exDate,recordDate,payableDate,amountPerShare:round4(amountPerShare),source:sourceUrl});
     }
   }
   const byId=new Map();
-  rows.forEach(row=>byId.set(`QQQI-${row.payableDate}`,row));
+  rows.forEach(row=>byId.set(`${ticker}-${row.payableDate}`,row));
   return [...byId.values()].sort((a,b)=>a.payableDate.localeCompare(b.payableDate));
 }
-async function fetchQqqiDistributions() {
-  const result=await retry("QQQI 官方配息資料",async()=>({html:await fetchText(QQQI_DISTRIBUTION_URL)}),2);
-  const rows=parseQqqiDistributions(result.html);
-  if(!rows.length) throw new Error("NEOS QQQI 頁面未解析到已公布配息金額");
+function parseQqqiDistributions(html){ return parseNeosDistributions(html,"QQQI",QQQI_DISTRIBUTION_URL); }
+function parseSpyiDistributions(html){ return parseNeosDistributions(html,"SPYI",SPYI_DISTRIBUTION_URL); }
+async function fetchNeosDistributions(symbol, sourceUrl) {
+  const ticker=String(symbol||"").toUpperCase();
+  const result=await retry(`${ticker} 官方配息資料`,async()=>({html:await fetchText(sourceUrl)}),2);
+  const rows=parseNeosDistributions(result.html,ticker,sourceUrl);
+  if(!rows.length) throw new Error(`NEOS ${ticker} 頁面未解析到已公布配息金額`);
   return rows;
 }
+async function fetchQqqiDistributions(){ return fetchNeosDistributions("QQQI",QQQI_DISTRIBUTION_URL); }
+async function fetchSpyiDistributions(){ return fetchNeosDistributions("SPYI",SPYI_DISTRIBUTION_URL); }
 
 function holdingsState(data,cashUsd=number(data.cashUsd)) {
   return {
-    TQQQ:number(data.sharesTqqq),QQQ:number(data.sharesQqq),SPY:number(data.sharesSpy),SPYI:number(data.sharesSpyi),QQQI:number(data.sharesQqqi),
+    TQQQ:number(data.sharesTqqq),UPRO:number(data.sharesUpro),QQQ:number(data.sharesQqq),SPY:number(data.sharesSpy),SPYI:number(data.sharesSpyi),QQQI:number(data.sharesQqqi),
     cashUsd:number(cashUsd),otherUsd:number(data.otherUsd)
   };
 }
-function eligibleQqqiShares(history, data, exDate) {
+const DIVIDEND_CONFIG={
+  QQQI:{shareField:"sharesQqqi",enabledField:"qqqiDividendAutomationEnabled",taxField:"qqqiDividendTaxRate",startField:"qqqiDividendStartDate",ledgerField:"qqqiDividendLedger",sourceUrl:QQQI_DISTRIBUTION_URL},
+  SPYI:{shareField:"sharesSpyi",enabledField:"spyiDividendAutomationEnabled",taxField:"spyiDividendTaxRate",startField:"spyiDividendStartDate",ledgerField:"spyiDividendLedger",sourceUrl:SPYI_DISTRIBUTION_URL}
+};
+function eligibleDividendShares(history,data,exDate,symbol){
+  const ticker=String(symbol||"").toUpperCase();
+  const cfg=DIVIDEND_CONFIG[ticker];
+  if(!cfg) throw new Error(`不支援的配息標的：${ticker}`);
   const entitlementDate=previousTradingDay(exDate);
   const candidates=(Array.isArray(history)?history:[])
-    .filter(x=>String(x?.date||"").slice(0,10)<=entitlementDate && Object.prototype.hasOwnProperty.call(x||{},"sharesQqqi"))
+    .filter(x=>String(x?.date||"").slice(0,10)<=entitlementDate && Object.prototype.hasOwnProperty.call(x||{},cfg.shareField))
     .sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
   const exact=candidates.find(x=>String(x.date||"").slice(0,10)===entitlementDate);
   const chosen=exact||candidates[0];
-  if(chosen) return {shares:Math.max(0,number(chosen.sharesQqqi)),sourceDate:String(chosen.date||"").slice(0,10),source:exact?"前一交易日快照":"最近可用快照",estimated:!exact,entitlementDate};
-  return {shares:Math.max(0,number(data.sharesQqqi)),sourceDate:"",source:"目前持股估算",estimated:true,entitlementDate};
+  if(chosen) return {shares:Math.max(0,number(chosen[cfg.shareField])),sourceDate:String(chosen.date||"").slice(0,10),source:exact?"前一交易日快照":"最近可用快照",estimated:!exact,entitlementDate};
+  return {shares:Math.max(0,number(data[cfg.shareField])),sourceDate:"",source:"目前持股估算",estimated:true,entitlementDate};
 }
-function planQqqiDividends(data,history,distributions,targetDate) {
-  const enabled=data.qqqiDividendAutomationEnabled!==false;
-  const taxRate=clamp(data.qqqiDividendTaxRate===undefined?30:data.qqqiDividendTaxRate,0,100);
-  const startDate=String(data.qqqiDividendStartDate||targetDate).slice(0,10);
-  const ledger=Array.isArray(data.qqqiDividendLedger)?data.qqqiDividendLedger.filter(Boolean):[];
+function planFundDividends(data,history,distributions,targetDate,symbol){
+  const ticker=String(symbol||"").toUpperCase();
+  const cfg=DIVIDEND_CONFIG[ticker];
+  if(!cfg) throw new Error(`不支援的配息標的：${ticker}`);
+  const enabled=data[cfg.enabledField]!==false;
+  const taxRate=clamp(data[cfg.taxField]===undefined?30:data[cfg.taxField],0,100);
+  const startDate=String(data[cfg.startField]||targetDate).slice(0,10);
+  const ledger=Array.isArray(data[cfg.ledgerField])?data[cfg.ledgerField].filter(Boolean):[];
   const seen=new Set(ledger.map(x=>String(x?.id||"")));
   const newEntries=[];
   if(enabled){
     for(const dist of distributions||[]){
-      const id=`QQQI-${dist.payableDate}`;
+      const id=`${ticker}-${dist.payableDate}`;
       if(seen.has(id) || dist.payableDate>targetDate || dist.payableDate<startDate || dist.amountPerShare<=0) continue;
-      const eligibility=eligibleQqqiShares(history,data,dist.exDate);
+      const eligibility=eligibleDividendShares(history,data,dist.exDate,ticker);
       const grossUsd=round4(eligibility.shares*dist.amountPerShare);
       const taxUsd=round4(grossUsd*taxRate/100);
       const netUsd=round4(grossUsd-taxUsd);
-      newEntries.push({
-        id,symbol:"QQQI",declarationDate:dist.declarationDate,exDate:dist.exDate,recordDate:dist.recordDate,payableDate:dist.payableDate,
+      newEntries.push({id,symbol:ticker,declarationDate:dist.declarationDate,exDate:dist.exDate,recordDate:dist.recordDate,payableDate:dist.payableDate,
         amountPerShare:dist.amountPerShare,eligibleShares:eligibility.shares,shareSource:eligibility.source,shareSourceDate:eligibility.sourceDate,
         entitlementDate:eligibility.entitlementDate,estimatedShares:eligibility.estimated,taxRate,grossUsd,taxUsd,netUsd,actualNetUsd:null,
-        postedAt:new Date().toISOString(),source:"NEOS 官方 QQQI 配息歷史",sourceUrl:QQQI_DISTRIBUTION_URL
-      });
+        postedAt:new Date().toISOString(),source:`NEOS 官方 ${ticker} 配息歷史`,sourceUrl:cfg.sourceUrl});
       seen.add(id);
     }
   }
   const netAdded=round4(newEntries.reduce((sum,x)=>sum+number(x.netUsd),0));
-  return {enabled,taxRate,startDate,ledger:[...newEntries,...ledger].slice(0,120),newEntries,netAdded};
+  return {symbol:ticker,enabled,taxRate,startDate,ledger:[...newEntries,...ledger].slice(0,120),newEntries,netAdded};
 }
+function planQqqiDividends(data,history,distributions,targetDate){ return planFundDividends(data,history,distributions,targetDate,"QQQI"); }
+function planSpyiDividends(data,history,distributions,targetDate){ return planFundDividends(data,history,distributions,targetDate,"SPYI"); }
 
 function qualitySummary({resolved,fxFresh,ftStale}) {
   const stale=[...new Set(resolved?.stale||[])];
@@ -345,7 +366,7 @@ async function patchRootWithRevision(db, ref, patch, source="github-actions") {
     if(!snap.exists) throw new Error("dashboard 不存在");
     const current=snap.data()||{};
     nextRevision=Math.max(0,Math.floor(number(current.dataRevision)))+1;
-    tx.set(ref,{...patch,dataRevision:nextRevision,lastWriteId:writeId,lastWriteSource:source,lastWriteAt:writeAt,clientAppVersion:"股票資產 PWA v7.0 FINAL｜整合定版儀表板",autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()},{merge:true});
+    tx.set(ref,{...patch,dataRevision:nextRevision,lastWriteId:writeId,lastWriteSource:source,lastWriteAt:writeAt,clientAppVersion:"股票資產 PWA v7.0 FINAL｜策略走向切換＋雙配息＋TSLA/TSLL 換算",autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()},{merge:true});
   });
   return {revision:nextRevision,writeId,writeAt};
 }
@@ -396,6 +417,26 @@ async function processQqqiE2eDashboard(db, ref, targetDate) {
   return {status:"qqqi_e2e_passed",date:targetDate,testId,revision:write.revision,netUsd:first.netAdded,afterCashUsd:afterCash,secondPassNetUsd:second.netAdded};
 }
 
+async function processSpyiE2eDashboard(db, ref, targetDate) {
+  const snap=await ref.get();
+  if(!snap.exists) return {status:"missing"};
+  const entitlementDate=previousTradingDay(targetDate);
+  const fixtureData={...(snap.data()||{}),cashUsd:2000,sharesSpyi:1000,spyiDividendAutomationEnabled:true,spyiDividendTaxRate:30,spyiDividendStartDate:"2000-01-01",spyiDividendLedger:[]};
+  const history=[{date:entitlementDate,sharesSpyi:1000}];
+  const distribution={symbol:"SPYI",declarationDate:entitlementDate,exDate:targetDate,recordDate:targetDate,payableDate:targetDate,amountPerShare:0.5338,source:"isolated fixture"};
+  const first=planSpyiDividends(fixtureData,history,[distribution],targetDate);
+  const afterCash=round4(number(fixtureData.cashUsd)+first.netAdded);
+  const second=planSpyiDividends({...fixtureData,spyiDividendLedger:first.ledger},history,[distribution],targetDate);
+  const expectedNet=373.66;
+  const passed=Math.abs(first.netAdded-expectedNet)<0.0001 && Math.abs(afterCash-2373.66)<0.0001 && Math.abs(second.netAdded)<0.0001 && first.newEntries.length===1 && second.newEntries.length===0;
+  if(!passed) throw new Error(`SPYI E2E fixture 失敗：first=${first.netAdded}, after=${afterCash}, second=${second.netAdded}`);
+  const nowIso=new Date().toISOString(), testId=`spyi-e2e-${targetDate}`;
+  await ref.collection("automationTests").doc(testId).set({testId,createdAt:nowIso,status:"success",mode:"spyi_e2e_test",isolated:true,input:{cashUsd:2000,sharesSpyi:1000,amountPerShare:0.5338,taxRate:30,entitlementDate,payableDate:targetDate},firstPass:{grossUsd:first.newEntries[0]?.grossUsd||0,taxUsd:first.newEntries[0]?.taxUsd||0,netUsd:first.netAdded,afterCashUsd:afterCash,ledgerCount:first.ledger.length},secondPass:{netUsd:second.netAdded,newEntries:second.newEntries.length},checks:{expectedNetUsd:expectedNet,expectedAfterCashUsd:2373.66,idempotent:second.netAdded===0,passed},note:"隔離測試文件，不修改正式 IB cashUsd、portfolioHistory 或正式配息 ledger。"},{merge:true});
+  const rootPatch={spyiE2eTestAt:nowIso,spyiE2eTestStatus:"SPYI 隔離 E2E 通過：1000 股 × $0.5338，30% 預扣後 +$373.66；第二次執行 +$0，防重複正常。",spyiE2eTestId:testId,spyiE2eTestBeforeCashUsd:2000,spyiE2eTestNetUsd:first.netAdded,spyiE2eTestAfterCashUsd:afterCash,spyiE2eTestSecondPassNetUsd:second.netAdded,autoSnapshotSource:"GitHub Actions"};
+  const write=await patchRootWithRevision(db,ref,rootPatch,"github-actions-spyi-e2e");
+  return {status:"spyi_e2e_passed",date:targetDate,testId,revision:write.revision,netUsd:first.netAdded,afterCashUsd:afterCash,secondPassNetUsd:second.netAdded};
+}
+
 async function processTestDashboard(db, ref, targetDate, fx, dividendInfo) {
   const snap=await ref.get();
   if(!snap.exists) return {status:"missing"};
@@ -413,12 +454,13 @@ async function processTestDashboard(db, ref, targetDate, fx, dividendInfo) {
   const testId=`test-${nowIso.replace(/[^0-9]/g,"").slice(0,14)}`;
   const ftAge=ftUsd>0?calendarAgeDays(data.ftUpdatedAt):0;
   const quality=qualitySummary({resolved,fxFresh:Boolean(fx?.rate),ftStale:ftUsd>0&&ftAge>7});
-  const pendingDividend=dividendInfo?.rows?planQqqiDividends(data,data.portfolioHistory||[],dividendInfo.rows,targetDate):{newEntries:[]};
+  const pendingQqqi=dividendInfo?.qqqi?.rows?planQqqiDividends(data,data.portfolioHistory||[],dividendInfo.qqqi.rows,targetDate):{newEntries:[]};
+  const pendingSpyi=dividendInfo?.spyi?.rows?planSpyiDividends(data,data.portfolioHistory||[],dividendInfo.spyi.rows,targetDate):{newEntries:[]};
   const payload={
     createdAt:nowIso, marketDate:targetDate, strategyUsd, totalTwd, rate,
     ftUsd, subUsd:sub.value, twStockTwd, otherTotalTwd,
     staleSymbols:resolved.stale, quality:quality.quality, qualityNote:quality.note,
-    pendingQqqiDividendIds:pendingDividend.newEntries.map(x=>x.id), source:"github-actions-safe-test", status:"success"
+    pendingQqqiDividendIds:pendingQqqi.newEntries.map(x=>x.id), pendingSpyiDividendIds:pendingSpyi.newEntries.map(x=>x.id), source:"github-actions-safe-test", status:"success"
   };
   await ref.collection("automationTests").doc(testId).set(payload,{merge:true});
   const write=await patchRootWithRevision(db,ref,{
@@ -448,11 +490,16 @@ async function processDashboard(db, ref, targetDate, fx, dividendInfo) {
     const existing=history.find(x=>String(x?.date||"").slice(0,10)===targetDate);
     const keepManual=Boolean(existing && isManualSnapshot(existing) && !FORCE);
 
-    const dividendPlan=dividendInfo?.rows
-      ? planQqqiDividends(data,history,dividendInfo.rows,targetDate)
-      : {enabled:data.qqqiDividendAutomationEnabled!==false,taxRate:clamp(data.qqqiDividendTaxRate===undefined?30:data.qqqiDividendTaxRate,0,100),startDate:String(data.qqqiDividendStartDate||targetDate).slice(0,10),ledger:Array.isArray(data.qqqiDividendLedger)?data.qqqiDividendLedger:[],newEntries:[],netAdded:0};
+    const qqqiDividendPlan=dividendInfo?.qqqi?.rows
+      ? planQqqiDividends(data,history,dividendInfo.qqqi.rows,targetDate)
+      : {symbol:"QQQI",enabled:data.qqqiDividendAutomationEnabled!==false,taxRate:clamp(data.qqqiDividendTaxRate===undefined?30:data.qqqiDividendTaxRate,0,100),startDate:String(data.qqqiDividendStartDate||targetDate).slice(0,10),ledger:Array.isArray(data.qqqiDividendLedger)?data.qqqiDividendLedger:[],newEntries:[],netAdded:0};
+    const spyiDividendPlan=dividendInfo?.spyi?.rows
+      ? planSpyiDividends(data,history,dividendInfo.spyi.rows,targetDate)
+      : {symbol:"SPYI",enabled:data.spyiDividendAutomationEnabled!==false,taxRate:clamp(data.spyiDividendTaxRate===undefined?30:data.spyiDividendTaxRate,0,100),startDate:String(data.spyiDividendStartDate||targetDate).slice(0,10),ledger:Array.isArray(data.spyiDividendLedger)?data.spyiDividendLedger:[],newEntries:[],netAdded:0};
+    const dividendEntries=[...qqqiDividendPlan.newEntries,...spyiDividendPlan.newEntries].sort((a,b)=>String(a.payableDate).localeCompare(String(b.payableDate))||String(a.symbol).localeCompare(String(b.symbol)));
+    const dividendNetAdded=round4(qqqiDividendPlan.netAdded+spyiDividendPlan.netAdded);
     const cashBefore=number(data.cashUsd);
-    const cashAfter=round4(cashBefore+dividendPlan.netAdded);
+    const cashAfter=round4(cashBefore+dividendNetAdded);
     const valuationData={...data,cashUsd:cashAfter};
     const prices={...resolved.prices};
     const rate=fx?.rate>0?fx.rate:(number(data.usdtwd)||32);
@@ -472,10 +519,10 @@ async function processDashboard(db, ref, targetDate, fx, dividendInfo) {
       subUsd:sub.value, subSymbol:String(data.subSymbol||"").toUpperCase(),
       subShares:Math.max(0,number(data.subShares)), subCashUsd:Math.max(0,number(data.subCashUsd)),
       subPriceUsd:sub.price, twStockTwd, otherTotalTwd,
-      sharesTqqq:number(data.sharesTqqq),sharesQqq:number(data.sharesQqq),sharesSpy:number(data.sharesSpy),sharesSpyi:number(data.sharesSpyi),sharesQqqi:number(data.sharesQqqi),cashUsd:cashAfter,otherUsd:number(data.otherUsd),
+      sharesTqqq:number(data.sharesTqqq),sharesUpro:number(data.sharesUpro),sharesQqq:number(data.sharesQqq),sharesSpy:number(data.sharesSpy),sharesSpyi:number(data.sharesSpyi),sharesQqqi:number(data.sharesQqqi),cashUsd:cashAfter,otherUsd:number(data.otherUsd),
       reason:"auto_market_close", auto:true, source:"github-actions", staleSymbols:resolved.stale,
       quality:quality.quality,qualityNote:quality.note,expectedPriceCount:resolved.expectedCount,freshPriceCount:resolved.freshCount,priceMeta:resolved.priceMeta,
-      fxFresh:Boolean(fx?.rate),dividendNetAddedUsd:dividendPlan.netAdded,dividendIds:dividendPlan.newEntries.map(x=>x.id)
+      fxFresh:Boolean(fx?.rate),dividendNetAddedUsd:dividendNetAdded,dividendIds:dividendEntries.map(x=>x.id),qqqiDividendNetAddedUsd:qqqiDividendPlan.netAdded,spyiDividendNetAddedUsd:spyiDividendPlan.netAdded
     };
     const nextHistory=keepManual
       ? [...history]
@@ -487,10 +534,11 @@ async function processDashboard(db, ref, targetDate, fx, dividendInfo) {
     for(const [symbol,meta] of Object.entries(resolved.priceMeta||{})){
       if(meta?.fresh) priceSources[symbol]="Finnhub｜盤後自動";
     }
-    const dividendError=dividendInfo?.error||"";
+    const qqqiDividendError=dividendInfo?.qqqi?.error||"";
+    const spyiDividendError=dividendInfo?.spyi?.error||"";
     const patch={
       spy:number(prices.SPY)||number(data.spy), qqq:number(prices.QQQ)||number(data.qqq),
-      tqqq:number(prices.TQQQ)||number(data.tqqq), spyi:number(prices.SPYI)||number(data.spyi),
+      tqqq:number(prices.TQQQ)||number(data.tqqq), upro:number(prices.UPRO)||number(data.upro), spyi:number(prices.SPYI)||number(data.spyi),
       qqqi:number(prices.QQQI)||number(data.qqqi), cashUsd:cashAfter,
       marketDate:targetDate, marketCloseDate:targetDate, priceUpdatedAt:nowIso, priceSources,
       subUsd:sub.value, subPriceUsd:sub.price||number(data.subPriceUsd),
@@ -506,42 +554,46 @@ async function processDashboard(db, ref, targetDate, fx, dividendInfo) {
       autoSnapshotFreshPrices:resolved.freshCount,autoSnapshotExpectedPrices:resolved.expectedCount,
       autoSnapshotStaleSymbols:resolved.stale,autoSnapshotFtAgeDays:Number.isFinite(ftAge)?ftAge:null,
       autoSnapshotSource:"GitHub Actions",
-      qqqiDividendAutomationEnabled:dividendPlan.enabled,qqqiDividendTaxRate:dividendPlan.taxRate,qqqiDividendStartDate:dividendPlan.startDate,
-      qqqiDividendLedger:dividendPlan.ledger,qqqiDividendLastCheckAt:nowIso,
-      qqqiDividendLastError:dividendError,qqqiDividendLastProcessedAt:dividendPlan.newEntries.length?nowIso:String(data.qqqiDividendLastProcessedAt||""),
+      qqqiDividendAutomationEnabled:qqqiDividendPlan.enabled,qqqiDividendTaxRate:qqqiDividendPlan.taxRate,qqqiDividendStartDate:qqqiDividendPlan.startDate,
+      qqqiDividendLedger:qqqiDividendPlan.ledger,qqqiDividendLastCheckAt:nowIso,
+      qqqiDividendLastError:qqqiDividendError,qqqiDividendLastProcessedAt:qqqiDividendPlan.newEntries.length?nowIso:String(data.qqqiDividendLastProcessedAt||""),
+      spyiDividendAutomationEnabled:spyiDividendPlan.enabled,spyiDividendTaxRate:spyiDividendPlan.taxRate,spyiDividendStartDate:spyiDividendPlan.startDate,
+      spyiDividendLedger:spyiDividendPlan.ledger,spyiDividendLastCheckAt:nowIso,
+      spyiDividendLastError:spyiDividendError,spyiDividendLastProcessedAt:spyiDividendPlan.newEntries.length?nowIso:String(data.spyiDividendLastProcessedAt||""),
       dataRevision:currentRevision+1,lastWriteId:`github-actions-${nowIso.replace(/[^0-9]/g,"").slice(0,14)}`,lastWriteSource:"github-actions-snapshot",lastWriteAt:nowIso,
-      clientAppVersion:"股票資產 PWA v7.0 FINAL｜整合定版儀表板",autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()
+      clientAppVersion:"股票資產 PWA v7.0 FINAL｜策略走向切換＋雙配息＋TSLA/TSLL 換算",autoSnapshotServerUpdatedAt:FieldValue.serverTimestamp()
     };
     tx.set(ref,patch,{merge:true});
 
     let runningCash=cashBefore;
-    for(const entry of dividendPlan.newEntries){
+    for(const entry of dividendEntries){
       const before=holdingsState(data,runningCash);
       runningCash=round4(runningCash+entry.netUsd);
       const after=holdingsState(data,runningCash);
-      const recordId=`dividend-qqqi-${entry.payableDate}`;
+      const recordId=`dividend-${String(entry.symbol||"QQQI").toLowerCase()}-${entry.payableDate}`;
       const recordRef=ref.collection("records").doc(recordId);
       tx.set(recordRef,{
-        recordSchemaVersion:2,recordId,strategyId:"tqqq-spy200",strategyVersion:"RISKREF-SPY-QQQ-4-3-HOT-19-24-28-INTRO-v1.3",recordType:"dividend",createdAt:nowIso,
+        recordSchemaVersion:2,recordId,strategyId:"tqqq-spy200",strategyVersion:"RISKREF-SPY-QQQ-4-3-HOT-19-24-HOT3OPT-DCAOPT-MANUALSTAGE-ASSETPAIR-INTRO-v1.8",recordType:"dividend",createdAt:nowIso,
         dates:{marketClose:targetDate,signal:entry.exDate,execution:entry.payableDate},
-        prices:{SPY:number(prices.SPY),QQQ:number(prices.QQQ),TQQQ:number(prices.TQQQ),SPYI:number(prices.SPYI),QQQI:number(prices.QQQI)},
+        prices:{SPY:number(prices.SPY),QQQ:number(prices.QQQ),TQQQ:number(prices.TQQQ),UPRO:number(prices.UPRO),SPYI:number(prices.SPYI),QQQI:number(prices.QQQI)},
         indicators:{SPY200:number(data.spySma),QQQ200:number(data.qqqSma)},
-        state:{marketState:String(data.marketState||"NEUTRAL"),hotRank:number(data.hotRank),riskBenchmark:["SPY","QQQ"].includes(String(data.riskBenchmark||"SPY").toUpperCase())?String(data.riskBenchmark||"SPY").toUpperCase():"SPY",hotAsset:String(data.hotAsset||"QQQ"),introAsset:String(data.introAsset||"QQQI"),strategyPhase:String(data.strategyPhase||""),dcaEnabled:data.dcaEnabled!==false,dcaActive:data.dcaActive===true,dcaCompleted:number(data.dcaCompleted),riskOffCycleId:String(data.riskOffCycleId||""),riskOnCycleId:String(data.riskOnCycleId||"")},
+        state:{marketState:String(data.marketState||"NEUTRAL"),hotRank:number(data.hotRank),riskBenchmark:["SPY","QQQ"].includes(String(data.riskBenchmark||"SPY").toUpperCase())?String(data.riskBenchmark||"SPY").toUpperCase():"SPY",leverageAsset:["TQQQ","UPRO"].includes(String(data.leverageAsset||"TQQQ").toUpperCase())?String(data.leverageAsset||"TQQQ").toUpperCase():"TQQQ",hotAsset:String(data.hotAsset||"QQQ"),introAsset:String(data.introAsset||"QQQI"),strategyPhase:String(data.strategyPhase||""),dcaEnabled:data.dcaEnabled!==false,dcaActive:data.dcaActive===true,dcaCompleted:number(data.dcaCompleted),riskOffCycleId:String(data.riskOffCycleId||""),riskOnCycleId:String(data.riskOnCycleId||"")},
         holdings:{before,after},valuation:{totalUsd:strategyUsd,totalDisplay:`$${round2(strategyUsd)}`},
-        decision:{title:"QQQI 配息入帳",allocation:"IB 現金",immediate:"",formalState:"",todayAction:`稅後配息 +$${round2(entry.netUsd)}`},
-        cashflow:{type:"dividend",amountUsd:entry.netUsd,date:entry.payableDate,note:`QQQI ${entry.eligibleShares} 股 × $${entry.amountPerShare}；預扣 ${entry.taxRate}%`},
-        dividend:entry,actions:[`QQQI 稅前 $${round2(entry.grossUsd)}，預扣稅 $${round2(entry.taxUsd)}，稅後加入 IB 現金 $${round2(entry.netUsd)}`],
+        decision:{title:`${entry.symbol} 配息入帳`,allocation:"IB 現金",immediate:"",formalState:"",todayAction:`稅後配息 +$${round2(entry.netUsd)}`},
+        cashflow:{type:"dividend",amountUsd:entry.netUsd,date:entry.payableDate,note:`${entry.symbol} ${entry.eligibleShares} 股 × $${entry.amountPerShare}；預扣 ${entry.taxRate}%`},
+        dividend:entry,actions:[`${entry.symbol} 稅前 $${round2(entry.grossUsd)}，預扣稅 $${round2(entry.taxUsd)}，稅後加入 IB 現金 $${round2(entry.netUsd)}`],
         notes:entry.estimatedShares?`持股基準使用${entry.shareSource}，建議與券商實際入帳核對。`:"依除息日前一交易日持股快照計算。",deletedAt:null
       },{merge:true});
     }
-    outcome={status:keepManual?"manual_kept":"updated",date:targetDate,quality:quality.quality,stale:resolved.stale,dividendsAdded:dividendPlan.newEntries.map(x=>x.id),revision:currentRevision+1};
+    outcome={status:keepManual?"manual_kept":"updated",date:targetDate,quality:quality.quality,stale:resolved.stale,dividendsAdded:dividendEntries.map(x=>x.id),revision:currentRevision+1};
   });
   return outcome;
 }
 
 async function main() {
   const qqqiE2eTest=RUN_MODE==="qqqi_e2e_test";
-  if (!qqqiE2eTest && !FINNHUB_API_KEY) throw new Error("缺少 FINNHUB_API_KEY GitHub Secret");
+  const spyiE2eTest=RUN_MODE==="spyi_e2e_test";
+  if (!qqqiE2eTest && !spyiE2eTest && !FINNHUB_API_KEY) throw new Error("缺少 FINNHUB_API_KEY GitHub Secret");
   const serviceAccount=parseServiceAccount(FIREBASE_SERVICE_ACCOUNT);
   initializeApp({credential:cert(serviceAccount)});
   const db=getFirestore();
@@ -567,14 +619,30 @@ async function main() {
     if(results.some(x=>x.status==="error")) process.exitCode=1;
     return;
   }
+  if(spyiE2eTest){
+    console.log("執行模式：SPYI 隔離 E2E 測試（不連 Finnhub／NEOS，不修改正式資產資料）");
+    for(const ref of refs){
+      try { results.push(await processSpyiE2eDashboard(db,ref,targetDate)); }
+      catch(error){
+        console.error(`SPYI 隔離 E2E 失敗：${String(error.message||error).slice(0,240)}`);
+        try { await patchRootWithRevision(db,ref,{spyiE2eTestAt:new Date().toISOString(),spyiE2eTestStatus:`SPYI 隔離 E2E 失敗：${String(error.message||error).slice(0,160)}`,autoSnapshotSource:"GitHub Actions"},"github-actions-spyi-e2e-error"); } catch(_) {}
+        results.push({status:"error",error:String(error.message||error).slice(0,160)});
+      }
+    }
+    console.log(JSON.stringify(results,null,2));
+    if(results.some(x=>x.status==="error")) process.exitCode=1;
+    return;
+  }
 
   let fx=null;
   try { fx=await fxRate(); console.log("USD/TWD 匯率更新成功"); }
   catch(error){ console.warn(`匯率更新失敗，將沿用各帳戶現有匯率：${error.message}`); }
 
-  let dividendInfo={rows:[],error:""};
-  try { dividendInfo.rows=await fetchQqqiDistributions(); console.log("QQQI 官方配息資料檢查完成"); }
-  catch(error){ dividendInfo.error=String(error.message||error).slice(0,200); console.warn(`QQQI 配息資料暫時無法取得：${dividendInfo.error}`); }
+  const dividendInfo={qqqi:{rows:[],error:""},spyi:{rows:[],error:""}};
+  try { dividendInfo.qqqi.rows=await fetchQqqiDistributions(); console.log("QQQI 官方配息資料檢查完成"); }
+  catch(error){ dividendInfo.qqqi.error=String(error.message||error).slice(0,200); console.warn(`QQQI 配息資料暫時無法取得：${dividendInfo.qqqi.error}`); }
+  try { dividendInfo.spyi.rows=await fetchSpyiDistributions(); console.log("SPYI 官方配息資料檢查完成"); }
+  catch(error){ dividendInfo.spyi.error=String(error.message||error).slice(0,200); console.warn(`SPYI 配息資料暫時無法取得：${dividendInfo.spyi.error}`); }
 
   const safeTest=RUN_MODE==="safe_test";
   console.log(`執行模式：${safeTest?"安全測試寫入（不修改正式歷史與配息現金）":"正式盤後快照"}`);
